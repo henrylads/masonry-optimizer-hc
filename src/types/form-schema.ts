@@ -49,7 +49,9 @@ export const formSchema = z.object({
     .refine((val) => val === undefined || val % 5 === 0, {
       message: "Fixed angle length must be in 5mm increments",
     }),
-  channel_family: z.enum(['all', 'CPRO38', 'CPRO50', 'R-HPTIII-70', 'R-HPTIII-90']).default('all'),
+  fixing_type: z.enum(['all', 'post-fix', 'channel-fix']).default('all'),
+  channel_product: z.enum(['all', 'CPRO38', 'CPRO50']).optional().default('all'),
+  postfix_product: z.enum(['all', 'R-HPTIII-70', 'R-HPTIII-90']).optional().default('all'),
   enable_fixing_optimization: z.boolean().default(false),
   fixing_position: z.coerce
     .number()

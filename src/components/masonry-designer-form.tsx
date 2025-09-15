@@ -18,6 +18,7 @@ import { ClaritiLogo } from "@/components/clariti-logo"
 import { ResultsDisplay } from "@/components/results-display"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { cn } from "@/lib/utils"
 
 // Import types and functions
@@ -154,7 +155,9 @@ export default function MasonryDesignerForm({
       notch_depth: 0,
       is_angle_length_limited: false,
       fixed_angle_length: 750,
-      channel_family: 'all',
+      fixing_type: 'all',
+      channel_product: 'all',
+      postfix_product: 'all',
       enable_fixing_optimization: false,
       fixing_position: 75,
     },
@@ -249,9 +252,22 @@ export default function MasonryDesignerForm({
         });
       }
 
-      // Get channel specifications based on selected family
-      const selectedFamily = values.channel_family;
-      const channelType = selectedFamily === 'all' ? 'CPRO38' : selectedFamily;
+      // Get channel specifications based on selected fixing type and products
+      const fixingType = values.fixing_type;
+      const channelProduct = values.channel_product;
+      const postfixProduct = values.postfix_product;
+
+      // Determine channel type for edge distance lookup (use first available)
+      let channelType: string;
+      if (fixingType === 'all') {
+        channelType = 'CPRO38'; // Default to CPRO38 for edge distance lookup
+      } else if (fixingType === 'post-fix') {
+        channelType = postfixProduct && postfixProduct !== 'all' ? postfixProduct : 'R-HPTIII-70';
+      } else if (fixingType === 'channel-fix') {
+        channelType = channelProduct && channelProduct !== 'all' ? channelProduct : 'CPRO38';
+      } else {
+        channelType = 'CPRO38';
+      }
       const bracketCentres = 500;
       const channelSpec = getChannelSpec(channelType, values.slab_thickness, bracketCentres);
       const criticalEdges = channelSpec ? 
@@ -273,7 +289,38 @@ export default function MasonryDesignerForm({
           enable_fixing_optimization: values.enable_fixing_optimization,
           fixing_position: values.fixing_position,
           showDetailedVerifications: true,
-          allowed_channel_types: selectedFamily === 'all' ? ['CPRO38','CPRO50','R-HPTIII-70','R-HPTIII-90'] as ChannelType[] : [channelType as ChannelType]
+          allowed_channel_types: (() => {
+            const channelTypes: ChannelType[] = [];
+
+            if (fixingType === 'all') {
+              // Include channels based on both dropdown selections
+              if (channelProduct !== 'all') {
+                channelTypes.push(channelProduct as ChannelType);
+              } else {
+                channelTypes.push('CPRO38', 'CPRO50');
+              }
+
+              if (postfixProduct !== 'all') {
+                channelTypes.push(postfixProduct as ChannelType);
+              } else {
+                channelTypes.push('R-HPTIII-70', 'R-HPTIII-90');
+              }
+            } else if (fixingType === 'post-fix') {
+              if (postfixProduct && postfixProduct !== 'all') {
+                channelTypes.push(postfixProduct as ChannelType);
+              } else {
+                channelTypes.push('R-HPTIII-70', 'R-HPTIII-90');
+              }
+            } else if (fixingType === 'channel-fix') {
+              if (channelProduct && channelProduct !== 'all') {
+                channelTypes.push(channelProduct as ChannelType);
+              } else {
+                channelTypes.push('CPRO38', 'CPRO50');
+              }
+            }
+
+            return channelTypes.length > 0 ? channelTypes : ['CPRO38','CPRO50','R-HPTIII-70','R-HPTIII-90'] as ChannelType[];
+          })()
         },
         isAngleLengthLimited: values.is_angle_length_limited,
         fixedAngleLength: values.is_angle_length_limited ? values.fixed_angle_length : undefined,
@@ -583,165 +630,151 @@ export default function MasonryDesignerForm({
                           />
                         </div>
 
-                        {/* Characteristic Load Section */}
-                        <div className="border-t pt-6 space-y-4">
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {/* Toggle */}
-                            <div className="rounded-lg border p-4 h-full flex flex-col justify-between">
+                        {/* Load Information Section */}
+                        <div className="col-span-full">
+                          <div className="rounded-lg border p-6">
+                            <div className="flex items-center gap-2 mb-4">
+                              <div className="p-2 rounded-lg bg-primary/10">
+                                <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                </svg>
+                              </div>
                               <div>
-                                <div className="flex justify-between items-center mb-2">
-                                  <Label htmlFor="use-characteristic-load" className="font-medium">Do you know your characteristic load?</Label>
-                                  <Switch
-                                    id="use-characteristic-load"
-                                    checked={useCharacteristicLoad}
-                                    onCheckedChange={setUseCharacteristicLoad}
-                                  />
-                                </div>
-                                <p className="text-sm text-gray-500">
-                                  Toggle to enter load directly or calculate it from masonry properties.
-                                </p>
+                                <h3 className="text-lg font-semibold">Load Information</h3>
+                                <p className="text-sm text-muted-foreground">Specify load characteristics or material properties</p>
                               </div>
                             </div>
-                            
-                            {/* Conditional inputs */}
-                            <div>
-                              {useCharacteristicLoad ? (
+
+                            {/* Characteristic Load Known Radio Buttons */}
+                            <div className="mb-6">
+                              <Label className="text-base font-medium mb-4 block">Characteristic Load Known?</Label>
+                              <ToggleGroup
+                                type="single"
+                                value={useCharacteristicLoad ? "yes" : "no"}
+                                onValueChange={(value) => {
+                                  if (value) {
+                                    setUseCharacteristicLoad(value === "yes");
+                                  }
+                                }}
+                                className="justify-start gap-2"
+                                variant="outline"
+                                size="default"
+                              >
+                                <ToggleGroupItem
+                                  value="yes"
+                                  aria-label="Yes"
+                                  className={cn(
+                                    "min-w-[80px]",
+                                    useCharacteristicLoad && "bg-[rgb(194,242,14)] text-black hover:brightness-95"
+                                  )}
+                                >
+                                  Yes
+                                </ToggleGroupItem>
+                                <ToggleGroupItem
+                                  value="no"
+                                  aria-label="No"
+                                  className={cn(
+                                    "min-w-[80px]",
+                                    !useCharacteristicLoad && "bg-[rgb(194,242,14)] text-black hover:brightness-95"
+                                  )}
+                                >
+                                  No
+                                </ToggleGroupItem>
+                              </ToggleGroup>
+                            </div>
+
+                            {/* Conditional Inputs */}
+                            {useCharacteristicLoad ? (
+                              <FormField
+                                control={form.control}
+                                name="characteristic_load"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Characteristic Load (kN/m)</FormLabel>
+                                    <FormControl>
+                                      <Input
+                                        type="number"
+                                        placeholder="e.g. 2.5"
+                                        {...field}
+                                        onChange={(e) => {
+                                          const value = e.target.value === "" ? "" : e.target.value
+                                          field.onChange(value)
+                                        }}
+                                        value={field.value === undefined ? "" : field.value}
+                                        disabled={inputMode === 'chat' && isLoading}
+                                      />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                            ) : (
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                {/* Masonry Density */}
                                 <FormField
                                   control={form.control}
-                                  name="characteristic_load"
+                                  name="masonry_density"
                                   render={({ field }) => (
                                     <FormItem>
-                                      <div className={cn(
-                                        "rounded-lg border p-4 transition-all duration-200",
-                                        inputMode === 'chat' && extractedParameters.some(p => p.field === 'characteristic_load') 
-                                          ? 'border-[#c2f20e] bg-[#c2f20e]/5' 
-                                          : ''
-                                      )}>
-                                        <FormLabel className="flex items-center gap-2">
-                                          Characteristic Load (kN/m)
-                                          {inputMode === 'chat' && extractedParameters.some(p => p.field === 'characteristic_load') && (
-                                            <span className="text-xs bg-[#c2f20e] text-white px-1.5 py-0.5 rounded">AI</span>
-                                          )}
-                                        </FormLabel>
-                                        <FormDescription className="mb-3">
-                                          Enter if known (kN/m)
-                                        </FormDescription>
-                                        <FormControl>
-                                          <Input
-                                            type="number"
-                                            placeholder="Enter characteristic load"
-                                            {...field}
-                                            onChange={(e) => {
-                                              const value = e.target.value === "" ? "" : e.target.value
-                                              field.onChange(value)
-                                            }}
-                                            value={field.value === undefined ? "" : field.value}
-                                            disabled={inputMode === 'chat' && isLoading}
-                                          />
-                                        </FormControl>
-                                        <FormMessage />
-                                      </div>
+                                      <FormLabel>Density (kg/m³)</FormLabel>
+                                      <FormControl>
+                                        <Input
+                                          type="number"
+                                          placeholder="e.g. 2400"
+                                          value={field.value}
+                                          onChange={(e) => field.onChange(Number(e.target.value) || 0)}
+                                          disabled={inputMode === 'chat' && isLoading}
+                                        />
+                                      </FormControl>
+                                      <FormMessage />
                                     </FormItem>
                                   )}
                                 />
-                              ) : (
-                                <div className="space-y-4">
-                                  {/* Masonry Density */}
-                                  <FormField
-                                    control={form.control}
-                                    name="masonry_density"
-                                    render={({ field }) => (
-                                      <FormItem>
-                                        <div className="rounded-lg border p-4">
-                                          <div className="flex justify-between items-center mb-2">
-                                            <FormLabel>Masonry Density (kg/m³)</FormLabel>
-                                            <span className="text-sm tabular-nums">
-                                              {field.value} kg/m³
-                                            </span>
-                                          </div>
-                                          <FormDescription className="mb-3">
-                                            Enter the density of the masonry
-                                          </FormDescription>
-                                          <FormControl>
-                                            <Slider
-                                              min={1500}
-                                              max={2500}
-                                              step={10}
-                                              value={[field.value]}
-                                              onValueChange={(values) => field.onChange(values[0])}
-                                            />
-                                          </FormControl>
-                                          <FormMessage />
-                                        </div>
-                                      </FormItem>
-                                    )}
-                                  />
 
-                                  {/* Masonry Thickness */}
-                                  <FormField
-                                    control={form.control}
-                                    name="masonry_thickness"
-                                    render={({ field }) => (
-                                      <FormItem>
-                                        <div className="rounded-lg border p-4">
-                                          <div className="flex justify-between items-center mb-2">
-                                            <FormLabel>Masonry Thickness (mm)</FormLabel>
-                                            <span className="text-sm tabular-nums">
-                                              {field.value} mm
-                                            </span>
-                                          </div>
-                                          <FormDescription className="mb-3">
-                                            Enter the thickness of the masonry
-                                          </FormDescription>
-                                          <FormControl>
-                                            <Slider
-                                              min={50}
-                                              max={250}
-                                              step={0.5}
-                                              value={[field.value]}
-                                              onValueChange={(values) => field.onChange(values[0])}
-                                            />
-                                          </FormControl>
-                                          <FormMessage />
-                                        </div>
-                                      </FormItem>
-                                    )}
-                                  />
+                                {/* Masonry Thickness */}
+                                <FormField
+                                  control={form.control}
+                                  name="masonry_thickness"
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>Thickness (mm)</FormLabel>
+                                      <FormControl>
+                                        <Input
+                                          type="number"
+                                          placeholder="e.g. 100"
+                                          value={field.value}
+                                          onChange={(e) => field.onChange(Number(e.target.value) || 0)}
+                                          disabled={inputMode === 'chat' && isLoading}
+                                        />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
 
-                                  {/* Masonry Height */}
-                                  <FormField
-                                    control={form.control}
-                                    name="masonry_height"
-                                    render={({ field }) => (
-                                      <FormItem>
-                                        <div className="rounded-lg border p-4">
-                                          <div className="flex justify-between items-center mb-2">
-                                            <FormLabel>Masonry Height (m)</FormLabel>
-                                            <span className="text-sm tabular-nums">
-                                              {field.value} m
-                                            </span>
-                                          </div>
-                                          <FormDescription className="mb-3">
-                                            Enter the height of the masonry
-                                          </FormDescription>
-                                          <FormControl>
-                                            <Slider
-                                              min={1}
-                                              max={10}
-                                              step={0.1}
-                                              value={[field.value]}
-                                              onValueChange={(values) => field.onChange(values[0])}
-                                            />
-                                          </FormControl>
-                                          <FormMessage />
-                                        </div>
-                                      </FormItem>
-                                    )}
-                                  />
-                                </div>
-                              )}
+                                {/* Masonry Height */}
+                                <FormField
+                                  control={form.control}
+                                  name="masonry_height"
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>Height (m)</FormLabel>
+                                      <FormControl>
+                                        <Input
+                                          type="number"
+                                          placeholder="e.g. 3000"
+                                          value={field.value}
+                                          onChange={(e) => field.onChange(Number(e.target.value) || 0)}
+                                          disabled={inputMode === 'chat' && isLoading}
+                                        />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+                              </div>
+                            )}
                           </div>
-                        </div>
                         </div>
 
                         {/* Additional Settings - 2 Column Grid */}
@@ -774,40 +807,178 @@ export default function MasonryDesignerForm({
                             )}
                           />
 
-                          {/* Channel Family Selection */}
-                          <FormField
-                            control={form.control}
-                            name="channel_family"
-                            render={({ field }) => (
-                              <FormItem>
-                                <div className="rounded-lg border p-4 h-full flex flex-col justify-between">
-                                  <div>
-                                    <div className="flex justify-between items-center mb-2">
-                                      <FormLabel>Channel Family</FormLabel>
-                                    </div>
-                                    <FormDescription className="mb-3">
-                                      Choose which channel families to include in optimization
-                                    </FormDescription>
-                                  </div>
-                                  <FormControl>
-                                    <Select value={field.value} onValueChange={field.onChange}>
-                                      <SelectTrigger>
-                                        <SelectValue placeholder="All channels" />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        <SelectItem value="all">All channels</SelectItem>
-                                        <SelectItem value="CPRO38">CPRO38 only</SelectItem>
-                                        <SelectItem value="CPRO50">CPRO50 only</SelectItem>
-                                        <SelectItem value="R-HPTIII-70">R-HPTIII-70 only</SelectItem>
-                                        <SelectItem value="R-HPTIII-90">R-HPTIII-90 only</SelectItem>
-                                      </SelectContent>
-                                    </Select>
-                                  </FormControl>
-                                  <FormMessage />
+                          {/* Fixing Options Section */}
+                          <div className="col-span-full">
+                            <div className="rounded-lg border p-6">
+                              <div className="flex items-center gap-2 mb-4">
+                                <div className="p-2 rounded-lg bg-primary/10">
+                                  <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                  </svg>
                                 </div>
-                              </FormItem>
-                            )}
-                          />
+                                <div>
+                                  <h3 className="text-lg font-semibold">Fixing Options</h3>
+                                  <p className="text-sm text-muted-foreground">Select fixing types and configuration options</p>
+                                </div>
+                              </div>
+
+                              {/* Fixing Type Toggle */}
+                              <FormField
+                                control={form.control}
+                                name="fixing_type"
+                                render={({ field }) => (
+                                  <FormItem className="mb-6">
+                                    <FormLabel>Fixing Type</FormLabel>
+                                    <FormControl>
+                                      <ToggleGroup
+                                        type="single"
+                                        value={field.value || "all"}
+                                        onValueChange={(value) => {
+                                          if (value) {
+                                            field.onChange(value);
+                                          }
+                                        }}
+                                        className="justify-start gap-2"
+                                        variant="outline"
+                                        size="default"
+                                      >
+                                        <ToggleGroupItem
+                                          value="post-fix"
+                                          aria-label="Post Fix"
+                                          className={cn(
+                                            "min-w-[100px]",
+                                            field.value === "post-fix" && "bg-[rgb(194,242,14)] text-black hover:brightness-95"
+                                          )}
+                                        >
+                                          Post Fix
+                                        </ToggleGroupItem>
+                                        <ToggleGroupItem
+                                          value="channel-fix"
+                                          aria-label="Channel Fix"
+                                          className={cn(
+                                            "min-w-[100px]",
+                                            field.value === "channel-fix" && "bg-[rgb(194,242,14)] text-black hover:brightness-95"
+                                          )}
+                                        >
+                                          Channel Fix
+                                        </ToggleGroupItem>
+                                        <ToggleGroupItem
+                                          value="all"
+                                          aria-label="All Options"
+                                          className={cn(
+                                            "min-w-[100px]",
+                                            field.value === "all" && "bg-[rgb(194,242,14)] text-black hover:brightness-95"
+                                          )}
+                                        >
+                                          All Options
+                                        </ToggleGroupItem>
+                                      </ToggleGroup>
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+
+                              {/* Side-by-side Product Selection */}
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {/* Channel Fix Type */}
+                                <FormField
+                                  control={form.control}
+                                  name="channel_product"
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>Channel Fix Type</FormLabel>
+                                      <FormControl>
+                                        <Select
+                                          value={field.value}
+                                          onValueChange={field.onChange}
+                                          disabled={form.watch("fixing_type") === 'post-fix'}
+                                        >
+                                          <SelectTrigger>
+                                            <SelectValue placeholder="Select channel type" />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            <SelectItem value="all">All Channels</SelectItem>
+                                            <SelectItem value="CPRO38">CPRO38</SelectItem>
+                                            <SelectItem value="CPRO50">CPRO50</SelectItem>
+                                          </SelectContent>
+                                        </Select>
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+
+                                {/* Post Fix Type */}
+                                <FormField
+                                  control={form.control}
+                                  name="postfix_product"
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>Post Fix Type</FormLabel>
+                                      <FormControl>
+                                        <Select
+                                          value={field.value}
+                                          onValueChange={field.onChange}
+                                          disabled={form.watch("fixing_type") === 'channel-fix'}
+                                        >
+                                          <SelectTrigger>
+                                            <SelectValue placeholder="Select post type" />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            <SelectItem value="all">All Post-Fix</SelectItem>
+                                            <SelectItem value="R-HPTIII-70">R-HPTIII-70</SelectItem>
+                                            <SelectItem value="R-HPTIII-90">R-HPTIII-90</SelectItem>
+                                          </SelectContent>
+                                        </Select>
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+                              </div>
+
+                              {/* Fixing Optimization Control */}
+                              <div className="mt-4">
+                                <FormField
+                                  control={form.control}
+                                  name="enable_fixing_optimization"
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <div className="rounded-lg border p-4 h-full flex flex-col justify-between">
+                                        <div>
+                                          <div className="flex justify-between items-center mb-2">
+                                            <FormLabel htmlFor="enable-fixing-optimization" className="flex items-center gap-2">
+                                              Optimize Fixing Position
+                                              {form.watch('slab_thickness') > 250 && (
+                                                <span className="text-[11px] px-1.5 py-0.5 rounded bg-green-100 text-green-700">Recommended ≥ 250mm slabs</span>
+                                              )}
+                                            </FormLabel>
+                                            <FormControl>
+                                              <Switch
+                                                id="enable-fixing-optimization"
+                                                checked={field.value}
+                                                onCheckedChange={field.onChange}
+                                              />
+                                            </FormControl>
+                                          </div>
+                                          <FormDescription className="mb-3">
+                                            Allows the optimizer to lower the fixing point below 75mm from slab top in 5mm steps, while maintaining minimum bottom edge distance and ≥95mm rise to bolts. Useful on thicker slabs to reduce bracket height and weight.
+                                          </FormDescription>
+                                          <div className="flex items-center justify-between py-2 px-3 bg-gray-50 rounded">
+                                            <span className="text-sm text-gray-600">Starting fixing position</span>
+                                            <span className="text-sm font-semibold font-mono">{form.watch('fixing_position') ?? 75} mm</span>
+                                          </div>
+                                        </div>
+                                        <FormMessage />
+                                      </div>
+                                    </FormItem>
+                                  )}
+                                />
+                              </div>
+                            </div>
+                          </div>
 
                         {/* Conditional Notch Fields */}
                         {form.watch("has_notch") && (
@@ -879,43 +1050,6 @@ export default function MasonryDesignerForm({
                             />
                           </div>
                         )}
-
-                        {/* Fixing Position Optimization */}
-                        <FormField
-                          control={form.control}
-                          name="enable_fixing_optimization"
-                          render={({ field }) => (
-                            <FormItem>
-                              <div className="rounded-lg border p-4 h-full flex flex-col justify-between">
-                                <div>
-                                  <div className="flex justify-between items-center mb-2">
-                                    <FormLabel htmlFor="enable-fixing-optimization" className="flex items-center gap-2">
-                                      Optimize Fixing Position
-                                      {form.watch('slab_thickness') > 250 && (
-                                        <span className="text-[11px] px-1.5 py-0.5 rounded bg-green-100 text-green-700">Recommended ≥ 250mm slabs</span>
-                                      )}
-                                    </FormLabel>
-                                    <FormControl>
-                                      <Switch
-                                        id="enable-fixing-optimization"
-                                        checked={field.value}
-                                        onCheckedChange={field.onChange}
-                                      />
-                                    </FormControl>
-                                  </div>
-                                  <FormDescription className="mb-3">
-                                    Allows the optimizer to lower the fixing point below 75mm from slab top in 5mm steps, while maintaining minimum bottom edge distance and ≥95mm rise to bolts. Useful on thicker slabs to reduce bracket height and weight.
-                                  </FormDescription>
-                                  <div className="flex items-center justify-between py-2 px-3 bg-gray-50 rounded">
-                                    <span className="text-sm text-gray-600">Starting fixing position</span>
-                                    <span className="text-sm font-semibold font-mono">{form.watch('fixing_position') ?? 75} mm</span>
-                                  </div>
-                                </div>
-                                <FormMessage />
-                              </div>
-                            </FormItem>
-                          )}
-                        />
 
                           {/* Angle Length Limitation Toggle */}
                           <FormField
