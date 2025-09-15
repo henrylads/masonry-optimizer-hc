@@ -1,0 +1,106 @@
+
+> masonry-optimizer@0.1.0 dev
+> next dev -p 3000
+
+   ▲ Next.js 15.2.4
+   - Local:        http://localhost:3000
+   - Network:      http://192.168.0.75:3000
+   - Environments: .env.local
+
+ ✓ Starting...
+ ✓ Ready in 1760ms
+ ✓ Compiled /middleware in 101ms (146 modules)
+ ○ Compiling / ...
+Browserslist: browsers data (caniuse-lite) is 7 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+ ✓ Compiled / in 5.4s (2969 modules)
+[ 1490, 990, 490 ]
+[ 1390, 1040, 690, 340 ]
+🔄 MasonryForm: combinedResult recalculating {
+  aiOptimizationResult: false,
+  result: false,
+  aiResultId: null,
+  manualResultId: null
+}
+ GET / 200 in 6445ms
+ ✓ Compiled in 1444ms (1382 modules)
+ ○ Compiling /favicon.ico ...
+ ✓ Compiled /favicon.ico in 892ms (1593 modules)
+ GET /favicon.ico 200 in 1146ms
+[ 1490, 990, 490 ]
+[ 1390, 1040, 690, 340 ]
+🔄 MasonryForm: combinedResult recalculating {
+  aiOptimizationResult: false,
+  result: false,
+  aiResultId: null,
+  manualResultId: null
+}
+ GET / 200 in 473ms
+ GET /favicon.ico 200 in 207ms
+ ✓ Compiled in 504ms (2960 modules)
+ GET / 200 in 96ms
+ ✓ Compiled /favicon.ico in 131ms (1593 modules)
+ GET /favicon.ico 200 in 379ms
+[ 1490, 990, 490 ]
+[ 1390, 1040, 690, 340 ]
+🔄 MasonryForm: combinedResult recalculating {
+  aiOptimizationResult: false,
+  result: false,
+  aiResultId: null,
+  manualResultId: null
+}
+ GET / 200 in 737ms
+ GET /favicon.ico 200 in 206ms
+ ✓ Compiled /_not-found in 367ms (2950 modules)
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 448ms
+[ 1490, 990, 490 ]
+[ 1390, 1040, 690, 340 ]
+🔄 MasonryForm: combinedResult recalculating {
+  aiOptimizationResult: false,
+  result: false,
+  aiResultId: null,
+  manualResultId: null
+}
+ GET / 200 in 817ms
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 59ms
+ ✓ Compiled /favicon.ico in 220ms (1594 modules)
+ GET /favicon.ico 200 in 473ms
+[ 1490, 990, 490 ]
+[ 1390, 1040, 690, 340 ]
+🔄 MasonryForm: combinedResult recalculating {
+  aiOptimizationResult: false,
+  result: false,
+  aiResultId: null,
+  manualResultId: null
+}
+ GET / 200 in 368ms
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 27ms
+ GET /favicon.ico 200 in 205ms
+ ○ Compiling /login ...
+ ✓ Compiled /login in 917ms (2957 modules)
+ GET /login 200 in 1027ms
+ ⨯ ./src/calculations/bruteForceAlgorithm/index.ts
+Module parse failed: Identifier 'bestByChannel' has already been declared (279:8)
+|     const bestByChannel = new Map();
+|     // 2. Evaluate each structural combination in bound order with early pruning
+>     let bestByChannel = new Map();
+|     for (const { g: geneticParams, bound } of metaList){
+|         // Branch-and-bound prune: if bound cannot beat current best, stop
+
+Import trace for requested module:
+./src/calculations/bruteForceAlgorithm/index.ts
+./src/components/masonry-designer-form.tsx
+ ✓ Compiled in 1108ms (2964 modules)
+ ✓ Compiled /login in 210ms (1585 modules)
+ GET /login 200 in 294ms
+ GET /login 200 in 31ms
+ ○ Compiling /favicon.ico ...
+ ✓ Compiled /favicon.ico in 568ms (1600 modules)
+ GET /favicon.ico 200 in 823ms
+ ✓ Compiled /api/auth/login in 244ms (2977 modules)
+ POST /api/auth/login 200 in 264ms
+ GET / 200 in 43ms
+ GET / 200 in 9ms
+ ✓ Compiled in 679ms (2972 modules)
+ GET / 200 in 95ms
