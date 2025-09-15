@@ -490,144 +490,92 @@ export default function MasonryDesignerForm({
                   <TabsContent value="input">
                     <Form {...form}>
                       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                        {/* Primary Input Fields - 3 Column Grid */}
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                          {/* Slab Thickness */}
-                          <FormField
-                          control={form.control}
-                          name="slab_thickness"
-                          render={({ field }) => (
-                            <FormItem>
-                              <div className={cn(
-                                "rounded-lg border p-4 h-full flex flex-col justify-between transition-all duration-200",
-                                workflowMode === 'ai-assisted' && extractedParameters.some(p => p.field === 'slab_thickness') 
-                                  ? 'border-[#c2f20e] bg-[#c2f20e]/5' 
-                                  : ''
-                              )}>
-                                <div>
-                                  <div className="flex justify-between items-center mb-2">
-                                    <FormLabel className="flex items-center gap-2">
-                                      Slab Thickness (mm)
-                                      {workflowMode === 'ai-assisted' && extractedParameters.some(p => p.field === 'slab_thickness') && (
-                                        <span className="text-xs bg-[#c2f20e] text-white px-1.5 py-0.5 rounded">AI</span>
-                                      )}
-                                    </FormLabel>
-                                    <span className="text-sm tabular-nums">
-                                      {field.value} mm
-                                    </span>
-                                  </div>
-                                  <FormDescription className="mb-3">
-                                    Height of the concrete slab the system is attaching to
-                                  </FormDescription>
-                                </div>
-                                <FormControl>
-                                  <Slider
-                                    min={150}
-                                    max={500}
-                                    step={5}
-                                    value={[field.value]}
-                                    onValueChange={(values) => field.onChange(values[0])}
-                                    disabled={inputMode === 'chat' && isLoading}
-                                  />
-                                </FormControl>
-                                <FormMessage />
+                        {/* Design Parameters Section */}
+                        <div className="col-span-full">
+                          <div className="rounded-lg border p-6">
+                            <div className="flex items-center gap-2 mb-4">
+                              <div className="p-2 rounded-lg bg-primary/10">
+                                <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                                </svg>
                               </div>
-                            </FormItem>
-                          )}
-                        />
-                        
-                        {/* Cavity Width */}
-                        <FormField
-                          control={form.control}
-                          name="cavity"
-                          render={({ field }) => (
-                            <FormItem>
-                              <div className={cn(
-                                "rounded-lg border p-4 transition-all duration-200",
-                                workflowMode === 'ai-assisted' && extractedParameters.some(p => p.field === 'cavity') 
-                                  ? 'border-[#c2f20e] bg-[#c2f20e]/5' 
-                                  : ''
-                              )}>
-                                <FormLabel className="flex items-center gap-2">
-                                  Cavity Width (mm)
-                                  {workflowMode === 'ai-assisted' && extractedParameters.some(p => p.field === 'cavity') && (
-                                    <span className="text-xs bg-[#c2f20e] text-white px-1.5 py-0.5 rounded">AI</span>
-                                  )}
-                                </FormLabel>
-                                <FormDescription className="mb-3">
-                                  Distance between slab edge and masonry (min 50mm, in 0.5mm increments)
-                                </FormDescription>
-                                <FormControl>
-                                  <Input
-                                    type="number"
-                                    step="0.5"
-                                    placeholder="100"
-                                    {...field}
-                                    onChange={(e) => {
-                                      // Allow empty string while typing
-                                      const value = e.target.value;
-                                      field.onChange(value === "" ? "" : value);
-                                    }}
-                                    onBlur={(e) => {
-                                      // On blur, if empty or less than minimum, set to minimum value
-                                      const value = e.target.value;
-                                      if (value === "" || parseFloat(value) < 50) {
-                                        field.onChange(100);
-                                      }
-                                    }}
-                                    value={field.value === undefined ? "" : String(field.value)}
-                                    disabled={workflowMode === 'ai-assisted' && combinedIsLoading}
-                                  />
-                                </FormControl>
-                                <FormMessage />
+                              <div>
+                                <h3 className="text-lg font-semibold">Design Parameters</h3>
+                                <p className="text-sm text-muted-foreground">Basic structural dimensions and measurements</p>
                               </div>
-                            </FormItem>
-                          )}
-                        />
+                            </div>
 
-                          {/* Support Level */}
-                          <FormField
-                            control={form.control}
-                            name="support_level"
-                            render={({ field }) => (
-                              <FormItem>
-                                <div className={cn(
-                                  "rounded-lg border p-4 h-full flex flex-col justify-between transition-all duration-200",
-                                  inputMode === 'chat' && extractedParameters.some(p => p.field === 'support_level') 
-                                    ? 'border-[#c2f20e] bg-[#c2f20e]/5' 
-                                    : ''
-                                )}>
-                                  <div>
-                                    <div className="flex justify-between items-center mb-2">
-                                      <FormLabel className="flex items-center gap-2">
-                                        Support Level (mm)
-                                        {inputMode === 'chat' && extractedParameters.some(p => p.field === 'support_level') && (
-                                          <span className="text-xs bg-[#c2f20e] text-white px-1.5 py-0.5 rounded">AI</span>
-                                        )}
-                                      </FormLabel>
-                                      <span className="text-sm tabular-nums">
-                                        {field.value} mm
-                                      </span>
-                                    </div>
-                                    <FormDescription className="mb-3">
-                                      Distance from SSL to BSL (+ve above SSL)
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                              {/* Slab Thickness */}
+                              <FormField
+                                control={form.control}
+                                name="slab_thickness"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Slab Thickness (mm)</FormLabel>
+                                    <FormControl>
+                                      <Input
+                                        type="number"
+                                        step="5"
+                                        placeholder="e.g. 200"
+                                        value={field.value}
+                                        onChange={(e) => field.onChange(Number(e.target.value) || 0)}
+                                        disabled={inputMode === 'chat' && isLoading}
+                                      />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+
+                              {/* Cavity Width */}
+                              <FormField
+                                control={form.control}
+                                name="cavity"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Cavity Width (mm)</FormLabel>
+                                    <FormControl>
+                                      <Input
+                                        type="number"
+                                        step="0.5"
+                                        placeholder="e.g. 100"
+                                        value={field.value}
+                                        onChange={(e) => field.onChange(Number(e.target.value) || 0)}
+                                        disabled={inputMode === 'chat' && isLoading}
+                                      />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+
+                              {/* Support Level */}
+                              <FormField
+                                control={form.control}
+                                name="support_level"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Support Level (mm)</FormLabel>
+                                    <FormControl>
+                                      <Input
+                                        type="number"
+                                        step="5"
+                                        placeholder="e.g. -50"
+                                        value={field.value}
+                                        onChange={(e) => field.onChange(Number(e.target.value) || 0)}
+                                        disabled={inputMode === 'chat' && isLoading}
+                                      />
+                                    </FormControl>
+                                    <FormDescription className="mt-1 text-xs text-muted-foreground">
+                                      0 is at top of slab (often negative)
                                     </FormDescription>
-                                  </div>
-                                  <FormControl>
-                                    <Slider
-                                      min={-600}
-                                      max={500}
-                                      step={5}
-                                      value={[field.value]}
-                                      onValueChange={(values) => field.onChange(values[0])}
-                                      disabled={inputMode === 'chat' && isLoading}
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </div>
-                              </FormItem>
-                            )}
-                          />
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                            </div>
+                          </div>
                         </div>
 
                         {/* Load Information Section */}
@@ -777,37 +725,7 @@ export default function MasonryDesignerForm({
                           </div>
                         </div>
 
-                        {/* Additional Settings - 2 Column Grid */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {/* Notch Toggle */}
-                          <FormField
-                            control={form.control}
-                            name="has_notch"
-                            render={({ field }) => (
-                              <FormItem>
-                                <div className="rounded-lg border p-4 h-full flex flex-col justify-between">
-                                  <div>
-                                    <div className="flex justify-between items-center mb-2">
-                                      <FormLabel htmlFor="has-notch">Do you require a notch in the bracket?</FormLabel>
-                                      <FormControl>
-                                        <Switch
-                                          id="has-notch"
-                                          checked={field.value}
-                                          onCheckedChange={field.onChange}
-                                        />
-                                      </FormControl>
-                                    </div>
-                                    <FormDescription className="mb-3">
-                                      Toggle if bracket needs a notch to avoid conflicts in the cavity
-                                    </FormDescription>
-                                  </div>
-                                  <FormMessage />
-                                </div>
-                              </FormItem>
-                            )}
-                          />
-
-                          {/* Fixing Options Section */}
+                        {/* Fixing Options Section */}
                           <div className="col-span-full">
                             <div className="rounded-lg border p-6">
                               <div className="flex items-center gap-2 mb-4">
@@ -980,140 +898,204 @@ export default function MasonryDesignerForm({
                             </div>
                           </div>
 
-                        {/* Conditional Notch Fields */}
-                        {form.watch("has_notch") && (
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {/* Notch Height */}
-                            <FormField
-                              control={form.control}
-                              name="notch_height"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <div className="rounded-lg border p-4 h-full flex flex-col justify-between">
-                                    <div>
-                                      <div className="flex justify-between items-center mb-2">
-                                        <FormLabel>Notch Height (mm)</FormLabel>
-                                        <span className="text-sm tabular-nums">
-                                          {field.value} mm
-                                        </span>
-                                      </div>
-                                      <FormDescription className="mb-3">
-                                        How high does the notch extend from the bottom of the bracket?
-                                      </FormDescription>
-                                    </div>
-                                    <FormControl>
-                                      <Slider
-                                        min={10}
-                                        max={200}
-                                        step={5}
-                                        value={[field.value]}
-                                        onValueChange={(values) => field.onChange(values[0])}
-                                      />
-                                    </FormControl>
-                                    <FormMessage />
-                                  </div>
-                                </FormItem>
-                              )}
-                            />
+                        {/* Advanced Options Section */}
+                        <div className="col-span-full">
+                          <div className="rounded-lg border p-6">
+                            <div className="flex items-center gap-2 mb-4">
+                              <div className="p-2 rounded-lg bg-primary/10">
+                                <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                </svg>
+                              </div>
+                              <div>
+                                <h3 className="text-lg font-semibold">Advanced Options</h3>
+                                <p className="text-sm text-muted-foreground">Load position and evaluation parameters</p>
+                              </div>
+                            </div>
 
-                            {/* Notch Depth */}
-                            <FormField
-                              control={form.control}
-                              name="notch_depth"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <div className="rounded-lg border p-4 h-full flex flex-col justify-between">
-                                    <div>
-                                      <div className="flex justify-between items-center mb-2">
-                                        <FormLabel>Notch Depth (mm)</FormLabel>
-                                        <span className="text-sm tabular-nums">
-                                          {field.value} mm
-                                        </span>
-                                      </div>
-                                      <FormDescription className="mb-3">
-                                        How deep does the notch extend into the bracket from the back?
-                                      </FormDescription>
-                                    </div>
-                                    <FormControl>
-                                      <Slider
-                                        min={10}
-                                        max={200}
-                                        step={5}
-                                        value={[field.value]}
-                                        onValueChange={(values) => field.onChange(values[0])}
-                                      />
-                                    </FormControl>
-                                    <FormMessage />
-                                  </div>
-                                </FormItem>
+                            {/* Notch Configuration */}
+                            <div className="mb-6">
+                              <Label className="text-base font-medium mb-4 block">Do you require a notch?</Label>
+                              <ToggleGroup
+                                type="single"
+                                value={form.watch("has_notch") ? "yes" : "no"}
+                                onValueChange={(value) => {
+                                  if (value) {
+                                    form.setValue("has_notch", value === "yes");
+                                  }
+                                }}
+                                className="justify-start gap-2 mb-4"
+                                variant="outline"
+                                size="default"
+                              >
+                                <ToggleGroupItem
+                                  value="yes"
+                                  aria-label="Yes"
+                                  className={cn(
+                                    "min-w-[80px]",
+                                    form.watch("has_notch") && "bg-[rgb(194,242,14)] text-black hover:brightness-95"
+                                  )}
+                                >
+                                  Yes
+                                </ToggleGroupItem>
+                                <ToggleGroupItem
+                                  value="no"
+                                  aria-label="No"
+                                  className={cn(
+                                    "min-w-[80px]",
+                                    !form.watch("has_notch") && "bg-[rgb(194,242,14)] text-black hover:brightness-95"
+                                  )}
+                                >
+                                  No
+                                </ToggleGroupItem>
+                              </ToggleGroup>
+
+                              {/* Conditional Notch Fields */}
+                              {form.watch("has_notch") && (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                  {/* Notch Height */}
+                                  <FormField
+                                    control={form.control}
+                                    name="notch_height"
+                                    render={({ field }) => (
+                                      <FormItem>
+                                        <div className="rounded-lg border p-4 h-full flex flex-col justify-between">
+                                          <div>
+                                            <div className="flex justify-between items-center mb-2">
+                                              <FormLabel>Notch Height (mm)</FormLabel>
+                                              <span className="text-sm tabular-nums">
+                                                {field.value} mm
+                                              </span>
+                                            </div>
+                                            <FormDescription className="mb-3">
+                                              How high does the notch extend from the bottom of the bracket?
+                                            </FormDescription>
+                                          </div>
+                                          <FormControl>
+                                            <Slider
+                                              min={10}
+                                              max={200}
+                                              step={5}
+                                              value={[field.value]}
+                                              onValueChange={(values) => field.onChange(values[0])}
+                                            />
+                                          </FormControl>
+                                          <FormMessage />
+                                        </div>
+                                      </FormItem>
+                                    )}
+                                  />
+
+                                  {/* Notch Depth */}
+                                  <FormField
+                                    control={form.control}
+                                    name="notch_depth"
+                                    render={({ field }) => (
+                                      <FormItem>
+                                        <div className="rounded-lg border p-4 h-full flex flex-col justify-between">
+                                          <div>
+                                            <div className="flex justify-between items-center mb-2">
+                                              <FormLabel>Notch Depth (mm)</FormLabel>
+                                              <span className="text-sm tabular-nums">
+                                                {field.value} mm
+                                              </span>
+                                            </div>
+                                            <FormDescription className="mb-3">
+                                              How deep does the notch cut into the bracket?
+                                            </FormDescription>
+                                          </div>
+                                          <FormControl>
+                                            <Slider
+                                              min={10}
+                                              max={200}
+                                              step={5}
+                                              value={[field.value]}
+                                              onValueChange={(values) => field.onChange(values[0])}
+                                            />
+                                          </FormControl>
+                                          <FormMessage />
+                                        </div>
+                                      </FormItem>
+                                    )}
+                                  />
+                                </div>
                               )}
-                            />
+                            </div>
+
+                            {/* Angle Length Configuration */}
+                            <div className="mb-6">
+                              <Label className="text-base font-medium mb-4 block">Is there a limit to the angle length?</Label>
+                              <ToggleGroup
+                                type="single"
+                                value={form.watch("is_angle_length_limited") ? "yes" : "no"}
+                                onValueChange={(value) => {
+                                  if (value) {
+                                    form.setValue("is_angle_length_limited", value === "yes");
+                                  }
+                                }}
+                                className="justify-start gap-2 mb-4"
+                                variant="outline"
+                                size="default"
+                              >
+                                <ToggleGroupItem
+                                  value="yes"
+                                  aria-label="Yes"
+                                  className={cn(
+                                    "min-w-[80px]",
+                                    form.watch("is_angle_length_limited") && "bg-[rgb(194,242,14)] text-black hover:brightness-95"
+                                  )}
+                                >
+                                  Yes
+                                </ToggleGroupItem>
+                                <ToggleGroupItem
+                                  value="no"
+                                  aria-label="No"
+                                  className={cn(
+                                    "min-w-[80px]",
+                                    !form.watch("is_angle_length_limited") && "bg-[rgb(194,242,14)] text-black hover:brightness-95"
+                                  )}
+                                >
+                                  No
+                                </ToggleGroupItem>
+                              </ToggleGroup>
+
+                              {/* Conditional Fixed Angle Length Field */}
+                              {form.watch("is_angle_length_limited") && (
+                                <FormField
+                                  control={form.control}
+                                  name="fixed_angle_length"
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <div className="rounded-lg border p-4 h-full flex flex-col justify-between">
+                                        <div>
+                                          <div className="flex justify-between items-center mb-2">
+                                            <FormLabel>Fixed Angle Length (mm)</FormLabel>
+                                            <span className="text-sm tabular-nums">
+                                              {field.value ?? 750} mm
+                                            </span>
+                                          </div>
+                                          <FormDescription className="mb-3">
+                                            Maximum angle length in 5mm increments (200-1490mm)
+                                          </FormDescription>
+                                        </div>
+                                        <FormControl>
+                                          <Slider
+                                            min={200}
+                                            max={1490}
+                                            step={5}
+                                            value={[field.value ?? 750]}
+                                            onValueChange={(values) => field.onChange(values[0])}
+                                          />
+                                        </FormControl>
+                                        <FormMessage />
+                                      </div>
+                                    </FormItem>
+                                  )}
+                                />
+                              )}
+                            </div>
                           </div>
-                        )}
-
-                          {/* Angle Length Limitation Toggle */}
-                          <FormField
-                            control={form.control}
-                            name="is_angle_length_limited"
-                            render={({ field }) => (
-                              <FormItem>
-                                <div className="rounded-lg border p-4 h-full flex flex-col justify-between">
-                                  <div>
-                                    <div className="flex justify-between items-center mb-2">
-                                      <FormLabel htmlFor="is-angle-length-limited">Is there a limit to the angle length?</FormLabel>
-                                      <FormControl>
-                                        <Switch
-                                          id="is-angle-length-limited"
-                                          checked={field.value}
-                                          onCheckedChange={field.onChange}
-                                        />
-                                      </FormControl>
-                                    </div>
-                                    <FormDescription className="mb-3">
-                                      Toggle if you have a fixed angle length due to site constraints
-                                    </FormDescription>
-                                  </div>
-                                  <FormMessage />
-                                </div>
-                              </FormItem>
-                            )}
-                          />
                         </div>
-
-                        {/* Fixed Angle Length - Conditional Field */}
-                        {form.watch("is_angle_length_limited") && (
-                          <FormField
-                            control={form.control}
-                            name="fixed_angle_length"
-                            render={({ field }) => (
-                              <FormItem>
-                                <div className="rounded-lg border p-4 h-full flex flex-col justify-between">
-                                  <div>
-                                    <div className="flex justify-between items-center mb-2">
-                                      <FormLabel>Fixed Angle Length (mm)</FormLabel>
-                                      <span className="text-sm tabular-nums">
-                                        {field.value ?? 750} mm
-                                      </span>
-                                    </div>
-                                    <FormDescription className="mb-3">
-                                      Maximum angle length in 5mm increments (200-1490mm)
-                                    </FormDescription>
-                                  </div>
-                                  <FormControl>
-                                    <Slider
-                                      min={200}
-                                      max={1490}
-                                      step={5}
-                                      value={[field.value ?? 750]}
-                                      onValueChange={(values) => field.onChange(values[0])}
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </div>
-                              </FormItem>
-                            )}
-                          />
-                        )}
 
                         {combinedError && (
                           <div className="bg-destructive/10 border border-destructive text-destructive px-4 py-3 rounded-lg">
