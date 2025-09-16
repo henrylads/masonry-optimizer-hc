@@ -26,11 +26,11 @@ interface ShapeDiverCardProps {
     title?: string;
     className?: string;
     // Define expected keys from the application side
-    initialParameters?: Partial<Record<'sku' | 'bracket_type' | 'bracket_material_grade' | 'angle_material_grade' | 
-    'material_grade' | 'bracket_thickness' | 'bracket_length' | 'bracket_height' | 'bolt_diameter' | 'toe_plate_type' | 
-    'back_notch_option' | 'back_notch_length' | 'notch_height' | 'support_type' | 'angle_type' | 
-    'profile_thickness' | 'profile_length' | 'profile_height' | 'angle_length' | 'bracket_count' | 
-    'bracket_spacing' | 'start_offset' | 'spacing_gap' | 'slab_thickness', ParameterValue>>;
+    initialParameters?: Partial<Record<'sku' | 'bracket_type' | 'bracket_material_grade' | 'angle_material_grade' |
+    'material_grade' | 'bracket_thickness' | 'bracket_length' | 'bracket_height' | 'bolt_diameter' | 'toe_plate_type' |
+    'back_notch_option' | 'back_notch_length' | 'notch_height' | 'support_type' | 'angle_type' |
+    'profile_thickness' | 'profile_length' | 'profile_height' | 'angle_length' | 'bracket_count' |
+    'bracket_spacing' | 'start_offset' | 'spacing_gap' | 'slab_thickness' | 'fixing_position', ParameterValue>>;
     
     // Callback function to receive output values
     onOutputsChange?: (outputs: ShapeDiverOutputs) => void;
@@ -67,6 +67,7 @@ const paramIdMapping: Record<string, string> = {
     'bracket_spacing': '4258ae1b-6044-4c70-8af8-29b73a301257', // C/C distance [mm]
     'start_offset': '70118ce5-77ad-47c5-8e25-30eac545ad92', // Distance from start [mm]
     'spacing_gap': 'de72784f-60fa-4440-8cf7-835042f9a69f', // Spacing Gap [mm]
+    'fixing_position': 'PLACEHOLDER-FIXING-POSITION-ID', // Fixing Position [mm] - TODO: Replace with actual ShapeDiver parameter ID
 };
 
 // For debugging purposes - mapping from parameter IDs to names
@@ -92,6 +93,7 @@ const paramIdToNameMapping: Record<string, string> = {
     '4258ae1b-6044-4c70-8af8-29b73a301257': 'C/C distance [mm]',
     '70118ce5-77ad-47c5-8e25-30eac545ad92': 'Distance from start [mm]',
     'de72784f-60fa-4440-8cf7-835042f9a69f': 'Spacing Gap [mm]',
+    'PLACEHOLDER-FIXING-POSITION-ID': 'Fixing Position [mm]',
 };
 
 // Helper function to format values based on parameter name patterns
@@ -164,6 +166,11 @@ const formatParameterValue = (paramId: string, value: ParameterValue): string =>
 
     // Handle slab thickness as an integer
     if (paramId === '4cf90fe8-0036-4d3d-a384-d7bdf3e7b62e') { // Slab thickness [mm]
+        return Math.round(Number(value)).toString();
+    }
+
+    // Handle fixing position as an integer
+    if (paramId === 'PLACEHOLDER-FIXING-POSITION-ID') { // Fixing Position [mm]
         return Math.round(Number(value)).toString();
     }
 

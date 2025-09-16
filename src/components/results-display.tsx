@@ -35,13 +35,16 @@ import {
   SelectValue,
   SelectLabel,
 } from "@/components/ui/select"
+import { PDFDownloadButton } from '@/components/pdf-download-button'
+import { FormDataType } from '@/types/form-schema'
 
 interface ResultsDisplayProps {
   result: OptimisationResult | null
   history: GenerationSummary[]
+  designInputs?: FormDataType // Optional for backward compatibility
 }
 
-export function ResultsDisplay({ result, history }: ResultsDisplayProps) {
+export function ResultsDisplay({ result, history, designInputs }: ResultsDisplayProps) {
   // Add a reference to track if we've logged success
   const didLogSuccessRef = useRef(false);
   
@@ -328,12 +331,12 @@ export function ResultsDisplay({ result, history }: ResultsDisplayProps) {
 
   // Define the shape of ShapeDiver parameters
   type ShapeDiverParams = Partial<Record<
-    'support_type' | 'bracket_thickness' | 'bracket_length' | 
-    'back_notch_height' | 'fixing_diameter' | 
-    'back_notch_length' | 'toe_plate_type' | 'back_notch_option' | 
+    'support_type' | 'bracket_thickness' | 'bracket_length' |
+    'back_notch_height' | 'fixing_diameter' |
+    'back_notch_length' | 'toe_plate_type' | 'back_notch_option' |
     'bracket_height' | 'angle_length' | 'bracket_count' | 'bracket_spacing' |
     'start_offset' | 'spacing_gap' | 'bracket_material_grade' | 'angle_material_grade' |
-    'angle_type' | 'profile_thickness' | 'profile_length' | 'profile_height' | 'slab_thickness',
+    'angle_type' | 'profile_thickness' | 'profile_length' | 'profile_height' | 'slab_thickness' | 'fixing_position',
     string | number | boolean
   >>;
 
@@ -353,6 +356,15 @@ export function ResultsDisplay({ result, history }: ResultsDisplayProps) {
       bracket_length: displayedResult.calculated?.bracket_projection ?? 150,
       bracket_height: displayedResult.calculated?.bracket_height ?? 150,
       slab_thickness: displayedResult.calculated?.slab_thickness ?? 225,
+
+      // Fixing position - distance from top of slab to fixing point
+      fixing_position: (() => {
+        const optimizedPos = displayedResult.calculated?.optimized_fixing_position;
+        const geneticPos = displayedResult.genetic?.fixing_position;
+        const finalPos = optimizedPos ?? geneticPos ?? 75;
+        console.log(`🔧 ShapeDiver fixing_position: optimized=${optimizedPos}mm, genetic=${geneticPos}mm, final=${finalPos}mm`);
+        return finalPos;
+      })(),
       
       back_notch_height: Math.max(10, displayedResult.calculated?.detailed_verification_results?.droppingBelowSlabResults?.H_notch ?? 25),
       back_notch_length: Math.max(10, 25), // Default notch depth
@@ -745,6 +757,14 @@ export function ResultsDisplay({ result, history }: ResultsDisplayProps) {
           <Button variant="outline" onClick={() => window.print()}>
             Print Results
           </Button>
+          {result && result.calculated?.detailed_verification_results && (
+            <PDFDownloadButton
+              optimizationResult={result}
+              designInputs={designInputs || {} as FormDataType} // Use empty object if not available
+              variant="outline"
+              disabled={!designInputs} // Disable if no design inputs available
+            />
+          )}
         </div>
       </div>
 

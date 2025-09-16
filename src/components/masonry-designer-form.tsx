@@ -1220,9 +1220,10 @@ export default function MasonryDesignerForm({
                   </TabsContent>
                   <TabsContent value="results">
                     {combinedResult && (
-                      <ResultsDisplay 
-                        result={combinedResult} 
+                      <ResultsDisplay
+                        result={combinedResult}
                         history={generationHistory}
+                        designInputs={form.getValues()}
                       />
                     )}
                   </TabsContent>
@@ -1338,9 +1339,10 @@ export default function MasonryDesignerForm({
 
                 {/* Show actual results when available */}
                 {combinedResult && (
-                  <ResultsDisplay 
-                    result={combinedResult} 
+                  <ResultsDisplay
+                    result={combinedResult}
                     history={generationHistory}
+                    designInputs={form.getValues()}
                   />
                 )}
               </CardContent>
