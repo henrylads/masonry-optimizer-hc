@@ -67,7 +67,7 @@ const paramIdMapping: Record<string, string> = {
     'bracket_spacing': '4258ae1b-6044-4c70-8af8-29b73a301257', // C/C distance [mm]
     'start_offset': '70118ce5-77ad-47c5-8e25-30eac545ad92', // Distance from start [mm]
     'spacing_gap': 'de72784f-60fa-4440-8cf7-835042f9a69f', // Spacing Gap [mm]
-    'fixing_position': 'PLACEHOLDER-FIXING-POSITION-ID', // Fixing Position [mm] - TODO: Replace with actual ShapeDiver parameter ID
+    'fixing_position': '4f5b0fb9-0141-47b8-ae7e-987fd3acd563', // Slab mounting offset [mm] - Fixing Position
 };
 
 // For debugging purposes - mapping from parameter IDs to names
@@ -93,7 +93,7 @@ const paramIdToNameMapping: Record<string, string> = {
     '4258ae1b-6044-4c70-8af8-29b73a301257': 'C/C distance [mm]',
     '70118ce5-77ad-47c5-8e25-30eac545ad92': 'Distance from start [mm]',
     'de72784f-60fa-4440-8cf7-835042f9a69f': 'Spacing Gap [mm]',
-    'PLACEHOLDER-FIXING-POSITION-ID': 'Fixing Position [mm]',
+    '4f5b0fb9-0141-47b8-ae7e-987fd3acd563': 'Slab mounting offset [mm]',
 };
 
 // Helper function to format values based on parameter name patterns
@@ -170,7 +170,7 @@ const formatParameterValue = (paramId: string, value: ParameterValue): string =>
     }
 
     // Handle fixing position as an integer
-    if (paramId === 'PLACEHOLDER-FIXING-POSITION-ID') { // Fixing Position [mm]
+    if (paramId === '4f5b0fb9-0141-47b8-ae7e-987fd3acd563') { // Slab mounting offset [mm]
         return Math.round(Number(value)).toString();
     }
 
@@ -371,12 +371,22 @@ export const ShapeDiverCard: React.FC<ShapeDiverCardProps> = ({
 
                 // Create new session
                 console.log("🚀 Creating new ShapeDiver session");
+                console.log("🔍 Session config:", {
+                    id: `session_${viewportIdRef.current}`,
+                    ticket: '98b0b91b1716c4154483066dc79d4334a2c428a842db5d672e8c63a61ea46829bd8dd837fcc288fe59b215b5f3ec6d3892e28eb22a1c3cd55f2dc8ff6c7bf1fea7b80f2201596b199cc02392b55624e492691a65c6f26c5a51f3c9e0e3326ff12d6f99ca2e8770-eec1b75bfefa4d3ac7140fdf0290e3ee',
+                    modelViewUrl: 'https://sdr8euc1.eu-central-1.shapediver.com',
+                    parameterCount: Object.keys(paramsForShapeDiver).length
+                });
+
+                // Create session with embedding ticket and parameters
+                console.log("🔄 Creating ShapeDiver session with embedding ticket and parameters");
                 const session = await createSession({
                     id: `session_${viewportIdRef.current}`,
-                    ticket: '5810bf48cc038d214549c2bcb1cc7b67f3f5ca52dd9b462e489431145d0e4d7242d1ce58a1a741db19fc091450cb31cad3851a7cfdf94cd070e100dfc45c60771f22343547a5c57b3d0250899dc96bbfd0d4ce7bd79f6d19054973d9c7b44d1a011b22241fa661-b6b923d8f2b0dbd1d1bb4c4c372b6508',
+                    ticket: '98b0b91b1716c4154483066dc79d4334a2c428a842db5d672e8c63a61ea46829bd8dd837fcc288fe59b215b5f3ec6d3892e28eb22a1c3cd55f2dc8ff6c7bf1fea7b80f2201596b199cc02392b55624e492691a65c6f26c5a51f3c9e0e3326ff12d6f99ca2e8770-eec1b75bfefa4d3ac7140fdf0290e3ee',
                     modelViewUrl: 'https://sdr8euc1.eu-central-1.shapediver.com',
                     initialParameterValues: paramsForShapeDiver
                 });
+                console.log("✅ ShapeDiver session created successfully!");
 
                 if (mounted) {
                     sessionRef.current = session;
