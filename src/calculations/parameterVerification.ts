@@ -101,8 +101,12 @@ export async function verifyWithModifiedParameters(
       D: cavity - 10,
       S: 3,
       T: modifiedParams.angle_thickness,
-      B: originalGenetic.horizontal_leg || 90,
-      B_cc: modifiedParams.bracket_centres
+      B_cc: modifiedParams.bracket_centres,
+      // Pass facade parameters for dynamic horizontal leg calculation
+      facade_thickness: originalCalc.facade_thickness,
+      load_position: originalCalc.load_position,
+      front_offset: originalCalc.front_offset,
+      isolation_shim_thickness: originalCalc.isolation_shim_thickness
     });
 
     // 4. Recalculate mathematical model (uses angle parameters)
@@ -156,7 +160,8 @@ export async function verifyWithModifiedParameters(
       modifiedParams.bracket_thickness,
       modifiedParams.bracket_centres,
       modifiedParams.angle_thickness,
-      originalGenetic.vertical_leg || 60
+      originalGenetic.vertical_leg || 60,
+      angleResults.horizontal_leg // Use the dynamically calculated horizontal leg
     );
 
     // 7. Calculate bracket positioning if needed

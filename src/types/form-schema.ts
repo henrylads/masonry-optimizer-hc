@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { MaterialType } from './userInputs'
 
 // Define the form schema with validation
 export const formSchema = z.object({
@@ -61,16 +62,61 @@ export const formSchema = z.object({
     .refine((val) => (val - 75) % 5 === 0, {
       message: "Fixing position must be in 5mm increments from 75mm (75, 80, 85, etc.)",
     }),
+  facade_thickness: z.coerce
+    .number()
+    .min(50, { message: "Facade thickness must be at least 50mm" })
+    .max(300, { message: "Facade thickness must be at most 300mm" })
+    .default(102.5),
+  load_position: z.coerce
+    .number()
+    .min(0.1, { message: "Load position must be at least 0.1" })
+    .max(0.9, { message: "Load position must be at most 0.9" })
+    .default(1/3)
+    .optional(),
+  front_offset: z.coerce
+    .number()
+    .min(-50, { message: "Front offset must be at least -50mm" })
+    .max(100, { message: "Front offset must be at most 100mm" })
+    .default(12),
+  isolation_shim_thickness: z.coerce
+    .number()
+    .min(0, { message: "Isolation shim thickness must be at least 0mm" })
+    .max(20, { message: "Isolation shim thickness must be at most 20mm" })
+    .default(3),
+  material_type: z.nativeEnum(MaterialType).default(MaterialType.BRICK),
+  use_custom_load_position: z.boolean().default(false),
+
+  // Angle extension fields for exclusion zones
+  enable_angle_extension: z.boolean().default(false),
+  max_allowable_bracket_extension: z.coerce
+    .number()
+    .min(-1000, { message: "Max bracket position must be at least -1000mm (below slab)" })
+    .max(500, { message: "Max bracket position must be at most 500mm (above slab)" })
+    .optional()
+    .refine((val) => val === undefined || val % 5 === 0, {
+      message: "Max bracket position must be in 5mm increments",
+    }),
 }).refine((data) => {
   // Conditional validation for notch fields
   if (data.has_notch) {
-    return data.notch_height >= 10 && data.notch_height <= 200 && 
+    return data.notch_height >= 10 && data.notch_height <= 200 &&
            data.notch_depth >= 10 && data.notch_depth <= 200;
   }
   return true;
 }, {
   message: "When notch is enabled, height and depth must be between 10-200mm",
   path: ["notch_height"], // This will show the error on the notch_height field
+}).refine((data) => {
+  // Conditional validation for angle extension fields
+  if (data.enable_angle_extension) {
+    return data.max_allowable_bracket_extension !== undefined &&
+           data.max_allowable_bracket_extension >= -1000 &&
+           data.max_allowable_bracket_extension <= 500;
+  }
+  return true;
+}, {
+  message: "When angle extension is enabled, max bracket position must be specified (-1000 to 500mm)",
+  path: ["max_allowable_bracket_extension"], // This will show the error on the max_allowable_bracket_extension field
 })
 
 export type FormDataType = z.infer<typeof formSchema> 

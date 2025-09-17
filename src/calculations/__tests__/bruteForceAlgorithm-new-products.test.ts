@@ -181,8 +181,8 @@ describe('Brute Force Algorithm - New Products Integration', () => {
     };
 
     const [r70Result, r90Result] = await Promise.all([
-      runBruteForce(r70Inputs),
-      runBruteForce(r90Inputs)
+      runBruteForce({ maxGenerations: 100, designInputs: r70Inputs }),
+      runBruteForce({ maxGenerations: 100, designInputs: r90Inputs })
     ]);
 
     expect(r70Result.result.genetic.channel_type).toBe('R-HPTIII-70');

@@ -163,10 +163,9 @@ export function generateAllCombinations(inputs: DesignInputs): GeneticParameters
                             bolt_diameter,
                             bracket_type: bracketAngleCombo.bracket_type,
                             angle_orientation: bracketAngleCombo.angle_orientation,
-                            horizontal_leg: SYSTEM_DEFAULTS.HORIZONTAL_LEG, // Assuming fixed horizontal leg
+                            // horizontal_leg will be calculated dynamically based on facade parameters
                             channel_type: channelType,
                             fixing_position: fixingPosition
-                            // Note: Channel type might need calculation based on other params
                         };
 
                         // TODO: Add validation here? Or rely on fitness function penalties?

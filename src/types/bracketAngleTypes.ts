@@ -47,19 +47,48 @@ export interface RiseToBoltsCalculationParams {
 export interface FixingOptimizationConfig {
   /** Enable fixing position optimization */
   enabled: boolean;
-  
+
   /** Starting fixing position (mm from top of slab) - default 75mm */
   start_position: number;
-  
+
   /** Increment size for fixing position iterations (mm) - default 5mm */
   increment_size: number;
-  
+
   /** Minimum bracket height to fixing point (rise to bolts) - default 95mm */
   min_bracket_height: number;
-  
+
   /** Minimum clearance from bottom of slab (mm) - default 75mm */
   min_bottom_clearance: number;
-  
+
   /** Maximum fixing depth from top of slab (mm) - calculated from slab thickness */
   max_fixing_position?: number;
-} 
+}
+
+/**
+ * Result of angle extension calculation when bracket extension is limited
+ */
+export interface AngleExtensionResult {
+  /** Whether angle extension was applied */
+  extension_applied: boolean;
+
+  /** Original bracket height before extension limit (mm) */
+  original_bracket_height: number;
+
+  /** Limited bracket height after applying max extension (mm) */
+  limited_bracket_height: number;
+
+  /** Amount bracket was shortened due to extension limit (mm) */
+  bracket_reduction: number;
+
+  /** Original angle vertical leg height (mm) */
+  original_angle_height: number;
+
+  /** Extended angle vertical leg height to compensate (mm) */
+  extended_angle_height: number;
+
+  /** Amount angle was extended to compensate for bracket reduction (mm) */
+  angle_extension: number;
+
+  /** Maximum allowable bracket extension that was applied (mm) */
+  max_extension_limit: number;
+}

@@ -354,7 +354,15 @@ export function ResultsDisplay({ result, history, designInputs }: ResultsDisplay
       bracket_thickness: displayedResult.genetic?.bracket_thickness ?? 3,
       fixing_diameter: displayedResult.genetic?.bolt_diameter ?? 10,
       bracket_length: displayedResult.calculated?.bracket_projection ?? 150,
-      bracket_height: displayedResult.calculated?.bracket_height ?? 150,
+      bracket_height: (() => {
+        // Use limited bracket height if angle extension was applied
+        const angleExtension = displayedResult?.calculated?.angle_extension_result;
+        if (angleExtension?.extension_applied) {
+          return angleExtension.limited_bracket_height;
+        }
+        // Otherwise use the original bracket height
+        return displayedResult.calculated?.bracket_height ?? 150;
+      })(),
       slab_thickness: displayedResult.calculated?.slab_thickness ?? 225,
 
       // Fixing position - distance from top of slab to fixing point
@@ -382,7 +390,15 @@ export function ResultsDisplay({ result, history, designInputs }: ResultsDisplay
       angle_type: displayedResult.genetic?.angle_orientation || 'Standard', // Use actual angle orientation from genetic results
       profile_thickness: displayedResult.genetic?.angle_thickness ?? 4,
       profile_length: displayedResult.genetic?.horizontal_leg ?? 75,  // Horizontal leg of angle
-      profile_height: displayedResult.genetic?.vertical_leg ?? 60,   // Vertical leg of angle
+      profile_height: (() => {
+        // Use extended angle height if angle extension was applied
+        const angleExtension = displayedResult?.calculated?.angle_extension_result;
+        if (angleExtension?.extension_applied) {
+          return angleExtension.extended_angle_height;
+        }
+        // Otherwise use the original vertical leg
+        return displayedResult.genetic?.vertical_leg ?? 60;
+      })(),   // Vertical leg of angle (potentially extended)
       
       // Add bracket positioning parameters if available
       ...(displayedResult.calculated?.bracketLayout && {
@@ -927,8 +943,83 @@ export function ResultsDisplay({ result, history, designInputs }: ResultsDisplay
               </div>
               <div className="flex justify-between items-center py-2 px-3 bg-gray-50 rounded">
                 <span className="text-sm text-gray-600">Vertical Leg</span>
-                <span className="text-sm font-semibold font-mono">{displayedResult?.genetic?.vertical_leg ?? "N/A"} mm</span>
+                <span className="text-sm font-semibold font-mono flex items-center gap-2">
+                  {(() => {
+                    // Show effective vertical leg accounting for angle extension
+                    const angleExtension = displayedResult?.calculated?.angle_extension_result;
+                    if (angleExtension?.extension_applied) {
+                      return angleExtension.extended_angle_height;
+                    }
+                    return displayedResult?.genetic?.vertical_leg ?? "N/A";
+                  })()} mm
+                  {(() => {
+                    // Check if angle extension was applied
+                    const angleExtension = displayedResult?.calculated?.angle_extension_result;
+                    if (angleExtension?.extension_applied) {
+                      return (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger>
+                              <span className="text-[11px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-700">Extended</span>
+                            </TooltipTrigger>
+                            <TooltipContent side="top">
+                              <p>Angle height extended by {angleExtension.angle_extension}mm due to bracket limit</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      );
+                    }
+                    return null;
+                  })()}
+                </span>
               </div>
+
+              {/* Angle Extension Information */}
+              {(() => {
+                const angleExtension = displayedResult?.calculated?.angle_extension_result;
+                if (angleExtension?.extension_applied) {
+                  return (
+                    <div className="space-y-2 p-3 bg-blue-50 border border-blue-200 rounded">
+                      <div className="flex items-center gap-2">
+                        <AlertTriangle className="h-4 w-4 text-blue-600" />
+                        <span className="text-sm font-medium text-blue-800">Angle Extension Applied</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div className="flex justify-between">
+                          <span className="text-blue-600">Original Bracket Height:</span>
+                          <span className="font-mono">{angleExtension.original_bracket_height} mm</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-blue-600">Limited Bracket Height:</span>
+                          <span className="font-mono">{angleExtension.limited_bracket_height} mm</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-blue-600">Bracket Reduction:</span>
+                          <span className="font-mono text-red-600">-{angleExtension.bracket_reduction} mm</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-blue-600">Angle Extension:</span>
+                          <span className="font-mono text-green-600">+{angleExtension.angle_extension} mm</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-blue-600">Original Angle Height:</span>
+                          <span className="font-mono">{angleExtension.original_angle_height} mm</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-blue-600">Extended Angle Height:</span>
+                          <span className="font-mono">{angleExtension.extended_angle_height} mm</span>
+                        </div>
+                      </div>
+                      <p className="text-xs text-blue-700 mt-2">
+                        Bracket extension was limited to {angleExtension.max_extension_limit}mm.
+                        The angle height was extended to compensate and maintain structural support.
+                      </p>
+                    </div>
+                  );
+                }
+                return null;
+              })()}
+
               <div className="flex justify-between items-center py-2 px-3 bg-gray-50 rounded">
                 <span className="text-sm text-gray-600">Bolt Diameter</span>
                 <span className="text-sm font-semibold font-mono">{displayedResult?.genetic?.bolt_diameter ?? "N/A"} mm</span>
@@ -960,6 +1051,26 @@ export function ResultsDisplay({ result, history, designInputs }: ResultsDisplay
                     )}
                   </div>
                 ))}
+
+                {/* Angle Extension Notice */}
+                {(() => {
+                  const usesExtendedGeometry = displayedResult?.verification?.uses_extended_geometry;
+                  if (usesExtendedGeometry) {
+                    return (
+                      <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded">
+                        <div className="flex items-center gap-2">
+                          <AlertTriangle className="h-4 w-4 text-blue-600" />
+                          <span className="text-sm font-medium text-blue-800">Extended Geometry Applied</span>
+                        </div>
+                        <p className="text-xs text-blue-700 mt-1">
+                          This design uses modified geometry due to bracket extension limits.
+                          All verification checks account for the extended angle height.
+                        </p>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
               </div>
             </CardContent>
           </Card>
@@ -1583,7 +1694,16 @@ export function ResultsDisplay({ result, history, designInputs }: ResultsDisplay
                 />
                 <div className="flex justify-between items-center py-2 px-3 bg-gray-50 rounded">
                   <span className="text-sm text-gray-600">Vertical leg (A)</span>
-                  <span className="text-sm font-semibold font-mono">{displayedResult?.genetic?.vertical_leg ?? 'N/A'} mm</span>
+                  <span className="text-sm font-semibold font-mono">
+                    {(() => {
+                      // Show effective vertical leg accounting for angle extension
+                      const angleExtension = displayedResult?.calculated?.angle_extension_result;
+                      if (angleExtension?.extension_applied) {
+                        return angleExtension.extended_angle_height;
+                      }
+                      return displayedResult?.genetic?.vertical_leg ?? 'N/A';
+                    })()} mm
+                  </span>
                 </div>
                 <div className="flex justify-between items-center py-2 px-3 bg-gray-50 rounded">
                   <span className="text-sm text-gray-600">Horizontal leg (B)</span>

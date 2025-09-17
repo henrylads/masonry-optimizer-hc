@@ -5,6 +5,7 @@
 import { VerificationResults } from "../calculations/verificationChecks"
 import { SteelWeightResults } from "../calculations/steelWeight"
 import { AngleLayoutResult } from "../calculations/angleLayout"
+import { AngleExtensionResult } from "./bracketAngleTypes"
 
 // Define AlternativeDesign interface locally
 export interface AlternativeDesign {
@@ -65,6 +66,8 @@ export interface AlternativeDesign {
       bracketLayout?: AngleLayoutResult;
       bsl_above_slab_bottom?: boolean;
       optimized_fixing_position?: number; // mm - The optimal fixing position from top of slab
+      angle_extension_result?: AngleExtensionResult; // Angle extension calculation result (if applied)
+      effective_vertical_leg?: number; // Effective vertical leg accounting for extension
     };
   };
   totalWeight: number;
@@ -123,6 +126,8 @@ export type OptimisationResult = {
     bracket_type?: 'Standard' | 'Inverted' // Add bracket type
     bracketLayout?: AngleLayoutResult // Add bracket positioning information
     optimized_fixing_position?: number // mm - The optimal fixing position from top of slab
+    angle_extension_result?: AngleExtensionResult // Angle extension calculation result (if applied)
+    effective_vertical_leg?: number // Effective vertical leg accounting for extension
   }
   verificationSteps?: VerificationStep[];
   alternatives?: AlternativeDesign[]; // Alternative valid designs

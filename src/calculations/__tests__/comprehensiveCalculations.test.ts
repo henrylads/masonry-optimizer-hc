@@ -87,8 +87,12 @@ describe('Comprehensive Calculation Process', () => {
       D: testInputs.cavity - 10, // Bracket projection = cavity - 10mm
       S: 3, // Shim thickness
       T: testInputs.angle_thickness,
-      B: 90, // Horizontal leg
-      B_cc: testInputs.bracket_centres
+      B_cc: testInputs.bracket_centres,
+      // Use dynamic horizontal leg calculation for testing
+      facade_thickness: 102.5, // Brick facade
+      load_position: 1/3,
+      front_offset: 12,
+      isolation_shim_thickness: 3
     });
     console.log('Angle Results:', JSON.stringify(angleResults, null, 2));
 
@@ -146,7 +150,8 @@ describe('Comprehensive Calculation Process', () => {
         testInputs.bracket_thickness,
         testInputs.bracket_centres,
         testInputs.angle_thickness,
-        testInputs.vertical_leg
+        testInputs.vertical_leg,
+        angleResults.horizontal_leg // Use calculated horizontal leg from angle results
     );
     console.log('Steel Weight Results:', steelWeightResults);
 
@@ -238,8 +243,12 @@ describe('Comprehensive Calculation Process', () => {
       D: optimizedDesignInputs.cavity - 10, // Bracket projection = cavity - 10mm
       S: 3, // Shim thickness
       T: optimizedDesignInputs.angle_thickness,
-      B: 90, // Horizontal leg
-      B_cc: optimizedDesignInputs.bracket_centres
+      B_cc: optimizedDesignInputs.bracket_centres,
+      // Use dynamic horizontal leg calculation for testing
+      facade_thickness: 102.5, // Brick facade
+      load_position: 1/3,
+      front_offset: 12,
+      isolation_shim_thickness: 3
     });
     console.log('Angle Results:', JSON.stringify(angleResults, null, 2));
 
@@ -298,7 +307,8 @@ describe('Comprehensive Calculation Process', () => {
         optimizedDesignInputs.bracket_thickness,
         optimizedDesignInputs.bracket_centres,
         optimizedDesignInputs.angle_thickness,
-        optimizedDesignInputs.vertical_leg
+        optimizedDesignInputs.vertical_leg,
+        angleResults.horizontal_leg // Use calculated horizontal leg from angle results
     );
     console.log('Steel Weight Results:', steelWeightResults);
 

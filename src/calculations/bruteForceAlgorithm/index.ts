@@ -10,7 +10,7 @@ import { isRHPTIIIChannel, getProductCharacteristics } from '@/utils/channelType
 import type { VerificationResults } from '../verificationChecks';
 import type { SteelWeightResults } from '../steelWeight';
 import type { AngleLayoutResult } from '../angleLayout';
-import type { BracketType, AngleOrientation } from '@/types/bracketAngleTypes';
+import type { BracketType, AngleOrientation, AngleExtensionResult } from '@/types/bracketAngleTypes';
 import { 
     calculateRiseToBolts,
     BRACKET_ANGLE_CONSTANTS 
@@ -84,6 +84,13 @@ export interface CalculatedParameters {
   bracketLayout?: AngleLayoutResult;
   bsl_above_slab_bottom: boolean;
   optimized_fixing_position?: number; // The fixing position used (from genetic parameters)
+  facade_thickness?: number; // Facade thickness from design inputs
+  load_position?: number; // Load position from design inputs
+  front_offset?: number; // Front offset from design inputs
+  isolation_shim_thickness?: number; // Isolation shim thickness from design inputs
+  material_type?: string; // Material type from design inputs
+  angle_extension_result?: AngleExtensionResult; // Angle extension calculation result (if applied)
+  effective_vertical_leg?: number; // Effective vertical leg accounting for extension
 }
 
 export interface Design {
@@ -112,6 +119,13 @@ export function calculateDependentParameters(
     console.log(`--- Calculating Dependent Params ---`);
     console.log(`🔧 Genetic Fixing Position: ${genetic.fixing_position}mm (from genetic params)`);
     console.log(`🔧 Input Fixing Position: ${inputs.fixing_position}mm (from form/inputs)`);
+    console.log(`🔍 DEPENDENT PARAMS DEBUG: Input facade parameters:`, {
+        facade_thickness: inputs.facade_thickness,
+        load_position: inputs.load_position,
+        front_offset: inputs.front_offset,
+        isolation_shim_thickness: inputs.isolation_shim_thickness,
+        material_type: inputs.material_type
+    });
     console.log(`  Genetic: ${JSON.stringify(genetic)}`);
     console.log(`  Inputs: slab=${inputs.slab_thickness}, support=${inputs.support_level}, cavity=${inputs.cavity_width}`);
     
@@ -308,43 +322,12 @@ export function calculateDependentParameters(
         fixing_check: false,
         combined_tension_shear_check: false,
         bsl_above_slab_bottom: bsl_above_slab_bottom,
-        optimized_fixing_position: genetic.fixing_position
-    };
-
-    console.log(`🔧 Final Result: optimized_fixing_position = ${genetic.fixing_position}mm (set in calculated parameters)`);
-
-    return {
-        bracket_height: final_bracket_height,
-        bracket_projection: bracket_projection,
-        rise_to_bolts: final_rise_to_bolts,
-        drop_below_slab: final_drop_below_slab,
-        bracket_projection_at_fixing: bracket_projection_at_fixing,
-        bracket_type: genetic.bracket_type,
-        angle_orientation: genetic.angle_orientation,
-        shear_load: roundToTwelveDecimals(loadingResults.shearForce ?? 0),
-        total_deflection: 0,
-        characteristic_load: characteristicUDL,
-        area_load: loadingResults.areaLoad ?? 0,
-        characteristic_udl: characteristicUDL,
-        design_udl: designUDL,
-        slab_thickness: inputs.slab_thickness,
-        support_level: inputs.support_level,
-        cavity_width: inputs.cavity_width,
-        masonry_thickness: masonry_thickness,
-        notch_height: inputs.notch_height,
-        notch_depth: inputs.notch_depth,
-        E: 200000,
-        n: 8,
-        moment_resistance_check: false,
-        shear_resistance_check: false,
-        angle_deflection_check: false,
-        bracket_connection_check: false,
-        shear_reduction_check: false,
-        bracket_design_check: false,
-        fixing_check: false,
-        combined_tension_shear_check: false,
-        bsl_above_slab_bottom: bsl_above_slab_bottom,
-        optimized_fixing_position: genetic.fixing_position
+        optimized_fixing_position: genetic.fixing_position,
+        facade_thickness: inputs.facade_thickness,
+        load_position: inputs.load_position,
+        front_offset: inputs.front_offset,
+        isolation_shim_thickness: inputs.isolation_shim_thickness,
+        material_type: inputs.material_type
     };
 }
 
@@ -360,6 +343,14 @@ export async function runBruteForce(
 ): Promise<GeneticAlgorithmOutput> {
     console.log('!!! runBruteForce CALLED !!!');
     console.log('Brute Force: Starting with config:', JSON.stringify(config.designInputs, null, 2));
+
+    // Debug facade parameter availability
+    console.log('🔍 BRUTE FORCE DEBUG: Facade parameters in design inputs:');
+    console.log('  facade_thickness:', config.designInputs.facade_thickness);
+    console.log('  load_position:', config.designInputs.load_position);
+    console.log('  front_offset:', config.designInputs.front_offset);
+    console.log('  isolation_shim_thickness:', config.designInputs.isolation_shim_thickness);
+    console.log('  material_type:', config.designInputs.material_type);
 
     const designInputs = config.designInputs;
     const isAngleLengthLimited = config.isAngleLengthLimited || false;
@@ -444,7 +435,7 @@ export async function runBruteForce(
             Hmin = Math.max(150, Math.abs(inputs.support_level) - fixingPosition + Y);
         }
         const proj = Math.floor((inputs.cavity_width - 10) / 5) * 5;
-        const weight = calculateSystemWeight(Hmin, proj, g.bracket_thickness, g.bracket_centres, g.angle_thickness, g.vertical_leg);
+        const weight = calculateSystemWeight(Hmin, proj, g.bracket_thickness, g.bracket_centres, g.angle_thickness, g.vertical_leg, g.horizontal_leg);
         return weight.totalWeight;
     };
 
@@ -508,6 +499,7 @@ export async function runBruteForce(
                 currentDesign.calculated = calculateDependentParameters(currentDesign.genetic, designInputs);
                 const evaluationResult = evaluateBruteForceDesign(
                     currentDesign,
+                    designInputs,
                     isAngleLengthLimited,
                     fixedAngleLength
                 );
@@ -591,7 +583,17 @@ export async function runBruteForce(
             }
         } catch (error) {
             // Handle errors during calculation/evaluation for a specific combination
-            console.warn(`Brute Force: Error processing combination:`, error);
+            console.error('❌ BRUTE FORCE ERROR: Failed to process combination');
+            console.error('  Genetic parameters:', geneticParams);
+            console.error('  Error details:', error);
+            console.error('  Stack trace:', error instanceof Error ? error.stack : 'No stack trace');
+
+            // Log facade parameters for debugging
+            console.error('  Available facade parameters in designInputs:');
+            console.error('    facade_thickness:', designInputs.facade_thickness);
+            console.error('    load_position:', designInputs.load_position);
+            console.error('    front_offset:', designInputs.front_offset);
+            console.error('    isolation_shim_thickness:', designInputs.isolation_shim_thickness);
         }
 
         checkedCombinations++;

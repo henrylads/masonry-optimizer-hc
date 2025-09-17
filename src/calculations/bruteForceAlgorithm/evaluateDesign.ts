@@ -1,13 +1,20 @@
 import type { Design } from './index';
 import { calculateSystemWeight } from '../steelWeight';
 import { verifyAll, VerificationResults } from '../verificationChecks';
-import { calculateBracketParameters } from '../bracketCalculations';
-import { calculateAngleParameters } from '../angleCalculations';
+import {
+    calculateBracketParameters,
+    calculateInvertedBracketHeight,
+    calculateStandardBracketHeightWithExtension
+} from '../bracketCalculations';
+import { calculateAngleParameters, calculateEffectiveVerticalLeg } from '../angleCalculations';
+import { shouldApplyAngleExtension } from '../angleExtensionCalculations';
 import { calculateMathematicalModel } from '../verificationChecks/mathematicalModelCalculations';
+import type { AngleExtensionResult } from '@/types/bracketAngleTypes';
 import { calculateLoading } from '../loadingCalculations';
 import { SYSTEM_DEFAULTS } from '@/constants';
 import { roundToTwelveDecimals } from '@/utils/precision';
 import { calculateBracketPositioning, AngleLayoutResult } from '../angleLayout';
+import type { DesignInputs } from '@/types/designInputs';
 
 export interface BruteForceEvaluationResult {
     isValid: boolean;
@@ -22,8 +29,9 @@ export interface BruteForceEvaluationResult {
  * The primary goal is to find the *lightest* valid design.
  */
 export function evaluateBruteForceDesign(
-    design: Design, 
-    isLengthLimited = false, 
+    design: Design,
+    designInputs: DesignInputs,
+    isLengthLimited = false,
     fixedLength?: number
 ): BruteForceEvaluationResult {
     // --- Perform necessary calculations (similar to fitnessScoring) ---
@@ -49,29 +57,128 @@ export function evaluateBruteForceDesign(
     design.calculated.characteristic_udl = loadingResults.characteristicUDL;
     design.calculated.design_udl = loadingResults.designUDL;
 
-    // 2. Bracket Calculations
+    // 2. Enhanced Bracket Calculations with Angle Extension Support
+    // Check if angle extension is enabled and should be applied
+    const shouldUseAngleExtension = shouldApplyAngleExtension(
+        designInputs.enable_angle_extension,
+        designInputs.max_allowable_bracket_extension
+    );
+
+    let bracketHeightWithExtension: number;
+    let angleExtensionResult: AngleExtensionResult | undefined;
+
+    if (design.genetic.bracket_type === 'Inverted') {
+        // Use enhanced inverted bracket calculation
+        const invertedResults = calculateInvertedBracketHeight({
+            support_level: design.calculated.support_level,
+            angle_thickness: design.genetic.angle_thickness,
+            top_critical_edge: 75, // Default, will be replaced with channel-specific values if available
+            bottom_critical_edge: 150, // Default, will be replaced with channel-specific values if available
+            slab_thickness: design.calculated.slab_thickness,
+            fixing_position: design.genetic.fixing_position,
+            // Angle extension parameters
+            max_allowable_bracket_extension: designInputs.max_allowable_bracket_extension,
+            enable_angle_extension: designInputs.enable_angle_extension,
+            bracket_type: design.genetic.bracket_type,
+            angle_orientation: design.genetic.angle_orientation,
+            current_angle_height: design.genetic.vertical_leg
+        });
+
+        bracketHeightWithExtension = invertedResults.bracket_height;
+        angleExtensionResult = invertedResults.angle_extension;
+
+        // Update design with inverted bracket specific calculations
+        design.calculated.rise_to_bolts = invertedResults.rise_to_bolts;
+        design.calculated.drop_below_slab = invertedResults.drop_below_slab;
+
+    } else {
+        // Use enhanced standard bracket calculation with extension support
+        if (shouldUseAngleExtension) {
+            const standardResults = calculateStandardBracketHeightWithExtension({
+                support_level: design.calculated.support_level,
+                top_critical_edge: 75, // Default, will be replaced with channel-specific values if available
+                distance_from_top_to_fixing: 40, // Y constant from bracket angle selection
+                slab_thickness: design.calculated.slab_thickness,
+                fixing_position: design.genetic.fixing_position,
+                // Angle extension parameters
+                max_allowable_bracket_extension: designInputs.max_allowable_bracket_extension,
+                enable_angle_extension: designInputs.enable_angle_extension,
+                bracket_type: design.genetic.bracket_type,
+                angle_orientation: design.genetic.angle_orientation,
+                current_angle_height: design.genetic.vertical_leg
+            });
+
+            bracketHeightWithExtension = standardResults.bracket_height;
+            angleExtensionResult = standardResults.angle_extension;
+        } else {
+            // Use standard calculation without extension
+            bracketHeightWithExtension = design.calculated.bracket_height;
+        }
+    }
+
+    // Store angle extension results in design
+    design.calculated.angle_extension_result = angleExtensionResult;
+
+    // Calculate effective vertical leg (original or extended)
+    const effectiveVerticalLeg = calculateEffectiveVerticalLeg(
+        design.genetic.vertical_leg,
+        angleExtensionResult
+    );
+    design.calculated.effective_vertical_leg = effectiveVerticalLeg;
+
+    // Update bracket height with extension-aware value
+    design.calculated.bracket_height = bracketHeightWithExtension;
+
+    // 3. Bracket Parameters
     const bracketResults = calculateBracketParameters({
         cavity: design.calculated.cavity_width
     });
 
-    // 3. Angle Calculations
+    // 4. Angle Calculations (using effective vertical leg)
+    if (isStandardAngle && angleExtensionResult?.extension_applied) {
+        console.log(`🔧 ANGLE EXTENSION APPLIED:`);
+        console.log(`  Original angle height: ${design.genetic.vertical_leg}mm`);
+        console.log(`  Extended angle height: ${effectiveVerticalLeg}mm`);
+        console.log(`  Bracket reduction: ${angleExtensionResult.bracket_reduction}mm`);
+        console.log(`  Extension limit: ${angleExtensionResult.max_extension_limit}mm`);
+    }
+
+    console.log(`🔍 EVALUATE DEBUG: Calculated parameters:`, {
+        facade_thickness: design.calculated.facade_thickness,
+        load_position: design.calculated.load_position,
+        front_offset: design.calculated.front_offset,
+        isolation_shim_thickness: design.calculated.isolation_shim_thickness,
+        cavity_width: design.calculated.cavity_width,
+        effective_vertical_leg: effectiveVerticalLeg,
+        original_vertical_leg: design.genetic.vertical_leg
+    });
+
     const angleResults = calculateAngleParameters({
         C: design.calculated.cavity_width,
         D: design.calculated.cavity_width - 10,
         S: 3,
         T: design.genetic.angle_thickness,
-        B: 90,
-        B_cc: design.genetic.bracket_centres
+        B_cc: design.genetic.bracket_centres,
+        // Pass facade parameters for dynamic horizontal leg calculation
+        facade_thickness: design.calculated.facade_thickness,
+        load_position: design.calculated.load_position,
+        front_offset: design.calculated.front_offset,
+        isolation_shim_thickness: design.calculated.isolation_shim_thickness
     });
 
-    // 4. Mathematical Model Calculations
+    // Update genetic parameters with calculated horizontal leg
+    design.genetic.horizontal_leg = angleResults.horizontal_leg;
+
+    // 5. Mathematical Model Calculations (using effective vertical leg)
     const mathModelResults = calculateMathematicalModel({
-        M: design.calculated.masonry_thickness ?? 102.5,
+        M: design.calculated.masonry_thickness ?? 102.5, // Keep for backward compatibility
         d: angleResults.d,
         T: design.genetic.angle_thickness,
         R: angleResults.R,
         L_bearing: angleResults.b,
-        A: design.genetic.vertical_leg
+        A: effectiveVerticalLeg, // Use effective vertical leg instead of original
+        facade_thickness: design.calculated.facade_thickness,
+        load_position: design.calculated.load_position
     });
 
     // --- Verification Checks ---
@@ -137,14 +244,15 @@ export function evaluateBruteForceDesign(
         // Don't fail the overall design if just the bracket layout fails
     }
 
-    // --- Calculate Weight ---
+    // --- Calculate Weight (using effective vertical leg) ---
     const weights = calculateSystemWeight(
         design.calculated.bracket_height,
         design.calculated.bracket_projection,
         design.genetic.bracket_thickness,
         design.genetic.bracket_centres,
         design.genetic.angle_thickness,
-        design.genetic.vertical_leg
+        effectiveVerticalLeg, // Use effective vertical leg instead of original
+        design.genetic.horizontal_leg // Pass the calculated horizontal leg
     );
     design.calculated.weights = weights;
 
@@ -174,7 +282,10 @@ export function evaluateBruteForceDesign(
             console.log(`    - Bracket Design: Failed`);
         }
     } else if (isStandardAngle && isValid) {
-        console.log(`  PASSED - Weight: ${totalWeight.toFixed(2)} kg/m`);
+        const verticalLegInfo = angleExtensionResult?.extension_applied
+            ? `${effectiveVerticalLeg}mm (extended from ${design.genetic.vertical_leg}mm)`
+            : `${design.genetic.vertical_leg}mm`;
+        console.log(`  PASSED - Weight: ${totalWeight.toFixed(2)} kg/m, Vertical Leg: ${verticalLegInfo}`);
     }
 
     return {

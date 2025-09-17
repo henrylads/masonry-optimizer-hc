@@ -129,6 +129,24 @@ export default function MasonryDesignerForm({
   const combinedIsLoading = isLoading || aiIsOptimizing
   const resultSource = aiOptimizationResult ? 'ai' : result ? 'manual' : null
 
+  // Client-side debug logging (no hydration issues)
+  React.useEffect(() => {
+    console.log('🚨 COMPONENT MOUNTED - TIMESTAMP:', new Date().toISOString());
+  }, []);
+
+  // Debug loading states
+  React.useEffect(() => {
+    console.log('🔵 LOADING STATES DEBUG:', {
+      isLoading,
+      aiIsOptimizing,
+      combinedIsLoading,
+      result: !!result,
+      aiOptimizationResult: !!aiOptimizationResult,
+      combinedResult: !!combinedResult,
+      buttonDisabled: combinedIsLoading
+    });
+  }, [isLoading, aiIsOptimizing, combinedIsLoading, result, aiOptimizationResult, combinedResult]);
+
   // Use either external or internal state
   const useCharacteristicLoad = externalUseCharacteristicLoad ?? internalUseCharacteristicLoad
   const setUseCharacteristicLoad = (value: boolean) => {
@@ -160,6 +178,14 @@ export default function MasonryDesignerForm({
       postfix_product: 'all',
       use_custom_fixing_position: false,
       fixing_position: 75,
+      facade_thickness: 102.5,
+      load_position: 1/3,
+      front_offset: 12,
+      isolation_shim_thickness: 3,
+      material_type: 'brick',
+      use_custom_load_position: false,
+      enable_angle_extension: false,
+      max_allowable_bracket_extension: -200,
     },
   })
 
@@ -179,6 +205,24 @@ export default function MasonryDesignerForm({
     });
     return () => subscription.unsubscribe();
   }, [form, result, aiOptimizationResult, activeTab, clearAIOptimizationResult]);
+
+  // Watch angle extension fields specifically for debugging
+  React.useEffect(() => {
+    const subscription = form.watch((value, { name, type }) => {
+      if (name === 'enable_angle_extension' || name === 'max_allowable_bracket_extension') {
+        console.log('🟡 ANGLE EXTENSION FIELD CHANGED:', {
+          fieldName: name,
+          changeType: type,
+          newValue: value[name],
+          enable_angle_extension: value.enable_angle_extension,
+          max_allowable_bracket_extension: value.max_allowable_bracket_extension,
+          formErrors: form.formState.errors,
+          isValid: form.formState.isValid
+        });
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [form]);
 
   // Switch to results tab when AI optimization completes successfully
   React.useEffect(() => {
@@ -222,11 +266,16 @@ export default function MasonryDesignerForm({
 
   // Handle form submission
   const onSubmit = React.useCallback(async (values: z.infer<typeof formSchema>) => {
+    console.log('🚀 FORM SUBMIT STARTED - onSubmit function called');
+    console.log('🚀 Submitted values:', values);
+
     if (onTestSubmit) {
+      console.log('🚀 Using test submit function');
       onTestSubmit(values);
       return;
     }
 
+    console.log('🚀 Starting real optimization process');
     setIsLoading(true);
     setError(null);
     setProgress(0);
@@ -284,6 +333,14 @@ export default function MasonryDesignerForm({
         actual_fixing_position: actualFixingPosition,
       });
 
+      console.log('🔍 FORM SUBMIT DEBUG: Form values:', {
+        facade_thickness: values.facade_thickness,
+        material_type: values.material_type,
+        load_position: values.load_position,
+        front_offset: values.front_offset,
+        isolation_shim_thickness: values.isolation_shim_thickness
+      });
+
       // Prepare configuration
       const optimizationConfig = {
         maxGenerations: 100,
@@ -299,6 +356,15 @@ export default function MasonryDesignerForm({
           fixing_position: actualFixingPosition,
           use_custom_fixing_position: values.use_custom_fixing_position,
           showDetailedVerifications: true,
+          // Add facade parameters for dynamic horizontal leg calculation
+          facade_thickness: values.facade_thickness,
+          load_position: values.load_position,
+          front_offset: values.front_offset,
+          isolation_shim_thickness: values.isolation_shim_thickness,
+          material_type: values.material_type,
+          // Add angle extension parameters for exclusion zones
+          enable_angle_extension: values.enable_angle_extension,
+          max_allowable_bracket_extension: values.enable_angle_extension ? values.max_allowable_bracket_extension : null,
           allowed_channel_types: (() => {
             const channelTypes: ChannelType[] = [];
 
@@ -344,6 +410,21 @@ export default function MasonryDesignerForm({
           setGenerationHistory(prev => [...prev, genSummary]);
         }
       };
+
+      // Debug logging for optimization configuration
+      console.log('🚀 OPTIMIZATION TRIGGER: About to run brute force with config:', {
+        facade_thickness: optimizationConfig.designInputs.facade_thickness,
+        load_position: optimizationConfig.designInputs.load_position,
+        front_offset: optimizationConfig.designInputs.front_offset,
+        isolation_shim_thickness: optimizationConfig.designInputs.isolation_shim_thickness,
+        material_type: optimizationConfig.designInputs.material_type,
+        support_level: optimizationConfig.designInputs.support_level,
+        cavity_width: optimizationConfig.designInputs.cavity_width,
+        slab_thickness: optimizationConfig.designInputs.slab_thickness,
+        characteristic_load: optimizationConfig.designInputs.characteristic_load,
+        enable_angle_extension: optimizationConfig.designInputs.enable_angle_extension,
+        max_allowable_bracket_extension: optimizationConfig.designInputs.max_allowable_bracket_extension
+      });
 
       // Run optimization
       const optimizationOutput: { result: OptimisationResult; history: GenerationSummary[] } = await runBruteForce(optimizationConfig);
@@ -430,6 +511,12 @@ export default function MasonryDesignerForm({
       <div className="flex justify-between items-center mb-6 pr-28">
         <ClaritiLogo className="h-8" />
         <h1 className="text-3xl font-bold">Masonry Support Designer</h1>
+      </div>
+
+      {/* DEBUG: Component Update Indicator */}
+      <div className="mb-2 p-2 bg-red-100 border border-red-300 rounded text-xs text-red-700">
+        🚨 DEBUG: Component active - Button disabled: {combinedIsLoading ? 'TRUE' : 'FALSE'}
+        {combinedIsLoading && ' (isLoading:' + isLoading + ', aiOptimizing:' + aiIsOptimizing + ')'}
       </div>
 
       {/* Workflow Mode Toggle */}
@@ -732,6 +819,247 @@ export default function MasonryDesignerForm({
                                 />
                               </div>
                             )}
+                          </div>
+                        </div>
+
+                        {/* Facade Configuration Section */}
+                        <div className="col-span-full">
+                          <div className="rounded-lg border p-6">
+                            <div className="flex items-center gap-2 mb-4">
+                              <div className="p-2 rounded-lg bg-primary/10">
+                                <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                                </svg>
+                              </div>
+                              <div>
+                                <h3 className="text-lg font-semibold">Facade Configuration</h3>
+                                <p className="text-sm text-muted-foreground">Configure facade material and load position parameters</p>
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                              {/* Material Type */}
+                              <FormField
+                                control={form.control}
+                                name="material_type"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Material Type</FormLabel>
+                                    <Select
+                                      onValueChange={(value) => {
+                                        field.onChange(value);
+                                        // Auto-update load position based on material type
+                                        if (!form.watch('use_custom_load_position')) {
+                                          const loadPositions = {
+                                            'brick': 1/3,
+                                            'precast': 1/2,
+                                            'stone': 1/2
+                                          };
+                                          form.setValue('load_position', loadPositions[value as keyof typeof loadPositions] || 1/3);
+                                        }
+                                        // Auto-update facade thickness based on material type
+                                        const facadeThicknesses = {
+                                          'brick': 102.5,
+                                          'precast': 250,
+                                          'stone': 150
+                                        };
+                                        form.setValue('facade_thickness', facadeThicknesses[value as keyof typeof facadeThicknesses] || 102.5);
+                                      }}
+                                      value={field.value}
+                                      disabled={inputMode === 'chat' && isLoading}
+                                    >
+                                      <FormControl>
+                                        <SelectTrigger>
+                                          <SelectValue placeholder="Select material type" />
+                                        </SelectTrigger>
+                                      </FormControl>
+                                      <SelectContent>
+                                        <SelectItem value="brick">Brick</SelectItem>
+                                        <SelectItem value="precast">Precast Concrete</SelectItem>
+                                        <SelectItem value="stone">Stone</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                    <FormDescription>
+                                      Material type affects default load position and facade thickness
+                                    </FormDescription>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+
+                              {/* Facade Thickness */}
+                              <FormField
+                                control={form.control}
+                                name="facade_thickness"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Facade Thickness (mm)</FormLabel>
+                                    <FormControl>
+                                      <Input
+                                        type="number"
+                                        placeholder="e.g. 102.5"
+                                        value={field.value}
+                                        onChange={(e) => field.onChange(Number(e.target.value) || 0)}
+                                        disabled={inputMode === 'chat' && isLoading}
+                                        min="50"
+                                        max="300"
+                                        step="0.5"
+                                      />
+                                    </FormControl>
+                                    <FormDescription>
+                                      Overall thickness of the facade system
+                                    </FormDescription>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                            </div>
+
+                            {/* Load Position Configuration */}
+                            <div className="mt-6">
+                              <div className="space-y-4">
+                                <div className="flex items-center space-x-2">
+                                  <FormField
+                                    control={form.control}
+                                    name="use_custom_load_position"
+                                    render={({ field }) => (
+                                      <FormItem className="flex flex-row items-center space-x-3 space-y-0">
+                                        <FormControl>
+                                          <Switch
+                                            checked={field.value}
+                                            onCheckedChange={(checked) => {
+                                              field.onChange(checked);
+                                              if (!checked) {
+                                                // Reset to material-based default
+                                                const materialType = form.watch('material_type');
+                                                const loadPositions = {
+                                                  'brick': 1/3,
+                                                  'precast': 1/2,
+                                                  'stone': 1/2
+                                                };
+                                                form.setValue('load_position', loadPositions[materialType as keyof typeof loadPositions] || 1/3);
+                                              }
+                                            }}
+                                            disabled={inputMode === 'chat' && isLoading}
+                                          />
+                                        </FormControl>
+                                        <div className="space-y-1 leading-none">
+                                          <FormLabel>Custom Load Position</FormLabel>
+                                          <FormDescription>
+                                            Override material-based default load position
+                                          </FormDescription>
+                                        </div>
+                                      </FormItem>
+                                    )}
+                                  />
+                                </div>
+
+                                {form.watch('use_custom_load_position') && (
+                                  <FormField
+                                    control={form.control}
+                                    name="load_position"
+                                    render={({ field }) => (
+                                      <FormItem>
+                                        <FormLabel>Load Position (fraction of facade thickness)</FormLabel>
+                                        <FormControl>
+                                          <div className="space-y-2">
+                                            <Slider
+                                              min={0.1}
+                                              max={0.9}
+                                              step={0.05}
+                                              value={[field.value]}
+                                              onValueChange={(value) => field.onChange(value[0])}
+                                              disabled={inputMode === 'chat' && isLoading}
+                                              className="w-full"
+                                            />
+                                            <div className="flex justify-between text-xs text-muted-foreground">
+                                              <span>0.1 (outer edge)</span>
+                                              <span className="font-medium">{field.value.toFixed(2)}</span>
+                                              <span>0.9 (inner edge)</span>
+                                            </div>
+                                          </div>
+                                        </FormControl>
+                                        <FormDescription>
+                                          Position where load acts as fraction of facade thickness (0.33 = 1/3, 0.5 = 1/2)
+                                        </FormDescription>
+                                        <FormMessage />
+                                      </FormItem>
+                                    )}
+                                  />
+                                )}
+
+                                {!form.watch('use_custom_load_position') && (
+                                  <div className="p-3 bg-muted rounded-md">
+                                    <div className="text-sm">
+                                      <span className="font-medium">Auto Load Position: </span>
+                                      <span className="text-muted-foreground">
+                                        {(() => {
+                                          const materialType = form.watch('material_type');
+                                          const positions = { 'brick': '1/3', 'precast': '1/2', 'stone': '1/2' };
+                                          return positions[materialType as keyof typeof positions] || '1/3';
+                                        })()}
+                                        ({form.watch('load_position')?.toFixed(2)}) based on {form.watch('material_type')} material
+                                      </span>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Advanced Settings */}
+                            <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <FormField
+                                control={form.control}
+                                name="front_offset"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Front Offset (mm)</FormLabel>
+                                    <FormControl>
+                                      <Input
+                                        type="number"
+                                        placeholder="12"
+                                        value={field.value}
+                                        onChange={(e) => field.onChange(Number(e.target.value) || 0)}
+                                        disabled={inputMode === 'chat' && isLoading}
+                                        min="-50"
+                                        max="100"
+                                        step="1"
+                                      />
+                                    </FormControl>
+                                    <FormDescription>
+                                      Additional projection adjustment
+                                    </FormDescription>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+
+                              <FormField
+                                control={form.control}
+                                name="isolation_shim_thickness"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Isolation Shim Thickness (mm)</FormLabel>
+                                    <FormControl>
+                                      <Input
+                                        type="number"
+                                        placeholder="3"
+                                        value={field.value}
+                                        onChange={(e) => field.onChange(Number(e.target.value) || 0)}
+                                        disabled={inputMode === 'chat' && isLoading}
+                                        min="0"
+                                        max="20"
+                                        step="0.5"
+                                      />
+                                    </FormControl>
+                                    <FormDescription>
+                                      Thickness of isolation material
+                                    </FormDescription>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                            </div>
                           </div>
                         </div>
 
@@ -1162,6 +1490,111 @@ export default function MasonryDesignerForm({
                                 />
                               )}
                             </div>
+
+                            {/* Angle Extension Configuration for Exclusion Zones */}
+                            <div className="mb-6">
+                              <Label className="text-base font-medium mb-4 block">Angle Extension for Exclusion Zones</Label>
+                              <p className="text-sm text-muted-foreground mb-4">
+                                Enable this feature when brackets cannot extend fully due to SFS or other building elements.
+                                The system will limit bracket extension and compensate by extending the angle height instead.
+                              </p>
+
+                              <ToggleGroup
+                                type="single"
+                                value={form.watch("enable_angle_extension") ? "yes" : "no"}
+                                onValueChange={(value) => {
+                                  if (value) {
+                                    const enableExtension = value === "yes";
+                                    console.log('🟡 ANGLE EXTENSION TOGGLE:', {
+                                      newValue: value,
+                                      enableExtension,
+                                      currentMaxBracketExtension: form.getValues("max_allowable_bracket_extension"),
+                                      currentFormValues: form.getValues(),
+                                      formErrors: form.formState.errors
+                                    });
+
+                                    form.setValue("enable_angle_extension", enableExtension);
+
+                                    // Set default value for max_allowable_bracket_extension when enabling
+                                    if (enableExtension && !form.getValues("max_allowable_bracket_extension")) {
+                                      console.log('🟡 Setting default max_allowable_bracket_extension to -200');
+                                      form.setValue("max_allowable_bracket_extension", -200);
+                                    }
+
+                                    // Log form state after changes
+                                    setTimeout(() => {
+                                      console.log('🟡 ANGLE EXTENSION TOGGLE AFTER:', {
+                                        enable_angle_extension: form.getValues("enable_angle_extension"),
+                                        max_allowable_bracket_extension: form.getValues("max_allowable_bracket_extension"),
+                                        formErrors: form.formState.errors,
+                                        isValid: form.formState.isValid
+                                      });
+                                    }, 100);
+                                  }
+                                }}
+                                className="justify-start gap-2 mb-4"
+                                variant="outline"
+                                size="default"
+                              >
+                                <ToggleGroupItem
+                                  value="yes"
+                                  aria-label="Enable Angle Extension"
+                                  className={cn(
+                                    "min-w-[80px]",
+                                    form.watch("enable_angle_extension") && "bg-[rgb(194,242,14)] text-black hover:brightness-95"
+                                  )}
+                                >
+                                  Enable
+                                </ToggleGroupItem>
+                                <ToggleGroupItem
+                                  value="no"
+                                  aria-label="Disable Angle Extension"
+                                  className={cn(
+                                    "min-w-[80px]",
+                                    !form.watch("enable_angle_extension") && "bg-[rgb(194,242,14)] text-black hover:brightness-95"
+                                  )}
+                                >
+                                  Disable
+                                </ToggleGroupItem>
+                              </ToggleGroup>
+
+                              {/* Conditional Max Bracket Extension Field */}
+                              {form.watch("enable_angle_extension") && (
+                                <FormField
+                                  control={form.control}
+                                  name="max_allowable_bracket_extension"
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <div className="rounded-lg border p-4 h-full flex flex-col justify-between">
+                                        <div>
+                                          <div className="flex justify-between items-center mb-2">
+                                            <FormLabel>Max Bracket Position (mm)</FormLabel>
+                                            <span className="text-sm tabular-nums">
+                                              {field.value ?? -200} mm {(field.value ?? -200) >= 0 ? "(above slab)" : "(below slab)"}
+                                            </span>
+                                          </div>
+                                          <FormDescription className="mb-3">
+                                            Maximum allowable bracket position relative to top of slab in 5mm increments.
+                                            Negative values = below slab, positive values = above slab. When exceeded, the angle will be extended to compensate.
+                                          </FormDescription>
+                                        </div>
+                                        <FormControl>
+                                          <Slider
+                                            min={-1000}
+                                            max={500}
+                                            step={5}
+                                            value={[field.value ?? -200]}
+                                            onValueChange={(values) => field.onChange(values[0])}
+                                            disabled={inputMode === 'chat' && isLoading}
+                                          />
+                                        </FormControl>
+                                        <FormMessage />
+                                      </div>
+                                    </FormItem>
+                                  )}
+                                />
+                              )}
+                            </div>
                           </div>
                         </div>
 
@@ -1199,11 +1632,75 @@ export default function MasonryDesignerForm({
                           </div>
                         )}
 
+                        {/* Debug info for button state */}
+                        {combinedIsLoading && (
+                          <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                            <div className="flex justify-between items-center">
+                              <p className="text-sm text-yellow-800">
+                                🔄 Button disabled - Loading state:
+                                {isLoading && " Manual Loading"}
+                                {aiIsOptimizing && " AI Optimizing"}
+                              </p>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  console.log('🔧 MANUALLY RESETTING LOADING STATES');
+                                  setIsLoading(false);
+                                  // Note: aiIsOptimizing is external state, handled by AI context
+                                }}
+                                className="text-xs"
+                              >
+                                Reset
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+
                         {workflowConfig.showManualControls && (
                           <Button
                             type="submit"
                             disabled={combinedIsLoading}
                             className="w-full"
+                            onClick={(e) => {
+                              console.log('🔴 BUTTON CLICKED - Form submission attempt');
+                              console.log('🔴 Current form values:', form.getValues());
+                              console.log('🔴 Form validation state:', form.formState);
+                              console.log('🔴 Form errors:', form.formState.errors);
+
+                              // Check if angle extension is enabled and what the value is
+                              const formValues = form.getValues();
+                              console.log('🔴 ANGLE EXTENSION DEBUG:', {
+                                enable_angle_extension: formValues.enable_angle_extension,
+                                max_allowable_bracket_extension: formValues.max_allowable_bracket_extension,
+                                support_level: formValues.support_level,
+                                slab_thickness: formValues.slab_thickness
+                              });
+
+                              // Trigger form validation and check result
+                              form.trigger().then((isValid) => {
+                                console.log('🔴 FORM VALIDATION RESULT:', {
+                                  isValid,
+                                  errors: form.formState.errors,
+                                  dirtyFields: form.formState.dirtyFields,
+                                  touchedFields: form.formState.touchedFields
+                                });
+
+                                // Show specific angle extension validation status
+                                if (formValues.enable_angle_extension) {
+                                  console.log('🔴 ANGLE EXTENSION VALIDATION CHECK:', {
+                                    enable_angle_extension: formValues.enable_angle_extension,
+                                    max_allowable_bracket_extension: formValues.max_allowable_bracket_extension,
+                                    max_bracket_extension_defined: formValues.max_allowable_bracket_extension !== undefined,
+                                    max_bracket_extension_in_range: formValues.max_allowable_bracket_extension >= -1000 && formValues.max_allowable_bracket_extension <= 500,
+                                    validation_should_pass: formValues.max_allowable_bracket_extension !== undefined &&
+                                                           formValues.max_allowable_bracket_extension >= -1000 &&
+                                                           formValues.max_allowable_bracket_extension <= 500
+                                  });
+                                }
+                              });
+                            }}
                           >
                             {combinedIsLoading ? (
                               <>

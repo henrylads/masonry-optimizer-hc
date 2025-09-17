@@ -59,6 +59,7 @@ export function calculateSystemWeight(
     bracket_centres: number,
     angle_thickness: number,
     vertical_leg?: number, // Optional: will use standard based on angle thickness if not provided
+    horizontal_leg?: number // Optional: will use default 90mm if not provided
 ): SteelWeightResults {
     // Validate bracket thickness
     if (bracket_thickness !== 3 && bracket_thickness !== 4) {
@@ -77,15 +78,18 @@ export function calculateSystemWeight(
     const bracketWeightPerMeter = roundToTwelveDecimals(bracketWeight * bracketsPerMeter);
 
     // Determine vertical leg length based on angle thickness
-    const actualVerticalLeg = vertical_leg ?? 
-        (angle_thickness === 8 ? 
-            COMPONENT_DIMENSIONS.VERTICAL_LEG.HEAVY : 
+    const actualVerticalLeg = vertical_leg ??
+        (angle_thickness === 8 ?
+            COMPONENT_DIMENSIONS.VERTICAL_LEG.HEAVY :
             COMPONENT_DIMENSIONS.VERTICAL_LEG.STANDARD
         );
 
+    // Determine horizontal leg length (use provided value or default)
+    const actualHorizontalLeg = horizontal_leg ?? COMPONENT_DIMENSIONS.HORIZONTAL_LEG;
+
     // Calculate angle volume per meter
     const angleVolume = roundToTwelveDecimals(
-        (actualVerticalLeg + COMPONENT_DIMENSIONS.HORIZONTAL_LEG - angle_thickness) * 
+        (actualVerticalLeg + actualHorizontalLeg - angle_thickness) *
         1000 * // length in mm (1 meter)
         angle_thickness
     );

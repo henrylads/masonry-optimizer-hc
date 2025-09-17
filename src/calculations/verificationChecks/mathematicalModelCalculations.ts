@@ -13,7 +13,7 @@ export interface MathematicalModelResults {
 }
 
 export interface MathematicalModelInputs {
-    /** Masonry thickness (mm) */
+    /** Masonry thickness (mm) - for backward compatibility, use facade_thickness when available */
     M: number;
     /** Distance from fixing to back of angle (mm) */
     d: number;
@@ -25,6 +25,10 @@ export interface MathematicalModelInputs {
     L_bearing: number;
     /** Total angle length (mm) */
     A: number;
+    /** Facade thickness (mm) - replaces M when provided */
+    facade_thickness?: number;
+    /** Load position as fraction of facade thickness (0-1 range) - defaults to 1/3 */
+    load_position?: number;
 }
 
 /**
@@ -34,44 +38,105 @@ export interface MathematicalModelInputs {
 export function createMathematicalModelInputs(
     angleInputs: AngleCalculationInputs,
     masonryThickness: number,
-    totalAngleLength: number
+    totalAngleLength: number,
+    facadeThickness?: number,
+    loadPosition?: number
 ): MathematicalModelInputs {
     // First calculate all angle parameters
     const angleResults = calculateAngleParameters(angleInputs);
 
     // Then create mathematical model inputs using those results
     return {
-        M: masonryThickness,
+        M: masonryThickness, // Keep for backward compatibility
         d: angleResults.d,
         T: angleInputs.T,
         R: angleResults.R,
         L_bearing: angleResults.b,
-        A: totalAngleLength
+        A: totalAngleLength,
+        facade_thickness: facadeThickness,
+        load_position: loadPosition
     };
 }
 
 /**
  * Calculates the mathematical model parameters as specified in the project overview
+ * Now supports dynamic load position instead of hardcoded M/3
  * @param params Input parameters for the mathematical model
  * @returns Mathematical model calculation results
  */
 export function calculateMathematicalModel(params: MathematicalModelInputs): MathematicalModelResults {
-    // Calculate Ecc = M/3
-    const Ecc = roundToTwelveDecimals(params.M / 3);
+    // Use facade_thickness if provided, otherwise fall back to M for backward compatibility
+    const effectiveFacadeThickness = params.facade_thickness ?? params.M;
+
+    // Use load_position if provided, otherwise default to 1/3 for backward compatibility
+    const effectiveLoadPosition = params.load_position ?? (1/3);
+
+    // Debug logging for eccentricity calculation
+    console.log('\n=== MATHEMATICAL MODEL CALCULATION DEBUG ===');
+    console.log('Input Parameters:');
+    console.log('  facade_thickness:', params.facade_thickness);
+    console.log('  M (masonry_thickness):', params.M);
+    console.log('  load_position:', params.load_position);
+    console.log('  d:', params.d);
+    console.log('  T:', params.T);
+    console.log('  R:', params.R);
+    console.log('  L_bearing:', params.L_bearing);
+    console.log('  A:', params.A);
+
+    console.log('\nCalculated Values:');
+    console.log('  effectiveFacadeThickness:', effectiveFacadeThickness);
+    console.log('  effectiveLoadPosition:', effectiveLoadPosition);
+
+    // Calculate Ecc = facade_thickness * load_position (replaces hardcoded M/3)
+    const Ecc_raw = effectiveFacadeThickness * effectiveLoadPosition;
+    const Ecc = roundToTwelveDecimals(Ecc_raw);
+
+    console.log('\nEccentricity Calculation:');
+    console.log('  Ecc = facade_thickness × load_position');
+    console.log(`  Ecc = ${effectiveFacadeThickness}mm × ${effectiveLoadPosition}`);
+    console.log(`  Ecc = ${Ecc_raw}mm (raw)`);
+    console.log(`  Ecc = ${Ecc}mm (rounded to 12 decimal places)`);
 
     // Calculate a = Ecc+d+PI()*(T/2+R)-(T+R)
-    const a = roundToTwelveDecimals(
-        Ecc + 
-        params.d + 
-        (Math.PI * (params.T/2 + params.R)) - 
-        (params.T + params.R)
-    );
+    const a_raw = Ecc + params.d + (Math.PI * (params.T/2 + params.R)) - (params.T + params.R);
+    const a = roundToTwelveDecimals(a_raw);
+
+    console.log('\nParameter "a" Calculation:');
+    console.log('  a = Ecc + d + π×(T/2 + R) - (T + R)');
+    console.log(`  a = ${Ecc} + ${params.d} + π×(${params.T}/2 + ${params.R}) - (${params.T} + ${params.R})`);
+    console.log(`  a = ${Ecc} + ${params.d} + π×(${params.T/2} + ${params.R}) - ${params.T + params.R}`);
+    console.log(`  a = ${Ecc} + ${params.d} + π×${params.T/2 + params.R} - ${params.T + params.R}`);
+    console.log(`  a = ${Ecc} + ${params.d} + ${Math.PI * (params.T/2 + params.R)} - ${params.T + params.R}`);
+    console.log(`  a = ${a_raw}mm (raw)`);
+    console.log(`  a = ${a}mm (rounded)`);
 
     // Calculate b = L_bearing - Ecc
-    const b = roundToTwelveDecimals(params.L_bearing - Ecc);
+    const b_raw = params.L_bearing - Ecc;
+    const b = roundToTwelveDecimals(b_raw);
+
+    console.log('\nParameter "b" Calculation:');
+    console.log('  b = L_bearing - Ecc');
+    console.log(`  b = ${params.L_bearing} - ${Ecc}`);
+    console.log(`  b = ${b_raw}mm (raw)`);
+    console.log(`  b = ${b}mm (rounded)`);
 
     // Calculate I = A-(R+T)-16.5
-    const I = roundToTwelveDecimals(params.A - (params.R + params.T) - 16.5);
+    const I_raw = params.A - (params.R + params.T) - 16.5;
+    const I = roundToTwelveDecimals(I_raw);
+
+    console.log('\nParameter "I" Calculation:');
+    console.log('  I = A - (R + T) - 16.5');
+    console.log(`  I = ${params.A} - (${params.R} + ${params.T}) - 16.5`);
+    console.log(`  I = ${params.A} - ${params.R + params.T} - 16.5`);
+    console.log(`  I = ${I_raw}mm (raw)`);
+    console.log(`  I = ${I}mm (rounded)`);
+
+    console.log('\n=== MATHEMATICAL MODEL RESULTS ===');
+    console.log(`  Ecc: ${Ecc}mm`);
+    console.log(`  a: ${a}mm`);
+    console.log(`  b: ${b}mm`);
+    console.log(`  I: ${I}mm`);
+    console.log('=== END MATHEMATICAL MODEL DEBUG ===\n');
 
     return {
         Ecc,

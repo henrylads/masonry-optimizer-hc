@@ -23,6 +23,7 @@ import { verifyBracketDesign, type BracketDesignResults } from './angleChecks/br
 
 import { AngleCalculationResults } from '../angleCalculations';
 import { MathematicalModelResults } from './mathematicalModelCalculations';
+import type { AngleExtensionResult } from '../../types/bracketAngleTypes';
 
 interface VerificationParams {
     bracketHeight: number;
@@ -43,6 +44,10 @@ interface VerificationParams {
     base_plate_width: number;
     channelType: string;
     concreteGrade: number;
+
+    // Angle extension parameters for verification with modified geometry
+    angle_extension_result?: AngleExtensionResult;  // Angle extension result (if applied)
+    effective_vertical_leg?: number;              // Effective vertical leg height (accounting for extension)
 }
 
 /**
@@ -76,6 +81,12 @@ export interface VerificationResults {
     bracketDesignResults: BracketDesignResults;
     /** Whether all checks pass */
     passes: boolean;
+
+    // Angle extension information for verification tracking
+    /** Angle extension result (if extension was applied) */
+    angle_extension_result?: AngleExtensionResult;
+    /** Whether verification used modified geometry due to angle extension */
+    uses_extended_geometry?: boolean;
 }
 
 /**
@@ -124,6 +135,18 @@ export const verifyAll = (
         angleParams.Z
     );
 
+    // Use dynamic horizontal leg with fallback to 90mm for safety
+    const horizontalLeg = angleParams.horizontal_leg ?? 90;
+
+    if (!angleParams.horizontal_leg) {
+        console.warn('⚠️  WARNING: angleParams.horizontal_leg is undefined, falling back to 90mm');
+        console.warn('   This indicates facade parameters may not be available for dynamic calculation');
+    } else if (angleParams.horizontal_leg !== 90) {
+        console.log('✅ Using dynamic horizontal leg:', horizontalLeg, 'mm (calculated from facade parameters)');
+    } else {
+        console.log('ℹ️  Using default horizontal leg:', horizontalLeg, 'mm');
+    }
+
     const deflectionResults = verifyAngleDeflectionSLS(
         appliedShearKN,
         momentResults.L_1,
@@ -133,7 +156,7 @@ export const verifyAll = (
         mathModel.a,
         mathModel.b,
         mathModel.I,
-        90,  // Horizontal leg length B
+        horizontalLeg,  // Use safe horizontal leg value with fallback
         angleParams.Ixx_1,
         210  // F_y from MOMENT_RESISTANCE_CONSTANTS
     );
@@ -148,7 +171,7 @@ export const verifyAll = (
         console.log('a:', mathModel.a);
         console.log('b:', mathModel.b);
         console.log('I:', mathModel.I);
-        console.log('B:', 90);
+        console.log('B (horizontal_leg):', horizontalLeg, 'mm', angleParams.horizontal_leg ? '(dynamic)' : '(fallback)');
         console.log('Ixx_1:', angleParams.Ixx_1);
         console.log('F_y:', 210);
 
@@ -353,6 +376,10 @@ export const verifyAll = (
         totalDeflectionResults,
         packerResults,
         bracketDesignResults,
-        passes
+        passes,
+
+        // Include angle extension information for tracking
+        angle_extension_result: params.angle_extension_result,
+        uses_extended_geometry: Boolean(params.angle_extension_result?.extension_applied)
     };
 }; 

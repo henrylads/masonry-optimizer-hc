@@ -152,6 +152,15 @@ export async function POST(request: Request) {
       });
     }
 
+    console.log('🔍 API ROUTE DEBUG: Received form data:', {
+      facade_thickness: data.facade_thickness,
+      masonry_thickness: data.masonry_thickness,
+      material_type: data.material_type,
+      load_position: data.load_position,
+      front_offset: data.front_offset,
+      isolation_shim_thickness: data.isolation_shim_thickness
+    });
+
     // Prepare brute force algorithm config
     const bruteForceConfig = {
       ...DEFAULT_BF_CONFIG,
@@ -165,9 +174,22 @@ export async function POST(request: Request) {
         notch_height: data.notch_height ?? 0,
         notch_depth: data.notch_depth ?? 0,
         enable_fixing_optimization: data.enable_fixing_optimization ?? false,
-        fixing_position: data.fixing_position ?? 75
+        fixing_position: data.fixing_position ?? 75,
+        facade_thickness: data.facade_thickness ?? data.masonry_thickness ?? 102.5,
+        load_position: data.load_position ?? (1/3),
+        front_offset: data.front_offset ?? 12,
+        isolation_shim_thickness: data.isolation_shim_thickness ?? 3,
+        material_type: data.material_type ?? 'brick'
       }
     };
+
+    console.log('🔍 API ROUTE DEBUG: Brute force config designInputs:', {
+      facade_thickness: bruteForceConfig.designInputs.facade_thickness,
+      load_position: bruteForceConfig.designInputs.load_position,
+      front_offset: bruteForceConfig.designInputs.front_offset,
+      isolation_shim_thickness: bruteForceConfig.designInputs.isolation_shim_thickness,
+      material_type: bruteForceConfig.designInputs.material_type
+    });
     console.log('API route: Prepared brute force algorithm config:', bruteForceConfig);
 
     // Run brute force algorithm optimization
