@@ -92,7 +92,8 @@ describe('Comprehensive Calculation Process', () => {
       facade_thickness: 102.5, // Brick facade
       load_position: 1/3,
       front_offset: 12,
-      isolation_shim_thickness: 3
+      isolation_shim_thickness: 3,
+      depth_to_toe_plate: 12 // Default value, can be adjusted in rare occasions
     });
     console.log('Angle Results:', JSON.stringify(angleResults, null, 2));
 
@@ -248,7 +249,8 @@ describe('Comprehensive Calculation Process', () => {
       facade_thickness: 102.5, // Brick facade
       load_position: 1/3,
       front_offset: 12,
-      isolation_shim_thickness: 3
+      isolation_shim_thickness: 3,
+      depth_to_toe_plate: 12 // Default value, can be adjusted in rare occasions
     });
     console.log('Angle Results:', JSON.stringify(angleResults, null, 2));
 

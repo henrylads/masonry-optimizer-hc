@@ -163,7 +163,8 @@ export function evaluateBruteForceDesign(
         facade_thickness: design.calculated.facade_thickness,
         load_position: design.calculated.load_position,
         front_offset: design.calculated.front_offset,
-        isolation_shim_thickness: design.calculated.isolation_shim_thickness
+        isolation_shim_thickness: design.calculated.isolation_shim_thickness,
+        depth_to_toe_plate: 12 // Default value, can be adjusted in rare occasions
     });
 
     // Update genetic parameters with calculated horizontal leg
@@ -172,7 +173,7 @@ export function evaluateBruteForceDesign(
     // 5. Mathematical Model Calculations (using effective vertical leg)
     const mathModelResults = calculateMathematicalModel({
         M: design.calculated.masonry_thickness ?? 102.5, // Keep for backward compatibility
-        d: angleResults.d,
+        d: angleResults.cavity_back_angle, // Use cavity_back_angle instead of d
         T: design.genetic.angle_thickness,
         R: angleResults.R,
         L_bearing: angleResults.b,

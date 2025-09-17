@@ -26,13 +26,15 @@ export interface AngleCalculationInputs {
     front_offset?: number;
     /** Isolation shim thickness for angle projection (mm) - may differ from S */
     isolation_shim_thickness?: number;
+    /** Depth to toe plate (mm) - defaults to 12mm but can be adjusted in rare occasions */
+    depth_to_toe_plate?: number;
 }
 
 /**
  * Interface for angle calculation results
  */
 export interface AngleCalculationResults {
-    /** Distance from cavity to back of angle (mm) */
+    /** Distance from cavity to back of bracket (mm) */
     d: number;
     /** Length of bearing (mm) */
     b: number;
@@ -46,6 +48,8 @@ export interface AngleCalculationResults {
     Ixx_1: number;
     /** Calculated horizontal leg length (mm) - dynamically determined from facade parameters */
     horizontal_leg: number;
+    /** Distance from cavity to back of angle (mm) - d + (T=5 ? 6 : 5) */
+    cavity_back_angle: number;
 }
 
 /**
@@ -97,13 +101,29 @@ export function calculateAngleParameters(params: AngleCalculationInputs): AngleC
         }
     }
 
-    // Calculate d = (C-D-S)+IF(T=5 THEN, 6, ELSE 5)
-    // Distance from cavity to back of angle
-    const d_raw = (params.C - params.D - params.S) + (params.T === 5 ? 6 : 5);
+    // Calculate d = C - D - S
+    // Distance from cavity to back of angle (simple: cavity minus bracket projection minus isolation shim)
+    const d_raw = params.C - params.D - params.S;
 
-    // Calculate b = B-T-d
-    // Length of bearing which is horizontal leg minus the angle thickness minus the cavity to the back of the angle
-    const b_raw = effectiveB - params.T - d_raw;
+    // Calculate cavity_back_angle = d + depth_to_toe_plate (default 12mm)
+    // Distance from cavity to back of angle - adds depth to toe plate offset
+    const depth_to_toe_plate = params.depth_to_toe_plate || 12;
+    const cavity_back_angle = d_raw + depth_to_toe_plate;
+
+    console.log(`🔧 L_BEARING CALCULATION DEBUG:`);
+    console.log(`  d (cavity to back of bracket): ${d_raw} mm`);
+    console.log(`  depth_to_toe_plate: ${depth_to_toe_plate} mm (default 12mm, can be adjusted)`);
+    console.log(`  cavity_back_angle (d + depth_to_toe_plate): ${cavity_back_angle} mm`);
+    console.log(`  B (horizontal leg): ${effectiveB} mm`);
+    console.log(`  T (angle thickness): ${params.T} mm`);
+    console.log(`  OLD formula (B - T - d): ${effectiveB - params.T - d_raw} mm`);
+    console.log(`  CORRECTED formula (B - cavity_back_angle): ${effectiveB - cavity_back_angle} mm`);
+
+    // Calculate b = B - cavity_back_angle
+    // Length of bearing which is horizontal leg minus cavity_back_angle
+    const b_raw = effectiveB - cavity_back_angle;
+
+    console.log(`  RESULT: L_bearing (b) = ${b_raw} mm ✓`);
     
     // Calculate R = T
     // Internal radius R = the same as the angle thickness
@@ -129,7 +149,8 @@ export function calculateAngleParameters(params: AngleCalculationInputs): AngleC
         Z: roundToTwelveDecimals(Z_raw),
         Av: roundToTwelveDecimals(Av_raw),
         Ixx_1: roundToTwelveDecimals(Ixx_1_raw),
-        horizontal_leg: roundToTwelveDecimals(effectiveB)
+        horizontal_leg: roundToTwelveDecimals(effectiveB),
+        cavity_back_angle: roundToTwelveDecimals(cavity_back_angle) // Add cavity_back_angle to results
     };
 }
 

@@ -97,16 +97,17 @@ export function calculateMathematicalModel(params: MathematicalModelInputs): Mat
     console.log(`  Ecc = ${Ecc_raw}mm (raw)`);
     console.log(`  Ecc = ${Ecc}mm (rounded to 12 decimal places)`);
 
-    // Calculate a = Ecc+d+PI()*(T/2+R)-(T+R)
-    const a_raw = Ecc + params.d + (Math.PI * (params.T/2 + params.R)) - (params.T + params.R);
+    // Calculate a = cavity_back_angle + Ecc - (T + R) + π×(T/2 + R)
+    // Note: params.d contains cavity_back_angle when called from angle calculations
+    const a_raw = params.d + Ecc - (params.T + params.R) + (Math.PI * (params.T/2 + params.R));
     const a = roundToTwelveDecimals(a_raw);
 
     console.log('\nParameter "a" Calculation:');
-    console.log('  a = Ecc + d + π×(T/2 + R) - (T + R)');
-    console.log(`  a = ${Ecc} + ${params.d} + π×(${params.T}/2 + ${params.R}) - (${params.T} + ${params.R})`);
-    console.log(`  a = ${Ecc} + ${params.d} + π×(${params.T/2} + ${params.R}) - ${params.T + params.R}`);
-    console.log(`  a = ${Ecc} + ${params.d} + π×${params.T/2 + params.R} - ${params.T + params.R}`);
-    console.log(`  a = ${Ecc} + ${params.d} + ${Math.PI * (params.T/2 + params.R)} - ${params.T + params.R}`);
+    console.log('  a = cavity_back_angle + Ecc - (T + R) + π×(T/2 + R)');
+    console.log(`  a = ${params.d} + ${Ecc} - (${params.T} + ${params.R}) + π×(${params.T}/2 + ${params.R})`);
+    console.log(`  a = ${params.d} + ${Ecc} - ${params.T + params.R} + π×(${params.T/2} + ${params.R})`);
+    console.log(`  a = ${params.d} + ${Ecc} - ${params.T + params.R} + π×${params.T/2 + params.R}`);
+    console.log(`  a = ${params.d} + ${Ecc} - ${params.T + params.R} + ${Math.PI * (params.T/2 + params.R)}`);
     console.log(`  a = ${a_raw}mm (raw)`);
     console.log(`  a = ${a}mm (rounded)`);
 

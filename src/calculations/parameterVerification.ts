@@ -106,13 +106,14 @@ export async function verifyWithModifiedParameters(
       facade_thickness: originalCalc.facade_thickness,
       load_position: originalCalc.load_position,
       front_offset: originalCalc.front_offset,
-      isolation_shim_thickness: originalCalc.isolation_shim_thickness
+      isolation_shim_thickness: originalCalc.isolation_shim_thickness,
+      depth_to_toe_plate: 12 // Default value, can be adjusted in rare occasions
     });
 
     // 4. Recalculate mathematical model (uses angle parameters)
     const mathModelResults = calculateMathematicalModel({
       M: masonry_thickness,
-      d: angleResults.d,
+      d: angleResults.cavity_back_angle, // Use cavity_back_angle instead of d
       T: modifiedParams.angle_thickness,
       R: angleResults.R,
       L_bearing: angleResults.b,
