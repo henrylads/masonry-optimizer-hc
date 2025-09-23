@@ -66,7 +66,6 @@ const paramIdMapping: Record<string, string> = {
     'bracket_count': '4e4d2dec-32e1-4964-a7b2-4eed2553cd6e', // Bracket Count [#]
     'bracket_spacing': '4258ae1b-6044-4c70-8af8-29b73a301257', // C/C distance [mm]
     'start_offset': '70118ce5-77ad-47c5-8e25-30eac545ad92', // Distance from start [mm]
-    'spacing_gap': 'de72784f-60fa-4440-8cf7-835042f9a69f', // Spacing Gap [mm]
     'fixing_position': '4f5b0fb9-0141-47b8-ae7e-987fd3acd563', // Slab mounting offset [mm] - Fixing Position
 };
 
@@ -92,7 +91,6 @@ const paramIdToNameMapping: Record<string, string> = {
     '4e4d2dec-32e1-4964-a7b2-4eed2553cd6e': 'Bracket Count [#]',
     '4258ae1b-6044-4c70-8af8-29b73a301257': 'C/C distance [mm]',
     '70118ce5-77ad-47c5-8e25-30eac545ad92': 'Distance from start [mm]',
-    'de72784f-60fa-4440-8cf7-835042f9a69f': 'Spacing Gap [mm]',
     '4f5b0fb9-0141-47b8-ae7e-987fd3acd563': 'Slab mounting offset [mm]',
 };
 
@@ -154,8 +152,7 @@ const formatParameterValue = (paramId: string, value: ParameterValue): string =>
 
     // Handle other bracket positioning parameters that need to be integers
     if (paramId === 'c08f3598-084e-4f59-9778-109c711a347e' || // Total Angle Length [mm]
-        paramId === '4258ae1b-6044-4c70-8af8-29b73a301257' || // C/C distance [mm]
-        paramId === 'de72784f-60fa-4440-8cf7-835042f9a69f') { // Spacing Gap [mm]
+        paramId === '4258ae1b-6044-4c70-8af8-29b73a301257') { // C/C distance [mm]
         return Math.round(Number(value)).toString();
     }
 
@@ -382,7 +379,7 @@ export const ShapeDiverCard: React.FC<ShapeDiverCardProps> = ({
                 console.log("🔄 Creating ShapeDiver session with embedding ticket and parameters");
                 const session = await createSession({
                     id: `session_${viewportIdRef.current}`,
-                    ticket: '98b0b91b1716c4154483066dc79d4334a2c428a842db5d672e8c63a61ea46829bd8dd837fcc288fe59b215b5f3ec6d3892e28eb22a1c3cd55f2dc8ff6c7bf1fea7b80f2201596b199cc02392b55624e492691a65c6f26c5a51f3c9e0e3326ff12d6f99ca2e8770-eec1b75bfefa4d3ac7140fdf0290e3ee',
+                    ticket: 'e56ab1b147eb8bbf3290ec249e94410980defce57561ac5c2eb708d93cb321ce6d9f333a651fc76b291a36e87090ef019617f59d82aa2ffebf4cda7ffea152180e0e9a43171513d7c73c62f8c2461092477646c797ec45236ce492b8f23acad6a58ae8c128a679-24cda070347f15e39bda6c6015b109d0',
                     modelViewUrl: 'https://sdr8euc1.eu-central-1.shapediver.com',
                     initialParameterValues: paramsForShapeDiver
                 });

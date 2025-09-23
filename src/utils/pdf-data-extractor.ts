@@ -114,17 +114,34 @@ export const extractDesignInputs = (formData: FormDataType): FormattedDesignInpu
 export const extractFinalDesign = (result: OptimizationResult): FormattedFinalDesign => {
   const genetic = result.genetic || {};
   const calculated = result.calculated || {};
+  const angleExtension = calculated.angle_extension_result;
+
+  // Determine actual angle height with priority system:
+  // 1. calculated.effective_vertical_leg (if available)
+  // 2. calculated.angle_extension_result.extended_angle_height (if extension applied)
+  // 3. genetic.vertical_leg (fallback - original parameter)
+  const actualAngleHeight = calculated.effective_vertical_leg?.toString() ||
+                           (angleExtension?.extension_applied ? angleExtension.extended_angle_height?.toString() : null) ||
+                           genetic.vertical_leg?.toString() ||
+                           'N/A';
+
+  // Determine final angle orientation considering auto-flipping:
+  // 1. calculated.angle_extension_result.final_angle_orientation (if flipped)
+  // 2. genetic.angle_orientation (fallback)
+  const finalAngleOrientation = (angleExtension?.angle_orientation_flipped ? angleExtension.final_angle_orientation : null) ||
+                               genetic.angle_orientation ||
+                               'N/A';
 
   return {
     genetic: [
       { label: 'Bracket Centres', value: genetic.bracket_centres?.toString() || 'N/A', unit: 'mm' },
       { label: 'Bracket Thickness', value: genetic.bracket_thickness?.toString() || 'N/A', unit: 'mm' },
       { label: 'Angle Thickness', value: genetic.angle_thickness?.toString() || 'N/A', unit: 'mm' },
-      { label: 'Vertical Leg', value: genetic.vertical_leg?.toString() || 'N/A', unit: 'mm' },
+      { label: 'Vertical Leg', value: actualAngleHeight, unit: 'mm' },
       { label: 'Horizontal Leg', value: genetic.horizontal_leg?.toString() || 'N/A', unit: 'mm' },
       { label: 'Bolt Diameter', value: genetic.bolt_diameter?.toString() || 'N/A', unit: 'mm' },
       { label: 'Bracket Type', value: genetic.bracket_type || 'N/A' },
-      { label: 'Angle Orientation', value: genetic.angle_orientation || 'N/A' },
+      { label: 'Angle Orientation', value: finalAngleOrientation },
       { label: 'Channel Type', value: genetic.channel_type || 'N/A' },
       { label: 'Fixing Position', value: genetic.fixing_position?.toString() || 'N/A', unit: 'mm' }
     ],
@@ -135,7 +152,21 @@ export const extractFinalDesign = (result: OptimizationResult): FormattedFinalDe
       { label: 'Rise to Bolts', value: calculated.rise_to_bolts?.toString() || 'N/A', unit: 'mm' },
       { label: 'Slab Thickness', value: calculated.slab_thickness?.toString() || 'N/A', unit: 'mm' },
       { label: 'Applied Shear', value: calculated.applied_shear?.toString() || 'N/A', unit: 'kN' },
-      { label: 'Optimized Fixing Position', value: calculated.optimized_fixing_position?.toString() || 'N/A', unit: 'mm' }
+      { label: 'Optimized Fixing Position', value: calculated.optimized_fixing_position?.toString() || 'N/A', unit: 'mm' },
+      // Add angle extension information when applicable
+      ...(angleExtension?.extension_applied ? [
+        { label: 'Angle Extension Applied', value: 'Yes' },
+        { label: 'Original Angle Height', value: angleExtension.original_angle_height?.toString() || 'N/A', unit: 'mm' },
+        { label: 'Extended Angle Height', value: angleExtension.extended_angle_height?.toString() || 'N/A', unit: 'mm' },
+        { label: 'Angle Extension Amount', value: angleExtension.angle_extension?.toString() || 'N/A', unit: 'mm' },
+        { label: 'Extension Reason', value: 'Exclusion zone constraint' },
+        ...(angleExtension.angle_orientation_flipped ? [
+          { label: 'Orientation Auto-Flipped', value: 'Yes' },
+          { label: 'Original Orientation', value: angleExtension.original_angle_orientation || 'N/A' },
+          { label: 'Final Orientation', value: angleExtension.final_angle_orientation || 'N/A' },
+          { label: 'Flip Reason', value: angleExtension.flip_reason || 'Extension compatibility' }
+        ] : [])
+      ] : [])
     ],
     performance: [
       { label: 'Total Weight', value: result.totalWeight?.toString() || 'N/A', unit: 'kg/m' },
@@ -166,7 +197,7 @@ export const extractCalculations = (verificationResults: VerificationResults): F
         { parameter: 'Section Modulus (Z)', value: 'From angle calculations', unit: 'mm³' }
       ],
       formulas: [
-        { step: '1. Calculate lever arm', formula: 'L₁ = Ecc + d + T', result: `${safeToString(momentResults.L_1)} mm` },
+        { step: '1. Calculate lever arm', formula: 'L₁ = Ecc + d + (12 - T)', result: `${safeToString(momentResults.L_1)} mm` },
         { step: '2. Calculate applied moment', formula: 'M_ed = V_ed × (L₁/1000)', result: `${safeToString(momentResults.M_ed_angle)} kNm` },
         { step: '3. Calculate moment capacity', formula: 'Mc_rd = Z/10⁶ × (F_y/γ_sf)', result: `${safeToString(momentResults.Mc_rd_angle)} kNm` },
         { step: '4. Calculate utilization', formula: 'Utilization = (M_ed/Mc_rd) × 100', result: `${safeToString(momentResults.utilization)}%` }

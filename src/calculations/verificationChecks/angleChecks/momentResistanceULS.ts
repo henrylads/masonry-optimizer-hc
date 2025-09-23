@@ -38,9 +38,18 @@ export const verifyMomentResistanceULS = (
     T: number,             // Angle thickness (mm)
     Z: number              // Section modulus (mm³)
 ): MomentResistanceULSResults => {
-    // Calculate L_1 = Ecc + d + T
+    // Calculate L_1 = Ecc + d + (12 - T)
     // Keep full precision for intermediate calculations
-    const L_1_intermediate = Ecc + d + T;
+
+    console.log('🔧 L_1 CALCULATION DEBUG:');
+    console.log('  Ecc:', Ecc, 'mm');
+    console.log('  d:', d, 'mm');
+    console.log('  T:', T, 'mm');
+    console.log('  OLD formula (Ecc + d + T):', Ecc + d + T, 'mm');
+    console.log('  NEW formula (Ecc + d + (12-T)):', Ecc + d + (12 - T), 'mm');
+    console.log('  USING NEW FORMULA ✓');
+
+    const L_1_intermediate = Ecc + d + (12 - T);
     
     // Calculate M_ed = V_Ed * (L_1/1000)
     // Keep full precision for intermediate calculations

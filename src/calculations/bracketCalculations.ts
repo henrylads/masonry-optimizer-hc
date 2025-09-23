@@ -138,51 +138,52 @@ export function calculateInvertedBracketHeight(inputs: InvertedBracketInputs): I
         final_extension_below_slab_raw: extension_below_slab_raw
     });
 
-    // Apply position limits to extension below slab if angle extension is enabled
+    // Apply position limits and calculate angle extension using centralized logic
     let limited_extension_below_slab = extension_below_slab_raw;
-    let angle_extension_amount = 0;
+    let angle_extension_result: AngleExtensionResult | undefined;
 
     if (shouldApplyAngleExtension(inputs.enable_angle_extension, inputs.max_allowable_bracket_extension)) {
-        // Calculate maximum rise-to-bolts from position limit
-        // Rise-to-bolts is the distance from fixing point to the maximum allowable bracket position
-        // Both positions are measured from top of slab:
-        // - Fixing point: effectiveTopCriticalEdge mm from top (e.g., 75mm)
-        // - Max bracket position: max_allowable_bracket_extension from top (e.g., -225mm = 225mm below top)
-        // - Max rise-to-bolts = distance between these points = |max_position| - fixing_distance
-        const max_rise_to_bolts = Math.abs(inputs.max_allowable_bracket_extension!) - effectiveTopCriticalEdge;
+        // Use centralized angle extension calculation
+        try {
+            // Calculate the original bracket height that would be needed
+            const original_bracket_height_for_extension = height_above_ssl_raw + effectiveTopCriticalEdge + bottom_critical_edge + extension_below_slab_raw;
 
-        console.log(`🔧 COORDINATE SYSTEM DEBUG (FIXED):`, {
-            effectiveTopCriticalEdge,
-            max_allowable_bracket_extension: inputs.max_allowable_bracket_extension,
-            max_rise_to_bolts,
-            calculation: `|${inputs.max_allowable_bracket_extension}| - ${effectiveTopCriticalEdge} = ${max_rise_to_bolts}mm`,
-            explanation: 'Distance from fixing point to maximum bracket position'
-        });
+            const extension_inputs: AngleExtensionInputs = {
+                original_bracket_height: original_bracket_height_for_extension,
+                max_allowable_bracket_extension: inputs.max_allowable_bracket_extension!,
+                current_angle_height: inputs.current_angle_height || 60,
+                required_support_level: support_level,
+                slab_thickness: inputs.slab_thickness,
+                bracket_type: 'Inverted',
+                angle_orientation: inputs.angle_orientation || 'Standard',
+                fixing_position: effectiveTopCriticalEdge,
+                height_above_ssl: height_above_ssl_raw
+            };
 
-        console.log(`🔧 INVERTED BRACKET DEBUG - Position Limit Check:`, {
-            max_allowable_bracket_extension: inputs.max_allowable_bracket_extension,
-            effectiveTopCriticalEdge,
-            max_rise_to_bolts,
-            calculated_rise_to_bolts: bottom_critical_edge + extension_below_slab_raw
-        });
+            angle_extension_result = calculateAngleExtension(extension_inputs);
 
-        // Rise-to-bolts = bottom_critical_edge + extension_below_slab
-        const required_rise_to_bolts = bottom_critical_edge + extension_below_slab_raw;
+            // If extension was applied, adjust the extension below slab
+            if (angle_extension_result.extension_applied) {
+                // The bracket reduction translates to reduced extension below slab for inverted brackets
+                const reduction_in_extension = angle_extension_result.bracket_reduction;
+                limited_extension_below_slab = Math.max(0, extension_below_slab_raw - reduction_in_extension);
 
-        if (required_rise_to_bolts > max_rise_to_bolts) {
-            // Limit the extension below slab to stay within position limit
-            const max_extension_below_slab = Math.max(0, max_rise_to_bolts - bottom_critical_edge);
-            limited_extension_below_slab = max_extension_below_slab;
+                console.log(`🔧 INVERTED BRACKET - Using Centralized Extension:`, {
+                    original_extension_below_slab: extension_below_slab_raw,
+                    bracket_reduction: angle_extension_result.bracket_reduction,
+                    limited_extension_below_slab,
+                    angle_extension: angle_extension_result.angle_extension,
+                    angle_orientation_flipped: angle_extension_result.angle_orientation_flipped,
+                    original_angle_orientation: angle_extension_result.original_angle_orientation,
+                    final_angle_orientation: angle_extension_result.final_angle_orientation,
+                    flip_reason: angle_extension_result.flip_reason
+                });
+            }
 
-            // Calculate how much angle extension is needed to compensate
-            angle_extension_amount = required_rise_to_bolts - max_rise_to_bolts;
-
-            console.log(`⚠️ Rise-to-bolts limited by position constraint:`, {
-                required_rise_to_bolts,
-                max_rise_to_bolts,
-                limited_extension_below_slab,
-                angle_extension_amount
-            });
+        } catch (error) {
+            console.warn('Centralized angle extension failed for inverted bracket:', error);
+            // Fallback to no extension limit
+            limited_extension_below_slab = extension_below_slab_raw;
         }
     }
 
@@ -195,7 +196,7 @@ export function calculateInvertedBracketHeight(inputs: InvertedBracketInputs): I
         bottom_critical_edge,
         extension_below_slab_raw,
         limited_extension_below_slab,
-        angle_extension_amount,
+        angle_extension_applied: angle_extension_result?.extension_applied || false,
         effectiveTopCriticalEdge,
         height_below_ssl_raw
     });
@@ -217,39 +218,16 @@ export function calculateInvertedBracketHeight(inputs: InvertedBracketInputs): I
     // How much the bracket extends past the concrete soffit (using limited extension)
     const drop_below_slab_raw = limited_extension_below_slab;
 
-    // Create angle extension result if angle extension was applied
-    let angle_extension_result: AngleExtensionResult | undefined;
+    // Use the angle extension result from centralized calculation
     let final_bracket_height = total_bracket_height_raw;
 
-    if (angle_extension_amount > 0) {
-        // Angle extension was applied - create the result object
-        const original_angle_height = inputs.current_angle_height || 60;
-        const extended_angle_height = original_angle_height + angle_extension_amount;
-
-        // Validate the extended angle height doesn't exceed manufacturing limits
-        const MAX_ANGLE_HEIGHT = 400; // mm
-        if (extended_angle_height > MAX_ANGLE_HEIGHT) {
-            console.error(`❌ Angle extension would exceed manufacturing limits: ${extended_angle_height}mm > ${MAX_ANGLE_HEIGHT}mm`);
-            // For now, we'll throw an error, but could implement fallback logic
-            throw new Error(`Angle extension would exceed manufacturing limits. Required: ${extended_angle_height}mm, Maximum: ${MAX_ANGLE_HEIGHT}mm`);
-        }
-
-        angle_extension_result = {
-            extension_applied: true,
+    // If angle extension was applied with bracket reduction, use the limited bracket height
+    if (angle_extension_result?.extension_applied && angle_extension_result.bracket_reduction > 0) {
+        final_bracket_height = angle_extension_result.limited_bracket_height;
+        console.log(`🔧 USING LIMITED BRACKET HEIGHT:`, {
             original_bracket_height: total_bracket_height_raw,
-            limited_bracket_height: total_bracket_height_raw, // Bracket height isn't reduced in this approach
-            bracket_reduction: 0, // No bracket reduction, just limited rise-to-bolts
-            original_angle_height: original_angle_height,
-            extended_angle_height: extended_angle_height,
-            angle_extension: angle_extension_amount,
-            max_extension_limit: inputs.max_allowable_bracket_extension || 0
-        };
-
-        console.log(`🔧 INVERTED BRACKET DEBUG - Angle Extension Applied:`, {
-            angle_extension_amount,
-            original_angle_height,
-            extended_angle_height,
-            rise_to_bolts_limited_to: rise_to_bolts_raw
+            limited_bracket_height: final_bracket_height,
+            bracket_reduction: angle_extension_result.bracket_reduction
         });
     }
 
@@ -331,6 +309,7 @@ export function calculateStandardBracketHeightWithExtension(inputs: StandardBrac
                 bracket_type: inputs.bracket_type || 'Standard',
                 angle_orientation: inputs.angle_orientation || 'Standard',
                 fixing_position: effectiveTopCriticalEdge
+                // height_above_ssl not applicable for standard brackets
             };
 
             angle_extension_result = calculateAngleExtension(extension_inputs);

@@ -366,12 +366,52 @@ export function ResultsDisplay({ result, history, designInputs }: ResultsDisplay
       slab_thickness: displayedResult.calculated?.slab_thickness ?? 225,
 
       // Fixing position - distance from top of slab to fixing point
+      // Adjusted for exclusion zone constraints to ensure bracket top stays within limits
       fixing_position: (() => {
         const optimizedPos = displayedResult.calculated?.optimized_fixing_position;
         const geneticPos = displayedResult.genetic?.fixing_position;
-        const finalPos = optimizedPos ?? geneticPos ?? 75;
-        console.log(`🔧 ShapeDiver fixing_position: optimized=${optimizedPos}mm, genetic=${geneticPos}mm, final=${finalPos}mm`);
-        return finalPos;
+        const baseFixingPos = optimizedPos ?? geneticPos ?? 75;
+
+        // Check if exclusion zone constraints are active
+        const angleExtension = displayedResult?.calculated?.angle_extension_result;
+        const hasExclusionZone = angleExtension?.extension_applied && angleExtension?.max_extension_limit !== null;
+
+        if (hasExclusionZone) {
+          const exclusionLimit = angleExtension!.max_extension_limit;
+          const heightAboveSSL = displayedResult.calculated?.height_above_ssl ?? 0;
+
+          // For exclusion zones at or above slab top (≥ 0mm), adjust fixing position
+          // to ensure bracket top doesn't exceed the exclusion limit
+          if (exclusionLimit >= 0) {
+            // Calculate required adjustment to position bracket top at exclusion limit
+            // For inverted brackets: bracket_top = slab_top - height_above_ssl_effective
+            // We want: bracket_top ≤ exclusion_limit (from slab top)
+            // So: -height_above_ssl_effective ≤ exclusion_limit
+            // Therefore: height_above_ssl_effective ≥ -exclusion_limit
+
+            // With exclusion zone constraints, height_above_ssl should be limited to exclusion_limit
+            const effectiveHeightAboveSSL = Math.min(heightAboveSSL, exclusionLimit);
+
+            // Adjust fixing position to account for reduced height above SSL
+            const heightReduction = heightAboveSSL - effectiveHeightAboveSSL;
+            const adjustedFixingPos = baseFixingPos + heightReduction;
+
+            console.log(`🔧 ShapeDiver fixing_position (exclusion zone adjusted):`, {
+              baseFixingPos,
+              exclusionLimit,
+              heightAboveSSL,
+              effectiveHeightAboveSSL,
+              heightReduction,
+              adjustedFixingPos,
+              explanation: `Adjusted for ${exclusionLimit}mm exclusion zone`
+            });
+
+            return adjustedFixingPos;
+          }
+        }
+
+        console.log(`🔧 ShapeDiver fixing_position: optimized=${optimizedPos}mm, genetic=${geneticPos}mm, final=${baseFixingPos}mm`);
+        return baseFixingPos;
       })(),
       
       back_notch_height: Math.max(10, displayedResult.calculated?.detailed_verification_results?.droppingBelowSlabResults?.H_notch ?? 25),

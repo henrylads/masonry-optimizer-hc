@@ -20,7 +20,7 @@ describe('Angle Deflection SLS Verification', () => {
         // Calculated values
         Ecc: 34.17,            // M/3 (mm)
         d: 195,                // C-5 for 5mm angle (mm)
-        L_1: 234.17,           // Ecc + d + T (mm)
+        L_1: 236.17,           // Ecc + d + (12 - T) (mm)
         Z: 1250,               // (B_cc * T^2) / 6 (mm³)
         Ixx_1: 3125,           // (B_cc * T^3) / 12 (mm⁴)
         

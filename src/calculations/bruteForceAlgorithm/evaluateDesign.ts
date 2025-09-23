@@ -119,6 +119,18 @@ export function evaluateBruteForceDesign(
     // Store angle extension results in design
     design.calculated.angle_extension_result = angleExtensionResult;
 
+    // Update genetic parameters if orientation was flipped
+    if (angleExtensionResult?.angle_orientation_flipped) {
+        console.log(`🔄 GENETIC ANGLE ORIENTATION UPDATE:`, {
+            original: design.genetic.angle_orientation,
+            flipped_to: angleExtensionResult.final_angle_orientation,
+            reason: angleExtensionResult.flip_reason
+        });
+
+        // Update the genetic parameters with the final orientation
+        design.genetic.angle_orientation = angleExtensionResult.final_angle_orientation;
+    }
+
     // Calculate effective vertical leg (original or extended)
     const effectiveVerticalLeg = calculateEffectiveVerticalLeg(
         design.genetic.vertical_leg,

@@ -513,11 +513,6 @@ export default function MasonryDesignerForm({
         <h1 className="text-3xl font-bold">Masonry Support Designer</h1>
       </div>
 
-      {/* DEBUG: Component Update Indicator */}
-      <div className="mb-2 p-2 bg-red-100 border border-red-300 rounded text-xs text-red-700">
-        🚨 DEBUG: Component active - Button disabled: {combinedIsLoading ? 'TRUE' : 'FALSE'}
-        {combinedIsLoading && ' (isLoading:' + isLoading + ', aiOptimizing:' + aiIsOptimizing + ')'}
-      </div>
 
       {/* Workflow Mode Toggle */}
       <div className="mb-6 flex justify-end">

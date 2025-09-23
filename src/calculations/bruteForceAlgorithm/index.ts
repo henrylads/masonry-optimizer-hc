@@ -180,7 +180,13 @@ export function calculateDependentParameters(
             top_critical_edge: top_critical_edge,
             bottom_critical_edge: bottom_critical_edge,
             slab_thickness: inputs.slab_thickness,
-            fixing_position: genetic.fixing_position
+            fixing_position: genetic.fixing_position,
+            // Add angle extension parameters
+            max_allowable_bracket_extension: inputs.max_allowable_bracket_extension,
+            enable_angle_extension: inputs.enable_angle_extension,
+            bracket_type: genetic.bracket_type,
+            angle_orientation: genetic.angle_orientation,
+            current_angle_height: genetic.vertical_leg
         });
         
         bracket_height_calc = invertedResults.bracket_height;
@@ -428,7 +434,13 @@ export async function runBruteForce(
                 top_critical_edge: 75,
                 bottom_critical_edge: bottom,
                 slab_thickness: inputs.slab_thickness,
-                fixing_position: fixingPosition
+                fixing_position: fixingPosition,
+                // Add angle extension parameters
+                max_allowable_bracket_extension: inputs.max_allowable_bracket_extension,
+                enable_angle_extension: inputs.enable_angle_extension,
+                bracket_type: g.bracket_type,
+                angle_orientation: g.angle_orientation,
+                current_angle_height: g.vertical_leg
             });
             Hmin = inv.bracket_height;
         } else {

@@ -798,7 +798,7 @@ Using the bracket dimensions we calculate these formulas:
 
 | Notation | Formula  | Unit | description  |
 | :---- | :---- | :---- | :---- |
-| d | \=(C-D-S)+IF(T=5 THEN, 6, ELSE 5\) | mm | Cavity to back of angle |
+| d | \=C-D-S | mm | Cavity to back of angle |
 | b | \=B-T-d | mm | Length of bearing which is horizontal leg minus the angle thickness minus the cavity to the back of the angle.  |
 | R | \=T | mm | Internal radius R \= the same as the angle thickness  |
 | Z | \=(B\_cc\*T^2)/6 | mm3 | Section of modulus used for the angle is the bracket centres multiplied by the angle thickness to power of 2 divided by 6\. Measured in mm3 |

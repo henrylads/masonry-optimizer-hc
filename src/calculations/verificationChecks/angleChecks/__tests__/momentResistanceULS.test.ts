@@ -23,8 +23,8 @@ describe('Moment Resistance ULS Verification', () => {
             Z
         );
 
-        // L_1 = Ecc + d + T
-        const expectedL_1 = roundToTwelveDecimals(testCase.Ecc + testCase.d + testCase.T);
+        // L_1 = Ecc + d + (12 - T)
+        const expectedL_1 = roundToTwelveDecimals(testCase.Ecc + testCase.d + (12 - testCase.T));
         expect(numbersEqualToFiveDecimals(result.L_1, expectedL_1)).toBe(true);
 
         // M_ed,angle = V_Ed * (L_1/1000)
@@ -46,7 +46,7 @@ describe('Moment Resistance ULS Verification', () => {
         );
 
         // Calculate expected values
-        const L_1 = testCase.Ecc + testCase.d + testCase.T;
+        const L_1 = testCase.Ecc + testCase.d + (12 - testCase.T);
         const M_ed = testCase.V_ed * (L_1/1000);
         const Mc_rd = (Z/1000000) * (210/1.1);
         const expectedUtilization = roundToTwelveDecimals((M_ed / Mc_rd) * 100);

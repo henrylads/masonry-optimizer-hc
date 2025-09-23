@@ -91,4 +91,16 @@ export interface AngleExtensionResult {
 
   /** Maximum allowable bracket extension that was applied (mm) */
   max_extension_limit: number;
+
+  /** Whether the angle orientation was automatically flipped */
+  angle_orientation_flipped: boolean;
+
+  /** Original angle orientation before any flipping */
+  original_angle_orientation: AngleOrientation;
+
+  /** Final angle orientation used (after potential flipping) */
+  final_angle_orientation: AngleOrientation;
+
+  /** Reason for orientation flipping (if applicable) */
+  flip_reason?: string;
 }
