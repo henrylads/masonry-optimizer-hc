@@ -2,7 +2,6 @@ import type { DesignInputs } from '@/types/designInputs';
 import type { OptimisationResult, GeneticAlgorithmOutput, AlternativeDesign } from '@/types/optimization-types';
 import { generateAllCombinations } from './combinationGeneration';
 import { evaluateBruteForceDesign } from './evaluateDesign';
-import { SYSTEM_DEFAULTS } from '@/constants';
 import { calculateAreaLoad, calculateCharacteristicUDL, calculateLoading } from '../loadingCalculations';
 import { roundToTwelveDecimals } from '@/utils/precision';
 import { getChannelSpec } from '@/data/channelSpecs';
@@ -497,9 +496,6 @@ export async function runBruteForce(
         
         // Evaluation: handle combinations with or without fixing positions
         try {
-            const channelType = geneticParams.channel_type || 'CPRO38';
-            const { bottom } = getEdges(channelType, designInputs.slab_thickness, geneticParams.bracket_centres);
-
             // Helper to eval one fixing position
             const evalAt = (fixPos: number) => {
                 console.log(`🔧 Algorithm Loop: Creating genetic params with fixing_position=${fixPos}mm`);
@@ -522,7 +518,7 @@ export async function runBruteForce(
             const fixingPosition = geneticParams.fixing_position ?? 75;
             console.log(`🔧 Using fixing_position=${fixingPosition}mm from combination`);
 
-            let { evaluationResult, design } = evalAt(fixingPosition);
+            const { evaluationResult } = evalAt(fixingPosition);
 
             if (evaluationResult.isValid) {
                 // Track passing designs by angle type

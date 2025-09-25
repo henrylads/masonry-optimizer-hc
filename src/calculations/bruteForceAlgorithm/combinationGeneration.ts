@@ -1,7 +1,6 @@
 import type { DesignInputs } from '@/types/designInputs';
-import { SYSTEM_DEFAULTS } from '@/constants';
 import { getValidBracketAngleCombinations } from '../bracketAngleSelection';
-import { getValidBracketCentres as getValidCentres, getChannelSpec, getAvailableChannelTypes } from '@/data/channelSpecs';
+import { getValidBracketCentres as getValidCentres, getAvailableChannelTypes } from '@/data/channelSpecs';
 import type {
     BracketCentres,
     BracketThickness,
@@ -43,16 +42,10 @@ const generateFixingPositions = (inputs: DesignInputs): number[] => {
         const slabThickness = inputs.slab_thickness;
         const incrementSize = 5; // mm - step size for optimization
 
-        // Get bottom critical edge distance from channel specifications
-        const channelSpec = getChannelSpec("CPRO38", slabThickness, 300);
-        const bottomCriticalEdge = channelSpec ? channelSpec.edgeDistances.bottom : 150; // Use 150mm fallback to be more permissive
-
-        console.log(`Channel spec lookup: CPRO38/${slabThickness}/300 -> ${channelSpec ? channelSpec.id : 'not found'}`);
-        console.log(`Bottom critical edge: ${bottomCriticalEdge}mm`);
-
-        // Calculate maximum fixing depth: must maintain bottom critical edge from slab bottom
-        const maxFixingDepth = slabThickness - bottomCriticalEdge;
-        console.log(`Max fixing depth: ${slabThickness} - ${bottomCriticalEdge} = ${maxFixingDepth}mm`);
+        // Calculate maximum fixing depth: must maintain 75mm minimum from bottom edge
+        // This ensures fixing is always 75mm from either top or bottom critical edge
+        const maxFixingDepth = slabThickness - 75;
+        console.log(`Max fixing depth: ${slabThickness} - 75 = ${maxFixingDepth}mm`);
 
         const positions: number[] = [];
 
