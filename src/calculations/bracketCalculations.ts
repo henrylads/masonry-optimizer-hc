@@ -11,6 +11,7 @@ export interface BracketCalculationResults {
 export interface InvertedBracketInputs {
     support_level: number;           // Distance from SSL to BSL (positive for inverted)
     angle_thickness: number;         // Angle thickness in mm
+    vertical_leg: number;            // Vertical leg (angle height) in mm
     top_critical_edge: number;       // Top critical edge distance (e.g., 75mm)
     bottom_critical_edge: number;    // Bottom critical edge distance (e.g., 125mm)
     slab_thickness: number;          // Slab thickness in mm
@@ -56,6 +57,7 @@ export function calculateInvertedBracketHeight(inputs: InvertedBracketInputs): I
     const {
         support_level,
         angle_thickness,
+        vertical_leg,
         top_critical_edge,
         bottom_critical_edge,
         fixing_position
@@ -66,17 +68,9 @@ export function calculateInvertedBracketHeight(inputs: InvertedBracketInputs): I
     const effectiveTopCriticalEdge = fixing_position || top_critical_edge;
 
     // 1. Calculate Height Above SSL
-    // Support level + angle height adjustment
-    let angle_height_adjustment: number;
-    if (angle_thickness === 8) {
-        // For 8mm angle: -7mm adjustment (8mm - 15mm due to different vertical leg)
-        angle_height_adjustment = -7;
-    } else {
-        // For 3,4,5,6mm angles: add the angle thickness itself
-        angle_height_adjustment = angle_thickness;
-    }
-    
-    const height_above_ssl_raw = support_level + angle_height_adjustment;
+    // Support level + vertical leg projection above SSL (vertical leg - angle thickness)
+    const vertical_leg_projection = Math.max(0, vertical_leg - angle_thickness);
+    const height_above_ssl_raw = support_level + vertical_leg_projection;
 
     // 2. Calculate Height Below SSL
     // This ensures minimum bearing requirements

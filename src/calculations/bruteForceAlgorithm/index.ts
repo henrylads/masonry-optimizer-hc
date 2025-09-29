@@ -163,6 +163,7 @@ export function calculateDependentParameters(
         const invertedResults = calculateInvertedBracketHeight({
             support_level: inputs.support_level,
             angle_thickness: genetic.angle_thickness,
+            vertical_leg: genetic.vertical_leg,
             top_critical_edge: top_critical_edge,
             bottom_critical_edge: bottom_critical_edge,
             slab_thickness: inputs.slab_thickness,
@@ -434,6 +435,7 @@ export async function runBruteForce(
             const inv = calculateInvertedBracketHeight({
                 support_level: inputs.support_level > 0 ? inputs.support_level : Math.abs(inputs.support_level),
                 angle_thickness: g.angle_thickness,
+                vertical_leg: g.vertical_leg,
                 top_critical_edge: 75,
                 bottom_critical_edge: bottom,
                 slab_thickness: inputs.slab_thickness,
