@@ -1,5 +1,8 @@
 import { generateAllCombinations } from '../bruteForceAlgorithm/combinationGeneration';
+import { calculateDependentParameters } from '../bruteForceAlgorithm';
+import { calculateInvertedBracketHeight } from '../bracketCalculations';
 import type { DesignInputs } from '@/types/designInputs';
+import type { GeneticParameters } from '../bruteForceAlgorithm';
 
 describe('Brute Force Algorithm - Combination Generation', () => {
   const baseInputs: DesignInputs = {
@@ -213,6 +216,57 @@ describe('Brute Force Algorithm - Edge Cases', () => {
     combinations.forEach(combo => {
       expect(combo.bracket_type).toBe('Inverted');
     });
+  });
+});
+
+describe('Brute Force Algorithm - Angle orientation adjustments', () => {
+  test('preserves inverted rise to bolts after vertical leg adjustment', () => {
+    const designInputs: DesignInputs = {
+      support_level: 75,
+      cavity_width: 100,
+      slab_thickness: 225,
+      characteristic_load: 4,
+      top_critical_edge: 75,
+      bottom_critical_edge: 150,
+      notch_height: 0,
+      notch_depth: 0,
+      masonry_density: 2000,
+      masonry_height: 3,
+      masonry_thickness: 102.5,
+      fixing_position: 75,
+      use_custom_fixing_position: true
+    };
+
+    const geneticParameters: GeneticParameters = {
+      bracket_centres: 200,
+      bracket_thickness: 4,
+      angle_thickness: 6,
+      vertical_leg: 60,
+      bolt_diameter: 12,
+      bracket_type: 'Inverted',
+      angle_orientation: 'Standard',
+      horizontal_leg: 110,
+      channel_type: 'CPRO38',
+      fixing_position: 75
+    };
+
+    const baseInverted = calculateInvertedBracketHeight({
+      support_level: designInputs.support_level,
+      angle_thickness: geneticParameters.angle_thickness,
+      top_critical_edge: designInputs.top_critical_edge,
+      bottom_critical_edge: designInputs.bottom_critical_edge,
+      slab_thickness: designInputs.slab_thickness,
+      fixing_position: geneticParameters.fixing_position
+    });
+
+    const calculated = calculateDependentParameters(geneticParameters, designInputs);
+
+    expect(calculated.bracket_height).toBeCloseTo(
+      baseInverted.bracket_height + geneticParameters.vertical_leg,
+      12
+    );
+    expect(calculated.rise_to_bolts).toBeCloseTo(150, 12);
+    expect(calculated.rise_to_bolts).toBeCloseTo(baseInverted.rise_to_bolts, 12);
   });
 });
 
