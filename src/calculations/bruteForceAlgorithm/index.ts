@@ -214,22 +214,29 @@ export function calculateDependentParameters(
         (genetic.bracket_type === 'Inverted' && genetic.angle_orientation === 'Standard')
     ) {
         console.log(`  Applying vertical leg adjustment: +${genetic.vertical_leg}mm`);
+        const originalRiseToBolts = rise_to_bolts_calc;
         bracket_height_calc += genetic.vertical_leg;
-        
-        // IMPORTANT: Recalculate rise to bolts based on the new bracket height
-        // Do NOT just add the vertical leg to the rise to bolts!
-        rise_to_bolts_calc = calculateRiseToBolts({
-            bracket_height: bracket_height_calc,
-            distance_from_top_to_fixing: Y,
-            worst_case_adjustment: BRACKET_ANGLE_CONSTANTS.WORST_CASE_ADJUSTMENT,
-            bottom_critical_edge_distance: bottom_critical_edge,
-            support_level: inputs.support_level,
-            slab_thickness: inputs.slab_thickness,
-            top_critical_edge_distance: top_critical_edge,
-            fixing_position: genetic.fixing_position
-        });
-        
-        console.log(`  Recalculated rise to bolts after adjustment: ${rise_to_bolts_calc}mm`);
+
+        if (genetic.bracket_type === 'Standard') {
+            // IMPORTANT: Recalculate rise to bolts based on the new bracket height
+            // Do NOT just add the vertical leg to the rise to bolts!
+            rise_to_bolts_calc = calculateRiseToBolts({
+                bracket_height: bracket_height_calc,
+                distance_from_top_to_fixing: Y,
+                worst_case_adjustment: BRACKET_ANGLE_CONSTANTS.WORST_CASE_ADJUSTMENT,
+                bottom_critical_edge_distance: bottom_critical_edge,
+                support_level: inputs.support_level,
+                slab_thickness: inputs.slab_thickness,
+                top_critical_edge_distance: top_critical_edge,
+                fixing_position: genetic.fixing_position
+            });
+
+            console.log(`  Recalculated rise to bolts after adjustment: ${rise_to_bolts_calc}mm`);
+        } else {
+            // Inverted brackets keep their original rise-to-bolts geometry
+            rise_to_bolts_calc = originalRiseToBolts;
+            console.log(`  Preserved inverted rise to bolts after adjustment: ${rise_to_bolts_calc}mm`);
+        }
     }
 
     console.log(`  Final Calculated Bracket Height: ${bracket_height_calc}mm`);
