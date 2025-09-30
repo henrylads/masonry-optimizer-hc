@@ -23,6 +23,7 @@ export interface GeneticParameters {
   angle_orientation: AngleOrientation;
   horizontal_leg?: number;
   channel_type?: string;
+  dim_d?: number; // Distance from bracket bottom to fixing for inverted brackets (130-450mm)
 }
 
 export interface CalculatedParameters {
@@ -32,6 +33,7 @@ export interface CalculatedParameters {
   rise_to_bolts_display?: number; // Display value showing middle-of-slot position (15mm above calculation value)
   drop_below_slab: number;
   bracket_projection_at_fixing: number;
+  dim_d?: number; // Distance from bracket bottom to fixing for inverted brackets (130-450mm)
   shear_load: number;
   total_deflection: number;
   characteristic_load: number;

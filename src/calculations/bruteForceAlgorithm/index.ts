@@ -37,6 +37,7 @@ export interface GeneticParameters {
   horizontal_leg?: number;
   channel_type?: string;
   fixing_position?: number; // Distance from top of slab to fixing point (mm)
+  dim_d?: number; // Distance from bracket bottom to fixing for inverted brackets (130-450mm)
 }
 
 export interface CalculatedParameters {
@@ -45,6 +46,7 @@ export interface CalculatedParameters {
   rise_to_bolts: number;
   drop_below_slab: number;
   bracket_projection_at_fixing: number;
+  dim_d?: number; // Distance from bracket bottom to fixing for inverted brackets (130-450mm)
   shear_load: number;
   total_deflection: number;
   characteristic_load: number;
@@ -170,6 +172,7 @@ export function calculateDependentParameters(
     let rise_to_bolts_calc: number;
     let rise_to_bolts_display_calc: number;
     let drop_below_slab_calc: number;
+    let dim_d_calc: number | undefined;
     
     if (genetic.bracket_type === 'Inverted') {
         // Use the proper inverted bracket calculation from documentation
@@ -181,6 +184,7 @@ export function calculateDependentParameters(
             bottom_critical_edge: bottom_critical_edge,
             slab_thickness: inputs.slab_thickness,
             fixing_position: genetic.fixing_position,
+            dim_d: genetic.dim_d,
             // Add angle extension parameters
             max_allowable_bracket_extension: inputs.max_allowable_bracket_extension,
             enable_angle_extension: inputs.enable_angle_extension,
@@ -193,6 +197,7 @@ export function calculateDependentParameters(
         rise_to_bolts_calc = invertedResults.rise_to_bolts;
         rise_to_bolts_display_calc = invertedResults.rise_to_bolts_display;
         drop_below_slab_calc = invertedResults.drop_below_slab;
+        dim_d_calc = invertedResults.dim_d;
         
         console.log(`  Inverted Bracket Results:`);
         console.log(`    Height Above SSL: ${invertedResults.height_above_ssl}mm`);
@@ -321,6 +326,7 @@ export function calculateDependentParameters(
         rise_to_bolts_display: final_rise_to_bolts_display,
         drop_below_slab: final_drop_below_slab,
         bracket_projection_at_fixing: bracket_projection_at_fixing,
+        dim_d: dim_d_calc,
         bracket_type: genetic.bracket_type,
         angle_orientation: genetic.angle_orientation,
         shear_load: roundToTwelveDecimals(loadingResults.shearForce ?? 0),
@@ -453,6 +459,7 @@ export async function runBruteForce(
                 bottom_critical_edge: bottom,
                 slab_thickness: inputs.slab_thickness,
                 fixing_position: fixingPosition,
+                dim_d: g.dim_d,
                 // Add angle extension parameters
                 max_allowable_bracket_extension: inputs.max_allowable_bracket_extension,
                 enable_angle_extension: inputs.enable_angle_extension,

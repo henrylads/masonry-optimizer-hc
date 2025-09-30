@@ -16,11 +16,71 @@ const POSSIBLE_BRACKET_THICKNESS: BracketThickness[] = [3, 4]; // Example values
 const POSSIBLE_ANGLE_THICKNESS: AngleThickness[] = [3, 4, 5, 6, 8]; // Example values
 const POSSIBLE_BOLT_DIAMETER: BoltDiameter[] = [10, 12]; // Example values
 
+// Dim D values for inverted brackets (130-450mm range)
+const POSSIBLE_DIM_D_VALUES: number[] = [130, 150, 200, 250, 300, 350, 400, 450]; // mm
+
 // Vertical leg depends on angle thickness
 // Type is inferred as number
 const POSSIBLE_VERTICAL_LEG = (angleThickness: AngleThickness) => {
     return angleThickness === 8 ? 75 : 60;
 };
+
+/**
+ * Validates if a genetic parameter combination is geometrically feasible.
+ * Filters out combinations that would violate slab geometry constraints.
+ *
+ * @param params - Genetic parameters to validate
+ * @param inputs - Design inputs for context
+ * @returns true if combination is valid, false if should be filtered out
+ */
+function isValidCombination(params: GeneticParameters, inputs: DesignInputs): boolean {
+    // Only validate inverted brackets with fixing positions (standard brackets don't have these constraints)
+    if (params.bracket_type !== 'Inverted' || !params.fixing_position) {
+        return true; // Standard brackets are always valid for now
+    }
+
+    const { fixing_position, angle_thickness } = params;
+    const { slab_thickness, support_level } = inputs;
+    const angle_height = angle_thickness === 8 ? 75 : 60;
+
+    // Calculate what the bracket geometry would be
+    const angle_position_from_bracket_bottom = slab_thickness + support_level;
+    const bracket_extension_above_slab =
+        (params.angle_orientation === 'Standard') ? (angle_height - angle_thickness) : 0;
+    const minimum_bracket_height = Math.max(
+        angle_position_from_bracket_bottom + bracket_extension_above_slab,
+        slab_thickness
+    );
+
+    // Calculate required Dim D
+    const required_dim_d = minimum_bracket_height - fixing_position;
+
+    // Check if this combination violates slab geometry constraints
+    const max_dim_d_for_slab = slab_thickness - fixing_position;
+    const violates_slab_geometry = required_dim_d > max_dim_d_for_slab;
+
+    // For now, we'll allow combinations that violate slab geometry because they can be
+    // resolved by extending the bracket below the slab. However, we can add a threshold
+    // here if we want to filter out extremely impractical combinations.
+
+    // Filter out combinations where the fixing position is too deep to be practical
+    const min_edge_distance = 75; // Standard minimum edge distance
+    const max_practical_fixing_depth = slab_thickness - min_edge_distance;
+
+    if (fixing_position > max_practical_fixing_depth) {
+        console.log(`Filtered out combination: Fixing position ${fixing_position}mm too deep for ${slab_thickness}mm slab`);
+        return false;
+    }
+
+    // Filter out combinations where required Dim D would be excessively large
+    const max_practical_dim_d = 450; // Manufacturing limit
+    if (required_dim_d > max_practical_dim_d + 100) { // Allow some tolerance for bracket extension
+        console.log(`Filtered out combination: Required Dim D ${required_dim_d}mm too large`);
+        return false;
+    }
+
+    return true; // Combination is valid
+}
 
 /**
  * Generates fixing position combinations for optimization.
@@ -86,6 +146,10 @@ export function generateAllCombinations(inputs: DesignInputs): GeneticParameters
     const supportLevel = inputs.support_level;
     const slabThickness = inputs.slab_thickness;
 
+    // Track filtering statistics
+    let totalGenerated = 0;
+    let filteredOut = 0;
+
     // Get valid bracket/angle combinations for this support level
     const validBracketAngleCombinations = getValidBracketAngleCombinations(supportLevel);
     
@@ -148,24 +212,34 @@ export function generateAllCombinations(inputs: DesignInputs): GeneticParameters
                     const vertical_leg = POSSIBLE_VERTICAL_LEG(angle_thickness);
                     for (const bolt_diameter of POSSIBLE_BOLT_DIAMETER) {
 
-                        const geneticParams: GeneticParameters = {
-                            bracket_centres,
-                            bracket_thickness,
-                            angle_thickness,
-                            vertical_leg,
-                            bolt_diameter,
-                            bracket_type: bracketAngleCombo.bracket_type,
-                            angle_orientation: bracketAngleCombo.angle_orientation,
-                            // horizontal_leg will be calculated dynamically based on facade parameters
-                            channel_type: channelType,
-                            fixing_position: fixingPosition
-                        };
+                        // Generate Dim D values for inverted brackets
+                        const dimDValues = bracketAngleCombo.bracket_type === 'Inverted'
+                            ? POSSIBLE_DIM_D_VALUES
+                            : [undefined]; // Standard brackets don't use Dim D
 
-                        // TODO: Add validation here? Or rely on fitness function penalties?
-                        // It might be more efficient to prune invalid combinations early.
-                        // Example: validateGeneticParameters(geneticParams, characteristicLoad)
+                        for (const dim_d of dimDValues) {
+                            const geneticParams: GeneticParameters = {
+                                bracket_centres,
+                                bracket_thickness,
+                                angle_thickness,
+                                vertical_leg,
+                                bolt_diameter,
+                                bracket_type: bracketAngleCombo.bracket_type,
+                                angle_orientation: bracketAngleCombo.angle_orientation,
+                                // horizontal_leg will be calculated dynamically based on facade parameters
+                                channel_type: channelType,
+                                fixing_position: fixingPosition,
+                                dim_d: dim_d
+                            };
 
-                        combinations.push(geneticParams);
+                            totalGenerated++;
+                            // Validate combination before adding - filter out impossible geometries
+                            if (isValidCombination(geneticParams, inputs)) {
+                                combinations.push(geneticParams);
+                            } else {
+                                filteredOut++;
+                            }
+                        }
                     }
                 }
             }
@@ -174,9 +248,10 @@ export function generateAllCombinations(inputs: DesignInputs): GeneticParameters
         }
     }
 
-    console.log(`Generated ${combinations.length} raw combinations for brute force.`);
+    console.log(`Generated ${totalGenerated} total combinations, filtered out ${filteredOut} invalid ones.`);
+    console.log(`Final count: ${combinations.length} valid combinations for brute force.`);
+    console.log(`Filtering efficiency: ${filteredOut > 0 ? ((filteredOut / totalGenerated) * 100).toFixed(1) : 0}% filtered out`);
     console.log(`Combinations per bracket/angle combo: ${combinations.length / validBracketAngleCombinations.length}`);
-    
-    // TODO: Implement filtering/validation of combinations if necessary
+
     return combinations;
 } 

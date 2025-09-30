@@ -20,7 +20,19 @@ export const BRACKET_ANGLE_CONSTANTS = {
   DISTANCE_FROM_TOP_TO_FIXING: 40, // mm
   /** Worst case adjustment for rise to bolts */
   WORST_CASE_ADJUSTMENT: 15, // mm
-  
+
+  // Inverted bracket specific constants
+  /** Default Dim D for inverted brackets */
+  INVERTED_BRACKET_DEFAULT_DIM_D: 130, // mm
+  /** Minimum Dim D for inverted brackets */
+  INVERTED_BRACKET_MIN_DIM_D: 130, // mm
+  /** Maximum Dim D for inverted brackets */
+  INVERTED_BRACKET_MAX_DIM_D: 450, // mm
+  /** Minimum clearance above fixing for inverted brackets */
+  INVERTED_BRACKET_MIN_CLEARANCE_ABOVE_FIXING: 40, // mm
+  /** Minimum total height for inverted brackets */
+  INVERTED_BRACKET_MIN_HEIGHT: 170, // mm (130 + 40)
+
   // Backward compatibility
   /** @deprecated Use BASELINE_FIXING_POINT_FROM_SSL instead */
   FIXING_POINT_FROM_SSL: -75, // mm

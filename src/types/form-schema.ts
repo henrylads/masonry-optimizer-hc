@@ -62,6 +62,15 @@ export const formSchema = z.object({
     .refine((val) => (val - 75) % 5 === 0, {
       message: "Fixing position must be in 5mm increments from 75mm (75, 80, 85, etc.)",
     }),
+  use_custom_dim_d: z.boolean().default(false),
+  dim_d: z.coerce
+    .number()
+    .min(130, { message: "Dim D must be at least 130mm" })
+    .max(450, { message: "Dim D must be at most 450mm" })
+    .default(130)
+    .refine((val) => (val - 130) % 5 === 0, {
+      message: "Dim D must be in 5mm increments from 130mm (130, 135, 140, etc.)",
+    }),
   facade_thickness: z.coerce
     .number()
     .min(50, { message: "Facade thickness must be at least 50mm" })

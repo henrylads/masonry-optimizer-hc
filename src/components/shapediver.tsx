@@ -30,7 +30,7 @@ interface ShapeDiverCardProps {
     'material_grade' | 'bracket_thickness' | 'bracket_length' | 'bracket_height' | 'bolt_diameter' | 'toe_plate_type' |
     'back_notch_option' | 'back_notch_length' | 'notch_height' | 'support_type' | 'angle_type' |
     'profile_thickness' | 'profile_length' | 'profile_height' | 'angle_length' | 'bracket_count' |
-    'bracket_spacing' | 'start_offset' | 'spacing_gap' | 'slab_thickness' | 'fixing_position', ParameterValue>>;
+    'bracket_spacing' | 'start_offset' | 'spacing_gap' | 'slab_thickness' | 'fixing_position' | 'dim_d' | 'dim_d_value', ParameterValue>>;
     
     // Callback function to receive output values
     onOutputsChange?: (outputs: ShapeDiverOutputs) => void;
@@ -67,6 +67,8 @@ const paramIdMapping: Record<string, string> = {
     'bracket_spacing': '4258ae1b-6044-4c70-8af8-29b73a301257', // C/C distance [mm]
     'start_offset': '70118ce5-77ad-47c5-8e25-30eac545ad92', // Distance from start [mm]
     'fixing_position': '4f5b0fb9-0141-47b8-ae7e-987fd3acd563', // Slab mounting offset [mm] - Fixing Position
+    'dim_d': 'd15baeb8-2ee9-4827-b095-17c35637468b', // Override DIM D = min 135mm Rule
+    'dim_d_value': 'd121a6c7-1fd7-4d80-945e-7a5257448eb5', // If override, DIM D [mm] =
 };
 
 // For debugging purposes - mapping from parameter IDs to names
@@ -92,6 +94,8 @@ const paramIdToNameMapping: Record<string, string> = {
     '4258ae1b-6044-4c70-8af8-29b73a301257': 'C/C distance [mm]',
     '70118ce5-77ad-47c5-8e25-30eac545ad92': 'Distance from start [mm]',
     '4f5b0fb9-0141-47b8-ae7e-987fd3acd563': 'Slab mounting offset [mm]',
+    'd15baeb8-2ee9-4827-b095-17c35637468b': 'Override DIM D = min 135mm Rule',
+    'd121a6c7-1fd7-4d80-945e-7a5257448eb5': 'If override, DIM D [mm] =',
 };
 
 // Helper function to format values based on parameter name patterns
@@ -168,6 +172,11 @@ const formatParameterValue = (paramId: string, value: ParameterValue): string =>
 
     // Handle fixing position as an integer
     if (paramId === '4f5b0fb9-0141-47b8-ae7e-987fd3acd563') { // Slab mounting offset [mm]
+        return Math.round(Number(value)).toString();
+    }
+
+    // Handle numeric Dim D value as an integer
+    if (paramId === 'd121a6c7-1fd7-4d80-945e-7a5257448eb5') { // If override, DIM D [mm] =
         return Math.round(Number(value)).toString();
     }
 

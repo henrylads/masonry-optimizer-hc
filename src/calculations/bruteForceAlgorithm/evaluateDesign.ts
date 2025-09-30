@@ -76,6 +76,7 @@ export function evaluateBruteForceDesign(
             bottom_critical_edge: 150, // Default, will be replaced with channel-specific values if available
             slab_thickness: design.calculated.slab_thickness,
             fixing_position: design.genetic.fixing_position,
+            dim_d: design.genetic.dim_d,
             // Angle extension parameters
             max_allowable_bracket_extension: designInputs.max_allowable_bracket_extension,
             enable_angle_extension: designInputs.enable_angle_extension,

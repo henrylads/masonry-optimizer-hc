@@ -178,6 +178,8 @@ export default function MasonryDesignerForm({
       postfix_product: 'all',
       use_custom_fixing_position: false,
       fixing_position: 75,
+      use_custom_dim_d: false,
+      dim_d: 130,
       facade_thickness: 102.5,
       load_position: 1/3,
       front_offset: 12,
@@ -326,11 +328,21 @@ export default function MasonryDesignerForm({
       // Determine the actual fixing position to use
       const actualFixingPosition = values.use_custom_fixing_position ? values.fixing_position : 75;
 
+      // Determine the actual Dim D to use
+      const actualDimD = values.use_custom_dim_d ? values.dim_d : 130;
+
       // Debug logging for fixing position values
       console.log('🔧 Fixing Position Debug:', {
         use_custom_fixing_position: values.use_custom_fixing_position,
         form_fixing_position: values.fixing_position,
         actual_fixing_position: actualFixingPosition,
+      });
+
+      // Debug logging for Dim D values
+      console.log('🔧 Dim D Debug:', {
+        use_custom_dim_d: values.use_custom_dim_d,
+        form_dim_d: values.dim_d,
+        actual_dim_d: actualDimD,
       });
 
       console.log('🔍 FORM SUBMIT DEBUG: Form values:', {
@@ -355,6 +367,8 @@ export default function MasonryDesignerForm({
           notch_depth: values.has_notch ? values.notch_depth : 0,
           fixing_position: actualFixingPosition,
           use_custom_fixing_position: values.use_custom_fixing_position,
+          dim_d: actualDimD,
+          use_custom_dim_d: values.use_custom_dim_d,
           showDetailedVerifications: true,
           // Add facade parameters for dynamic horizontal leg calculation
           facade_thickness: values.facade_thickness,
@@ -1281,6 +1295,102 @@ export default function MasonryDesignerForm({
                                       <div className="flex items-center justify-between py-2 px-3 bg-blue-50 rounded">
                                         <span className="text-sm text-gray-600">Finding optimal fixing position</span>
                                         <span className="text-sm font-semibold text-blue-700">Auto-optimizing</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+
+                                {/* Dim D Section - Only for inverted brackets */}
+                                <div className="rounded-lg border p-4">
+                                  <div className="space-y-3">
+                                    <Label className="text-sm font-medium flex items-center gap-1">
+                                      Dim D (Inverted Brackets Only)
+                                      <span className="text-xs text-blue-600 cursor-help" title="Distance from bracket bottom to fixing point for inverted brackets">ⓘ</span>
+                                    </Label>
+                                    <ToggleGroup
+                                      type="single"
+                                      value={form.watch("use_custom_dim_d") ? "custom" : "default"}
+                                      onValueChange={(value) => {
+                                        if (value) {
+                                          const useCustom = value === "custom";
+                                          form.setValue("use_custom_dim_d", useCustom);
+                                          if (!useCustom) {
+                                            form.setValue("dim_d", 130);
+                                          } else {
+                                            // When switching to custom, set a reasonable default if current value is the default
+                                            const currentDimD = form.getValues("dim_d");
+                                            if (currentDimD === 130) {
+                                              form.setValue("dim_d", 200);
+                                            }
+                                          }
+                                        }
+                                      }}
+                                      className="justify-start gap-2 mb-3"
+                                    >
+                                      <ToggleGroupItem
+                                        value="default"
+                                        aria-label="Auto Optimize Dim D"
+                                        className={cn(
+                                          "min-w-[120px] text-xs",
+                                          !form.watch("use_custom_dim_d") && "bg-[rgb(194,242,14)] text-black hover:brightness-95"
+                                        )}
+                                      >
+                                        Auto Optimize
+                                      </ToggleGroupItem>
+                                      <ToggleGroupItem
+                                        value="custom"
+                                        aria-label="Custom Dim D"
+                                        className={cn(
+                                          "min-w-[120px] text-xs",
+                                          form.watch("use_custom_dim_d") && "bg-[rgb(194,242,14)] text-black hover:brightness-95"
+                                        )}
+                                      >
+                                        Custom Value
+                                      </ToggleGroupItem>
+                                    </ToggleGroup>
+
+                                    {/* Conditional Custom Input */}
+                                    {form.watch("use_custom_dim_d") ? (
+                                      <FormField
+                                        control={form.control}
+                                        name="dim_d"
+                                        render={({ field }) => (
+                                          <FormItem>
+                                            <FormLabel className="text-sm">Custom Dim D (mm)</FormLabel>
+                                            <FormControl>
+                                              <Input
+                                                type="number"
+                                                min="130"
+                                                max="450"
+                                                step="5"
+                                                placeholder="130"
+                                                value={field.value || ''}
+                                                onChange={(e) => {
+                                                  const inputValue = e.target.value;
+                                                  if (inputValue === '') {
+                                                    field.onChange(130); // Set to minimum valid value when empty
+                                                  } else {
+                                                    const value = Number(inputValue);
+                                                    if (!isNaN(value) && value >= 130) {
+                                                      field.onChange(value);
+                                                    }
+                                                  }
+                                                }}
+                                                disabled={inputMode === 'chat' && isLoading}
+                                                className="text-sm"
+                                              />
+                                            </FormControl>
+                                            <FormDescription className="text-xs">
+                                              Distance from bracket bottom to fixing point (130-450mm, in 5mm increments)
+                                            </FormDescription>
+                                            <FormMessage />
+                                          </FormItem>
+                                        )}
+                                      />
+                                    ) : (
+                                      <div className="flex items-center justify-between py-2 px-3 bg-blue-50 rounded">
+                                        <span className="text-sm text-gray-600">Auto-optimizing Dim D values</span>
+                                        <span className="text-sm font-semibold text-blue-700">130-450mm range</span>
                                       </div>
                                     )}
                                   </div>

@@ -29,6 +29,7 @@ export interface AlternativeDesign {
       rise_to_bolts_display?: number; // Display value showing middle-of-slot position (15mm above calculation value)
       drop_below_slab: number;
       bracket_projection_at_fixing: number;
+      dim_d?: number; // Distance from bracket bottom to fixing for inverted brackets (130-450mm)
       shear_load: number;
       total_deflection: number;
       characteristic_load: number;
@@ -98,6 +99,7 @@ export type OptimisationResult = {
     bracket_type?: 'Standard' | 'Inverted' // Add bracket type to genetic
     angle_orientation?: 'Standard' | 'Inverted' // Add angle orientation to genetic
     fixing_position?: number // Distance from top of slab to fixing point (mm)
+    dim_d?: number // Distance from bracket bottom to fixing for inverted brackets (130-450mm)
   }
   calculated: {
     bracket_height?: number // mm
@@ -108,6 +110,7 @@ export type OptimisationResult = {
     total_deflection?: number // mm
     characteristic_load?: number // kN/m
     slab_thickness?: number // mm
+    dim_d?: number // Distance from bracket bottom to fixing for inverted brackets (130-450mm)
     v_ed?: number
     m_ed?: number
     n_ed?: number

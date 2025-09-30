@@ -365,6 +365,16 @@ export function ResultsDisplay({ result, history, designInputs }: ResultsDisplay
       })(),
       slab_thickness: displayedResult.calculated?.slab_thickness ?? 225,
 
+      // Dim D parameters for inverted brackets - ShapeDiver needs BOTH boolean override AND numeric value
+      // Boolean override: Enable override if we have a custom dim_d value different from default (130mm)
+      dim_d: (() => {
+        const dimDValue = displayedResult.calculated?.dim_d ?? displayedResult.genetic?.dim_d ?? 130;
+        return dimDValue > 130; // Enable override if value is greater than default minimum
+      })(),
+
+      // Numeric Dim D value: The actual calculated Dim D value to use when override is enabled
+      dim_d_value: displayedResult.calculated?.dim_d ?? displayedResult.genetic?.dim_d ?? 130,
+
       // Fixing position - distance from top of slab to fixing point
       // Adjusted for exclusion zone constraints to ensure bracket top stays within limits
       fixing_position: (() => {
@@ -946,6 +956,25 @@ export function ResultsDisplay({ result, history, designInputs }: ResultsDisplay
                 <span className="text-sm text-gray-600">Rise to Bolts</span>
                 <span className="text-sm font-semibold font-mono">{displayedResult?.calculated?.rise_to_bolts_display ?? displayedResult?.calculated?.rise_to_bolts ?? "N/A"} mm</span>
               </div>
+              {/* Show Dim D only for inverted brackets */}
+              {(displayedResult?.genetic?.bracket_type === 'Inverted' || displayedResult?.calculated?.bracket_type === 'Inverted') && (
+                <div className="flex justify-between items-center py-2 px-3 bg-blue-50 rounded">
+                  <span className="text-sm text-gray-600 flex items-center gap-1">
+                    Dim D
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger>
+                          <span className="text-xs text-blue-600 cursor-help">ⓘ</span>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Distance from bracket bottom to fixing point (130-450mm range)</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </span>
+                  <span className="text-sm font-semibold font-mono">{displayedResult?.calculated?.dim_d ?? displayedResult?.genetic?.dim_d ?? "130"} mm</span>
+                </div>
+              )}
               <div className="flex justify-between items-center py-2 px-3 bg-gray-50 rounded">
                 <span className="text-sm text-gray-600">Fixing Position</span>
                 <span className="text-sm font-semibold font-mono flex items-center gap-2">
@@ -1767,6 +1796,25 @@ export function ResultsDisplay({ result, history, designInputs }: ResultsDisplay
                   <span className="text-sm text-gray-600">Rise to bolts (X)</span>
                   <span className="text-sm font-semibold font-mono">{displayedResult?.calculated?.rise_to_bolts_display ?? displayedResult?.genetic?.rise_to_bolts || displayedResult?.calculated?.rise_to_bolts || "N/A"} mm</span>
                 </div>
+                {/* Show Dim D only for inverted brackets */}
+                {(displayedResult?.genetic?.bracket_type === 'Inverted' || displayedResult?.calculated?.bracket_type === 'Inverted') && (
+                  <div className="flex justify-between items-center py-2 px-3 bg-blue-50 rounded">
+                    <span className="text-sm text-gray-600 flex items-center gap-1">
+                      Dim D
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger>
+                            <span className="text-xs text-blue-600 cursor-help">ⓘ</span>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Distance from bracket bottom to fixing point for inverted brackets (130-450mm)</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </span>
+                    <span className="text-sm font-semibold font-mono">{displayedResult?.calculated?.dim_d ?? displayedResult?.genetic?.dim_d ?? "130"} mm</span>
+                  </div>
+                )}
                 <InlineEditParameter
                   paramName="bolt_diameter"
                   label="Bolt diameter (d_p)"

@@ -164,6 +164,61 @@ export async function POST(request: Request) {
       });
     }
 
+    // Validate Dim D constraints for inverted brackets (if custom value is provided)
+    if (data.use_custom_dim_d && data.dim_d) {
+      const dimD = data.dim_d;
+
+      // Check minimum Dim D (130mm)
+      if (dimD < 130) {
+        console.log('API route: Error - Dim D too small:', dimD);
+        return NextResponse.json(
+          {
+            error: 'Dim D must be at least 130mm for inverted brackets',
+            details: `Current value: ${dimD}mm. Minimum allowed: 130mm.`,
+            suggestion: 'Increase Dim D to at least 130mm or use auto-optimization.'
+          },
+          { status: 400 }
+        );
+      }
+
+      // Check maximum Dim D (450mm)
+      if (dimD > 450) {
+        console.log('API route: Error - Dim D too large:', dimD);
+        return NextResponse.json(
+          {
+            error: 'Dim D cannot exceed 450mm for manufacturing constraints',
+            details: `Current value: ${dimD}mm. Maximum allowed: 450mm.`,
+            suggestion: 'Reduce Dim D to 450mm or less, or use auto-optimization.'
+          },
+          { status: 400 }
+        );
+      }
+
+      // Check Dim D increment (should be in 5mm increments)
+      if ((dimD - 130) % 5 !== 0) {
+        const nearestLower = 130 + Math.floor((dimD - 130) / 5) * 5;
+        const nearestUpper = 130 + Math.ceil((dimD - 130) / 5) * 5;
+        console.log('API route: Warning - Dim D not in 5mm increment:', dimD);
+        return NextResponse.json(
+          {
+            error: 'Dim D should be in 5mm increments from 130mm for optimization',
+            details: `Current value: ${dimD}mm. Dim D optimization works best with 5mm increments starting from 130mm.`,
+            suggestion: `Use ${nearestLower}mm or ${nearestUpper}mm instead.`
+          },
+          { status: 400 }
+        );
+      }
+
+      // Check minimum bracket height constraint for inverted brackets
+      // Bracket height must be at least Dim D + 40mm clearance
+      const minBracketHeight = dimD + 40;
+      console.log('API route: Dim D validation passed:', {
+        dim_d: dimD,
+        required_min_bracket_height: minBracketHeight,
+        use_custom_dim_d: data.use_custom_dim_d
+      });
+    }
+
     console.log('🔍 API ROUTE DEBUG: Received form data:', {
       facade_thickness: data.facade_thickness,
       masonry_thickness: data.masonry_thickness,
