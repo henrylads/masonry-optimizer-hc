@@ -829,19 +829,14 @@ export function ResultsDisplay({ result, history, designInputs }: ResultsDisplay
     <div className="space-y-6">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold">Optimisation Results</h2>
-        <div className="flex space-x-4">
-          <Button variant="outline" onClick={() => window.print()}>
-            Print Results
-          </Button>
-          {result && result.calculated?.detailed_verification_results && (
-            <PDFDownloadButton
-              optimizationResult={result}
-              designInputs={designInputs || {} as FormDataType} // Use empty object if not available
-              variant="outline"
-              disabled={!designInputs} // Disable if no design inputs available
-            />
-          )}
-        </div>
+        {result && result.calculated?.detailed_verification_results && (
+          <PDFDownloadButton
+            optimizationResult={result}
+            designInputs={designInputs || {} as FormDataType} // Use empty object if not available
+            variant="outline"
+            disabled={!designInputs} // Disable if no design inputs available
+          />
+        )}
       </div>
 
       {/* Hero Section - Key Results Summary */}
