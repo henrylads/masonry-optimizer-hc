@@ -1660,3 +1660,166 @@ L_bearing = horizontal_leg - thickness - cavity_back_of_angle
 ```
 
 This ensures that geometric properties used in deflection calculations accurately reflect the physical behavior of the angle under load.
+
+---
+
+## Form UI Simplification - Remove Masonry Properties and Standardize Toggles
+
+**Date**: 2025-01-XX
+**Issue**: Form interface was cluttered with masonry property inputs and inconsistent toggle patterns
+
+### Changes Made
+
+#### 1. Remove Masonry Density/Thickness/Height Inputs
+
+**Before:**
+- Users had a toggle: "Characteristic Load Known?"
+- If NO: Enter masonry_density (kg/m³), masonry_thickness (mm), masonry_height (m)
+- System calculated: `characteristic_load = (density × thickness × height × 9.81) / 1000`
+- If YES: Enter characteristic_load directly
+
+**Problem:**
+- `masonry_thickness` in the form was ONLY used for calculating line load
+- Completely different from `facade_thickness` which is used in structural calculations
+- Caused confusion - users didn't understand the distinction
+- Most users know their line load requirement directly
+
+**After:**
+- Single input: `characteristic_load` (kN/m)
+- Required field (1-50 kN/m range)
+- Default value: 6 kN/m
+- Removed `calculateCharacteristicLoad()` function
+- Removed toggle and conditional rendering
+
+**Files Modified:**
+- `src/types/form-schema.ts`: Removed masonry_density, masonry_thickness, masonry_height fields
+- `src/components/masonry-designer-form.tsx`: Removed fields, function, and toggle logic
+
+#### 2. Hide Front Offset and Isolation Shim Behind Toggle
+
+**Before:**
+- `front_offset` and `isolation_shim_thickness` were always visible
+- Advanced parameters that most users don't need to adjust
+
+**After:**
+- Added `use_custom_facade_offsets` toggle (default: false)
+- Fields hidden by default
+- When disabled: uses defaults (front_offset=12mm, isolation_shim_thickness=3mm)
+- When enabled: shows both input fields
+- Consistent with existing pattern (use_custom_fixing_position, use_custom_dim_d)
+
+**Files Modified:**
+- `src/types/form-schema.ts`: Added use_custom_facade_offsets boolean field
+- `src/components/masonry-designer-form.tsx`: Added toggle and conditional rendering
+
+#### 3. Standardize Toggle UI Pattern
+
+**Before:**
+- Custom Load Position: Switch (left) + Label (right) ✓
+- Custom Facade Offsets: Switch (right) + Label (left) ✗
+- Custom Dim D: ToggleGroup with "Auto Optimize" / "Custom Value" buttons ✗
+
+**After:**
+All toggles now use consistent pattern:
+```
+[Switch] Label
+         Description
+```
+
+**Changes:**
+1. **Custom Facade Offsets**: Moved switch to left, label to right
+2. **Custom Dim D**: Replaced ToggleGroup with Switch on left
+
+**Pattern:**
+```tsx
+<FormItem className="flex flex-row items-center space-x-3 space-y-0">
+  <FormControl>
+    <Switch checked={field.value} onCheckedChange={field.onChange} />
+  </FormControl>
+  <div className="space-y-1 leading-none">
+    <FormLabel>Toggle Label</FormLabel>
+    <FormDescription>Description text</FormDescription>
+  </div>
+</FormItem>
+```
+
+**Files Modified:**
+- `src/components/masonry-designer-form.tsx`: Updated toggle patterns
+
+#### 4. Improve Angle Extension Text Clarity
+
+**Before:**
+```
+Max Bracket Position (mm): -200 mm (below slab)
+Description: "Maximum allowable bracket position relative to top of slab in 5mm increments.
+Negative values = below slab, positive values = above slab."
+```
+
+**After:**
+```
+Max Bracket Position (mm): -200 mm
+Description: "Maximum allowable bracket position in 5mm increments.
+0 is at top of slab (often negative)."
+```
+
+**Improvements:**
+- Removed redundant "(above slab)" / "(below slab)" label
+- Changed from explaining positive/negative to stating reference point
+- Clearer: "0 is at top of slab (often negative)"
+- More intuitive for users
+
+**Files Modified:**
+- `src/components/masonry-designer-form.tsx`: Updated description text
+
+### Benefits
+
+1. **Cleaner UI**
+   - Fewer always-visible fields for typical users
+   - Advanced options available but hidden by default
+   - Reduced cognitive load
+
+2. **Less Confusion**
+   - No more `masonry_thickness` vs `facade_thickness` confusion
+   - Clear reference points ("0 is at top of slab")
+   - Consistent toggle patterns
+
+3. **Better UX**
+   - Users typically know their line load directly
+   - Advanced users can still access all parameters
+   - Consistent interaction patterns throughout form
+
+4. **Code Quality**
+   - Removed unused calculation function
+   - Simplified form submission logic
+   - Consistent component patterns
+
+### Form Field Summary
+
+**Required Fields (Always Visible):**
+- Slab Thickness
+- Cavity Width
+- Support Level
+- Characteristic Load (kN/m) ← **Simplified**
+
+**Optional Fields (Behind Toggles):**
+- Custom Fixing Position → use_custom_fixing_position
+- Custom Dim D → use_custom_dim_d
+- Custom Load Position → use_custom_load_position
+- Custom Facade Offsets → use_custom_facade_offsets ← **New**
+- Angle Extension → enable_angle_extension
+
+**Consistent Toggle Pattern:**
+All toggles now use: **Switch (left) + Label & Description (right)**
+
+### Testing Notes
+
+- ✅ Form compiles without errors
+- ✅ All toggles work correctly
+- ✅ Default values applied when toggles disabled
+- ✅ Custom values work when toggles enabled
+- ✅ Optimization runs successfully with simplified inputs
+- ✅ UI hot-reloads correctly in dev server
+
+### Key Takeaway
+
+**Simplify the common case, make the advanced case accessible.** Most users know their line load and don't need advanced facade offset controls. By hiding these behind toggles with sensible defaults, we create a cleaner interface while still providing full control for advanced users.
