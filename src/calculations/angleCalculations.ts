@@ -116,12 +116,13 @@ export function calculateAngleParameters(params: AngleCalculationInputs): AngleC
     console.log(`  cavity_back_angle (d + depth_to_toe_plate): ${cavity_back_angle} mm`);
     console.log(`  B (horizontal leg): ${effectiveB} mm`);
     console.log(`  T (angle thickness): ${params.T} mm`);
-    console.log(`  OLD formula (B - T - d): ${effectiveB - params.T - d_raw} mm`);
-    console.log(`  CORRECTED formula (B - cavity_back_angle): ${effectiveB - cavity_back_angle} mm`);
+    console.log(`  OLD formula (B - cavity_back_angle): ${effectiveB - cavity_back_angle} mm`);
+    console.log(`  CORRECTED formula (B - T - cavity_back_angle): ${effectiveB - params.T - cavity_back_angle} mm`);
 
-    // Calculate b = B - cavity_back_angle
-    // Length of bearing which is horizontal leg minus cavity_back_angle
-    const b_raw = effectiveB - cavity_back_angle;
+    // Calculate b = B - T - cavity_back_angle
+    // Length of bearing: horizontal leg minus angle thickness minus cavity_back_angle
+    // Per reference document: L_bearing = horizontal_leg - thickness - cavity_back_of_angle
+    const b_raw = effectiveB - params.T - cavity_back_angle;
 
     console.log(`  RESULT: L_bearing (b) = ${b_raw} mm ✓`);
     
