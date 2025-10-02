@@ -345,8 +345,8 @@ export const extractVerificationSummary = (verificationResults: VerificationResu
     summaryItems.push({
       checkName: 'Angle Deflection SLS',
       result: verificationResults.deflectionResults.passes ? 'PASS' : 'FAIL',
-      utilization: 0, // Calculate appropriate utilization
-      criticalValue: `${safeNumber(verificationResults.deflectionResults.totalDeflection).toFixed(2)} mm`
+      utilization: safeNumber(verificationResults.deflectionResults.utilization),
+      criticalValue: `${safeNumber(verificationResults.deflectionResults.utilization).toFixed(1)}%`
     });
   }
 
@@ -391,11 +391,14 @@ export const extractVerificationSummary = (verificationResults: VerificationResu
   }
 
   if (verificationResults.totalDeflectionResults) {
+    // Calculate utilization as (total_deflection / 1.5) * 100
+    const totalDeflection = safeNumber(verificationResults.totalDeflectionResults.Total_deflection_of_system);
+    const systemUtilization = (totalDeflection / 1.5) * 100;
     summaryItems.push({
-      checkName: 'Total Deflection',
+      checkName: 'Total System Deflection',
       result: verificationResults.totalDeflectionResults.passes ? 'PASS' : 'FAIL',
-      utilization: 0, // Would need to calculate
-      criticalValue: `${safeNumber(verificationResults.totalDeflectionResults.Total_deflection_of_system).toFixed(2)} mm`
+      utilization: systemUtilization,
+      criticalValue: `${systemUtilization.toFixed(1)}%`
     });
   }
 
@@ -430,11 +433,17 @@ export const createReportMetadata = (result: OptimizationResult): ReportMetadata
   // Calculate overall utilization (highest utilization across all checks)
   let overallUtilization = 0;
   if (verificationResults) {
+    // Calculate total system deflection utilization
+    const totalDeflection = safeNumber(verificationResults.totalDeflectionResults?.Total_deflection_of_system);
+    const systemUtilization = (totalDeflection / 1.5) * 100;
+
     const utilizations = [
       safeNumber(verificationResults.momentResults?.utilization),
       safeNumber(verificationResults.shearResults?.utilization),
+      safeNumber(verificationResults.deflectionResults?.utilization),
       safeNumber(verificationResults.angleToBracketResults?.U_c_bolt),
-      safeNumber(verificationResults.packerResults?.combined_utilization)
+      safeNumber(verificationResults.packerResults?.combined_utilization),
+      systemUtilization
     ];
     const validUtilizations = utilizations.filter(u => !isNaN(u) && u > 0);
     overallUtilization = validUtilizations.length > 0 ? Math.max(...validUtilizations) : 0;
