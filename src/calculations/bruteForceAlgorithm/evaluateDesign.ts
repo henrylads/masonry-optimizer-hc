@@ -209,7 +209,7 @@ export function evaluateBruteForceDesign(
             slabThickness: design.calculated.slab_thickness,
             supportLevel: design.calculated.support_level,
             notchHeight: design.calculated.notch_height ?? 0,
-            masonry_thickness: design.calculated.masonry_thickness ?? 102.5,
+            masonry_thickness: design.calculated.facade_thickness ?? 102.5, // Use facade_thickness for fixing check moment arm calculation
             cavity: design.calculated.cavity_width,
             drop_below_slab: design.calculated.drop_below_slab,
             bracketCentres: design.genetic.bracket_centres,

@@ -159,12 +159,13 @@ export function verifyFixing(
     bracketCentres: number,      // Added parameter
     concreteGrade: number = FIXING_CONSTANTS.DEFAULT_CONCRETE_GRADE
 ): FixingResults {
-    // Calculate L_3 = C' + M/3
-    const L_3 = design_cavity + masonry_thickness/3;
-    
+    // Calculate L = C' + M/2 (cavity + masonry_thickness/2)
+    // Per reference document: L = cavity + masonry_thickness/2
+    const L = design_cavity + masonry_thickness/2;
+
     // Calculate design forces on the fixing interface
     const V_ed_fixing = appliedShear;  // Shear force directly applied to fixing
-    const M_ed = (V_ed_fixing * L_3) / 1000; // Convert to kNm
+    const M_ed = (V_ed_fixing * L) / 1000; // Convert to kNm
 
     // Calculate tensile load results using plain concrete grade
     const tensileLoadResults = calculateTensileLoad(
