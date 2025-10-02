@@ -44,6 +44,7 @@ interface VerificationParams {
     base_plate_width: number;
     channelType: string;
     concreteGrade: number;
+    load_position?: number;  // Load position as fraction of facade thickness (0-1 range)
 
     // Angle extension parameters for verification with modified geometry
     angle_extension_result?: AngleExtensionResult;  // Angle extension result (if applied)
@@ -213,7 +214,8 @@ export const verifyAll = (
         params.channelType,
         params.slabThickness,
         params.bracketCentres,
-        params.concreteGrade
+        params.concreteGrade,
+        params.load_position  // Pass load_position from params
     );
     
     if (detailedMode) {

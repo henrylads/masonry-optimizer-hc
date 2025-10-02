@@ -216,7 +216,8 @@ export function evaluateBruteForceDesign(
             characteristicUDL: design.calculated.characteristic_udl,
             base_plate_width: SYSTEM_DEFAULTS.BASE_PLATE_WIDTH,
             channelType: design.genetic.channel_type || "CPRO38",
-            concreteGrade: SYSTEM_DEFAULTS.CONCRETE_GRADE
+            concreteGrade: SYSTEM_DEFAULTS.CONCRETE_GRADE,
+            load_position: design.calculated.load_position  // Pass load_position for moment arm calculation
         },
         angleResults,
         mathModelResults,

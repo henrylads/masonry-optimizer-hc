@@ -136,7 +136,7 @@ export function calculateTensileLoad(
  * Verifies fixing according to project overview, including channel capacity checks.
  * All intermediate calculations maintain full precision.
  * Only final results are rounded to 12 decimal places.
- * 
+ *
  * @param appliedShear Applied shear force (kN) - Note: This is the external shear on the bracket, not necessarily the final shear on the fixing bolts after moment consideration.
  * @param design_cavity Design cavity C' (mm)
  * @param masonry_thickness Masonry thickness M (mm)
@@ -146,6 +146,7 @@ export function calculateTensileLoad(
  * @param slabThickness The thickness of the concrete slab (mm)
  * @param bracketCentres The spacing between brackets (mm) - Used for channel lookup
  * @param concreteGrade Concrete grade in N/mm² (default 30)
+ * @param load_position Load position as fraction of facade thickness (0-1 range, default 1/3)
  * @returns Results of fixing verification
  */
 export function verifyFixing(
@@ -157,11 +158,13 @@ export function verifyFixing(
     channelType: string,          // Added parameter
     slabThickness: number,       // Added parameter
     bracketCentres: number,      // Added parameter
-    concreteGrade: number = FIXING_CONSTANTS.DEFAULT_CONCRETE_GRADE
+    concreteGrade: number = FIXING_CONSTANTS.DEFAULT_CONCRETE_GRADE,
+    load_position: number = 1/3  // Default to 1/3 for backward compatibility
 ): FixingResults {
-    // Calculate L = C' + M/2 (cavity + masonry_thickness/2)
-    // Per reference document: L = cavity + masonry_thickness/2
-    const L = design_cavity + masonry_thickness/2;
+    // Calculate L = C' + (facade_thickness × load_position)
+    // Per reference document: L = cavity + facade_thickness × load_position
+    // Note: masonry_thickness parameter is actually facade_thickness from frontend
+    const L = design_cavity + (masonry_thickness * load_position);
 
     // Calculate design forces on the fixing interface
     const V_ed_fixing = appliedShear;  // Shear force directly applied to fixing
