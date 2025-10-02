@@ -1823,3 +1823,128 @@ All toggles now use: **Switch (left) + Label & Description (right)**
 ### Key Takeaway
 
 **Simplify the common case, make the advanced case accessible.** Most users know their line load and don't need advanced facade offset controls. By hiding these behind toggles with sensible defaults, we create a cleaner interface while still providing full control for advanced users.
+
+---
+
+## PDF Export Fix After Form Simplification
+
+**Date**: October 2, 2025
+**Issue**: PDF export failing with `TypeError: Cannot read properties of undefined (reading 'toString')` after removing masonry property inputs
+
+### Problem
+
+After removing `masonry_density`, `masonry_thickness`, and `masonry_height` from the form schema (replaced with direct `characteristic_load` input), the PDF export broke because the data extraction code was still trying to access these removed fields.
+
+**Error Location**: `src/utils/pdf-data-extractor.ts:52` in `extractDesignInputs` function
+
+**Error Message**:
+```
+TypeError: Cannot read properties of undefined (reading 'toString')
+    at extractDesignInputs (pdf-data-extractor.ts:52:49)
+    at extractPDFReportData (pdf-data-extractor.ts:737:23)
+```
+
+**Root Cause**: Lines 81-83 attempted to call `.toString()` on undefined fields:
+```typescript
+{ label: 'Masonry Density', value: formData.masonry_density.toString(), ... }
+// formData.masonry_density is undefined after schema change
+```
+
+### Solution
+
+**Files Modified**:
+1. `src/utils/pdf-data-extractor.ts`
+2. `src/utils/pdf-generator.ts`
+
+#### Changes to pdf-data-extractor.ts
+
+1. **Removed `masonryParameters` from FormattedDesignInputs interface** (line 32)
+   - No longer needed since masonry properties removed from form
+
+2. **Updated `extractDesignInputs` function** (lines 73-81)
+   - Removed masonry field accesses that caused undefined errors
+   - Added new fields to `structuralParameters` section:
+     - `facade_thickness`: Now displayed in PDF structural parameters
+     - `material_type`: Shows facade material type (brick/block)
+     - `load_position`: Shows eccentric load position (default 0.33)
+
+**Before**:
+```typescript
+structuralParameters: [
+  { label: 'Slab Thickness', value: formData.slab_thickness.toString(), unit: 'mm' },
+  { label: 'Cavity Width', value: formData.cavity.toString(), unit: 'mm' },
+  { label: 'Support Level', value: formData.support_level.toString(), unit: 'mm' },
+  { label: 'Characteristic Load', value: formData.characteristic_load?.toString() || '0', unit: 'kN/m' }
+],
+masonryParameters: [
+  { label: 'Masonry Density', value: formData.masonry_density.toString(), unit: 'kg/m³' },
+  { label: 'Masonry Thickness', value: formData.masonry_thickness.toString(), unit: 'mm' },
+  { label: 'Masonry Height', value: formData.masonry_height.toString(), unit: 'm' }
+],
+```
+
+**After**:
+```typescript
+structuralParameters: [
+  { label: 'Slab Thickness', value: formData.slab_thickness.toString(), unit: 'mm' },
+  { label: 'Cavity Width', value: formData.cavity.toString(), unit: 'mm' },
+  { label: 'Support Level', value: formData.support_level.toString(), unit: 'mm' },
+  { label: 'Characteristic Load', value: formData.characteristic_load.toString(), unit: 'kN/m' },
+  { label: 'Facade Thickness', value: formData.facade_thickness.toString(), unit: 'mm' },
+  { label: 'Material Type', value: formData.material_type },
+  { label: 'Load Position', value: formData.load_position?.toFixed(2) || '0.33' }
+],
+// masonryParameters removed entirely
+```
+
+#### Changes to pdf-generator.ts
+
+**Removed "1.2 Masonry Parameters" section** (previously lines 103-105):
+```typescript
+// REMOVED:
+this.addSubsectionTitle('1.2 Masonry Parameters');
+this.addParameterTable(this.data.designInputs.masonryParameters);
+```
+
+**Renumbered subsequent sections**:
+- 1.2 Notch Configuration (was 1.3)
+- 1.3 Fixing Configuration (was 1.4)
+- 1.4 Limitation Settings (was 1.5)
+
+### Benefits
+
+1. **Consistency**: PDF now reflects simplified form structure
+2. **No undefined errors**: All accessed fields exist in form schema
+3. **Better information**: Facade thickness and material type now visible in PDF
+4. **Cleaner structure**: Removed redundant masonry section
+
+### Testing
+
+- ✅ Code compiles without errors
+- ✅ Dev server hot-reloaded successfully
+- ✅ No TypeScript errors
+- ✅ FormattedDesignInputs interface updated correctly
+- ✅ PDF section numbering updated
+
+### Commit
+
+```
+Fix PDF export after removing masonry property inputs
+
+After removing masonry_density, masonry_thickness, and masonry_height from the form schema, the PDF export was failing with "Cannot read properties of undefined (reading 'toString')" error.
+
+Changes:
+- Removed masonryParameters from FormattedDesignInputs interface
+- Updated extractDesignInputs to remove masonry field accesses
+- Added facade_thickness, material_type, and load_position to structural parameters section
+- Removed "1.2 Masonry Parameters" section from PDF generator
+- Renumbered subsequent sections (Notch: 1.2, Fixing: 1.3, Limitations: 1.4)
+```
+
+### Next Steps
+
+User should test PDF export functionality to confirm:
+1. PDF generates without errors
+2. Structural parameters section includes new fields (facade_thickness, material_type, load_position)
+3. No references to removed masonry parameters
+4. All sections numbered correctly
