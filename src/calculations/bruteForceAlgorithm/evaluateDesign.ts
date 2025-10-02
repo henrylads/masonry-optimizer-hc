@@ -237,7 +237,7 @@ export function evaluateBruteForceDesign(
     design.calculated.shear_reduction_check = verificationResults.packerResults.passes;
     design.calculated.bracket_design_check = verificationResults.bracketDesignResults.passes;
     design.calculated.v_ed = verificationResults.shearResults.V_ed;
-    design.calculated.m_ed = verificationResults.momentResults.M_ed_angle;
+    design.calculated.m_ed = verificationResults.fixingResults.appliedMoment; // Use fixing check moment (with load_position) instead of angle moment
     design.calculated.n_ed = verificationResults.fixingResults.tensileForce;
     design.calculated.angle_utilisation = verificationResults.deflectionResults.utilization;
     design.calculated.total_system_deflection = verificationResults.totalDeflectionResults.Total_deflection_of_system;

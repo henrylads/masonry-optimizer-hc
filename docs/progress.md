@@ -1326,3 +1326,172 @@ The fixing check now correctly uses the user-configurable `load_position` parame
 - ✅ **Flexible**: Supports different facade loading scenarios
 
 The system now provides accurate moment calculations that respect user input for load distribution on the facade.
+
+---
+
+# Progress Documentation - Fix Design Summary Moment Display
+
+## Issue Identified
+
+**Date**: October 2, 2025
+**Problem**: Design Summary showing wrong moment value (angle moment instead of fixing check moment)
+
+### User Feedback
+
+The Design Summary section was displaying:
+- **Moment (M_ed):** 0.139 kNm (angle moment - WRONG)
+
+Should display:
+- **Fixing Moment (M_ed):** 0.437 kNm (fixing check moment - CORRECT)
+
+### Root Cause
+
+In `evaluateDesign.ts` line 240, the system was storing the **angle moment** in `m_ed`:
+```typescript
+design.calculated.m_ed = verificationResults.momentResults.M_ed_angle;
+```
+
+This is the moment for checking **angle bending resistance** (short lever arm from eccentricity calculation), NOT the moment for the **fixing check** (which uses the full lever arm with load_position).
+
+### Two Different Moments in the System
+
+The system correctly calculates TWO different moments for different checks:
+
+1. **Angle Moment (M_ed_angle)** = 0.139 kNm
+   - Formula: `M_ed = V_ed × L_1 / 1000`
+   - Where: `L_1 = Ecc + d + (12 - T)` ≈ 49.17mm
+   - Purpose: Check angle bending capacity
+   - Location: `momentResults.M_ed_angle`
+
+2. **Fixing Check Moment (appliedMoment)** = 0.437 kNm
+   - Formula: `M_ed = V_ed × L / 1000`
+   - Where: `L = cavity + facade_thickness × load_position` ≈ 154.17mm
+   - Purpose: Calculate tension force in fixing bolts
+   - Location: `fixingResults.appliedMoment`
+
+The Design Summary should show the **fixing check moment** as it represents the actual applied moment on the fixing system.
+
+## Solution Implemented
+
+### Code Changes
+
+#### File: `src/calculations/bruteForceAlgorithm/evaluateDesign.ts`
+
+**Line 240 - Changed m_ed source:**
+```typescript
+// BEFORE:
+design.calculated.m_ed = verificationResults.momentResults.M_ed_angle;
+
+// AFTER:
+design.calculated.m_ed = verificationResults.fixingResults.appliedMoment; // Use fixing check moment (with load_position) instead of angle moment
+```
+
+**Impact:** Now `m_ed` stores the fixing check moment (0.437 kNm) instead of angle moment (0.139 kNm)
+
+#### File: `src/components/results-display.tsx`
+
+**Line 1881 - Updated label for clarity:**
+```tsx
+// BEFORE:
+<span className="text-sm font-medium text-gray-600">Moment (M_ed)</span>
+
+// AFTER:
+<span className="text-sm font-medium text-gray-600">Fixing Moment (M_ed)</span>
+```
+
+**Impact:** Clarifies that this is the fixing check moment, not the angle moment
+
+## Example Verification
+
+**Test scenario:**
+- Characteristic Load: 6 kN/m
+- Bracket Centres: 350mm
+- Cavity: 100mm
+- Facade thickness: 102.5mm
+- Load position: 1/3
+
+**Calculations:**
+```
+V_ed = 6 × 1.35 × (350/1000) = 2.835 kN
+
+Angle moment:
+  L_1 = 49.17mm
+  M_ed_angle = 2.835 × 49.17 / 1000 = 0.139 kNm
+
+Fixing moment:
+  L = 120 + (102.5 × 1/3) = 154.17mm
+  M_ed_fixing = 2.835 × 154.17 / 1000 = 0.437 kNm
+```
+
+**Design Summary now shows:**
+- Shear Force (V_ed): 2.835 kN ✓
+- Fixing Moment (M_ed): 0.437 kNm ✓ (was 0.139 kNm)
+- Tension (N_ed): 4.693 kN ✓
+
+## Files Modified
+
+1. **`src/calculations/bruteForceAlgorithm/evaluateDesign.ts`**
+   - Line 240: Changed `m_ed` to use `fixingResults.appliedMoment` instead of `momentResults.M_ed_angle`
+   - Added comment explaining the change
+
+2. **`src/components/results-display.tsx`**
+   - Line 1881: Updated label from "Moment (M_ed)" to "Fixing Moment (M_ed)"
+   - Improves clarity about which moment is being displayed
+
+3. **`docs/progress.md`**
+   - Added comprehensive documentation of the fix
+
+## Technical Details
+
+### Why Two Moments?
+
+The two moments serve different structural purposes:
+
+**Angle Moment (M_ed_angle):**
+- Checks if the angle section can resist bending
+- Uses eccentricity-based lever arm (load position relative to angle geometry)
+- Short lever arm because it's measuring moment about the angle's neutral axis
+- Example: L_1 = 49.17mm
+
+**Fixing Moment (M_ed_fixing):**
+- Calculates tension force in fixing bolts
+- Uses full lever arm from fixing point to load application point
+- Includes cavity width + facade load position
+- Example: L = 154.17mm
+- This is the PRIMARY moment for the fixing system design
+
+### Display Logic
+
+The Design Summary "Applied Forces" section shows the three key forces acting on the system:
+1. **Shear Force (V_ed)** - Vertical load on bracket
+2. **Fixing Moment (M_ed)** - Moment creating tension in bolts
+3. **Tension (N_ed)** - Tension force in fixing bolts (calculated FROM the fixing moment)
+
+All three values work together - the fixing moment drives the tension force calculation via the quadratic equation in the fixing check.
+
+## Impact Assessment
+
+**Display Accuracy**: ✅ Fixed
+- Design Summary now shows correct moment value
+- 3.14× larger than before (0.437 vs 0.139 kNm)
+- Matches actual fixing check calculations
+
+**User Understanding**: ✅ Improved
+- Label updated to "Fixing Moment" for clarity
+- Users now see the moment that drives tension force
+- Consistent with detailed verification results
+
+**Calculations**: ✅ Unaffected
+- Backend calculations were always correct
+- Only the displayed summary value was wrong
+- All verification checks use correct moments from their respective sources
+
+## Conclusion
+
+The Design Summary now correctly displays the fixing check moment:
+- ✅ **Correct value**: Shows 0.437 kNm (fixing moment) instead of 0.139 kNm (angle moment)
+- ✅ **Clear labeling**: "Fixing Moment (M_ed)" clarifies which moment is displayed
+- ✅ **Consistent**: Matches the moment used in fixing check calculations
+- ✅ **User-friendly**: Shows the moment that directly relates to tension force
+
+The system now provides accurate and clear moment information in the Design Summary section.

@@ -1878,7 +1878,7 @@ export function ResultsDisplay({ result, history, designInputs }: ResultsDisplay
                   </span>
                 </div>
                 <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                  <span className="text-sm font-medium text-gray-600">Moment (M_ed)</span>
+                  <span className="text-sm font-medium text-gray-600">Fixing Moment (M_ed)</span>
                   <span className="text-sm font-mono font-semibold">
                     {result.calculated?.m_ed !== undefined ? `${result.calculated.m_ed.toFixed(3)} kNm` : "N/A"}
                   </span>
