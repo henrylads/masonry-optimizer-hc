@@ -251,9 +251,10 @@ export const extractCalculations = (verificationResults: VerificationResults): F
       ],
       outputs: [
         { parameter: 'Total Deflection', value: safeToString(deflectionResults.totalDeflection), unit: 'mm' },
-        { parameter: 'Deflection Limit', value: 'L/300', unit: 'mm' }
+        { parameter: 'Deflection Limit', value: 'L/300', unit: 'mm' },
+        { parameter: 'Utilization', value: safeToString(deflectionResults.utilization), unit: '%' }
       ],
-      utilization: (safeNumber(deflectionResults.totalDeflection) / Math.max(safeNumber(deflectionResults.L_1), 1) * 300) * 100,
+      utilization: safeNumber(deflectionResults.utilization),
       passes: deflectionResults.passes ?? false
     });
   }
