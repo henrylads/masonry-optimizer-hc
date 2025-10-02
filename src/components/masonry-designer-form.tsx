@@ -38,29 +38,13 @@ import { useAITools } from '@/hooks/use-ai-tools'
 // Import workflow toggle
 import { WorkflowToggle } from '@/components/workflow-toggle'
 
-// Calculate characteristic load from masonry properties
-function calculateCharacteristicLoad(values: {
-  masonry_density: number;
-  masonry_thickness: number;
-  masonry_height: number;
-}): number {
-  const density = values.masonry_density;
-  const thickness = values.masonry_thickness / 1000;
-  const height = values.masonry_height;
-  const gravity = 9.81;
-  return (density * thickness * height * gravity) / 1000;
-}
 
 interface MasonryDesignerFormProps {
   onTestSubmit?: (values: z.infer<typeof formSchema>) => void;
-  useCharacteristicLoad?: boolean;
-  onUseCharacteristicLoadChange?: (value: boolean) => void;
 }
 
-export default function MasonryDesignerForm({ 
-  onTestSubmit, 
-  useCharacteristicLoad: externalUseCharacteristicLoad,
-  onUseCharacteristicLoadChange 
+export default function MasonryDesignerForm({
+  onTestSubmit
 }: MasonryDesignerFormProps) {
   // AI Tools hook for handling AI-generated optimization results
   const {
@@ -89,7 +73,6 @@ export default function MasonryDesignerForm({
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<OptimisationResult | null>(null)
   const [generationHistory, setGenerationHistory] = useState<GenerationSummary[]>([])
-  const [internalUseCharacteristicLoad, setInternalUseCharacteristicLoad] = useState(true)
   const [activeTab, setActiveTab] = useState("input")
 
   // Chat-specific state
@@ -147,15 +130,6 @@ export default function MasonryDesignerForm({
     });
   }, [isLoading, aiIsOptimizing, combinedIsLoading, result, aiOptimizationResult, combinedResult]);
 
-  // Use either external or internal state
-  const useCharacteristicLoad = externalUseCharacteristicLoad ?? internalUseCharacteristicLoad
-  const setUseCharacteristicLoad = (value: boolean) => {
-    if (onUseCharacteristicLoadChange) {
-      onUseCharacteristicLoadChange(value)
-    } else {
-      setInternalUseCharacteristicLoad(value)
-    }
-  }
 
   // Initialize the form
   const form = useForm<z.infer<typeof formSchema>>({
@@ -164,10 +138,7 @@ export default function MasonryDesignerForm({
       slab_thickness: 225,
       cavity: 100,
       support_level: -200,
-      characteristic_load: "14",
-      masonry_density: 2000,
-      masonry_thickness: 102.5,
-      masonry_height: 6,
+      characteristic_load: 6,
       has_notch: false,
       notch_height: 0,
       notch_depth: 0,
@@ -186,6 +157,7 @@ export default function MasonryDesignerForm({
       isolation_shim_thickness: 3,
       material_type: 'brick',
       use_custom_load_position: false,
+      use_custom_facade_offsets: false,
       enable_angle_extension: false,
       max_allowable_bracket_extension: -200,
     },
@@ -291,17 +263,8 @@ export default function MasonryDesignerForm({
     }
 
     try {
-      // Determine characteristic load
-      let characteristicLoad: number;
-      if (useCharacteristicLoad && values.characteristic_load) {
-        characteristicLoad = Number(values.characteristic_load);
-      } else {
-        characteristicLoad = calculateCharacteristicLoad({
-          masonry_density: values.masonry_density,
-          masonry_thickness: values.masonry_thickness,
-          masonry_height: values.masonry_height,
-        });
-      }
+      // Use characteristic load directly from form
+      const characteristicLoad = values.characteristic_load;
 
       // Get channel specifications based on selected fixing type and products
       const fixingType = values.fixing_type;
@@ -454,7 +417,7 @@ export default function MasonryDesignerForm({
       setIsLoading(false);
       setShowProgress(false);
     }
-  }, [onTestSubmit, useCharacteristicLoad, clearAIOptimizationResult, aiOptimizationResult])
+  }, [onTestSubmit, clearAIOptimizationResult, aiOptimizationResult])
 
   // Auto-trigger optimization for fully automated mode
   React.useEffect(() => {
@@ -699,135 +662,30 @@ export default function MasonryDesignerForm({
                               </div>
                             </div>
 
-                            {/* Characteristic Load Known Radio Buttons */}
-                            <div className="mb-6">
-                              <Label className="text-base font-medium mb-4 block">Characteristic Load Known?</Label>
-                              <ToggleGroup
-                                type="single"
-                                value={useCharacteristicLoad ? "yes" : "no"}
-                                onValueChange={(value) => {
-                                  if (value) {
-                                    setUseCharacteristicLoad(value === "yes");
-                                  }
-                                }}
-                                className="justify-start gap-2"
-                                variant="outline"
-                                size="default"
-                              >
-                                <ToggleGroupItem
-                                  value="yes"
-                                  aria-label="Yes"
-                                  className={cn(
-                                    "min-w-[80px]",
-                                    useCharacteristicLoad && "bg-[rgb(194,242,14)] text-black hover:brightness-95"
-                                  )}
-                                >
-                                  Yes
-                                </ToggleGroupItem>
-                                <ToggleGroupItem
-                                  value="no"
-                                  aria-label="No"
-                                  className={cn(
-                                    "min-w-[80px]",
-                                    !useCharacteristicLoad && "bg-[rgb(194,242,14)] text-black hover:brightness-95"
-                                  )}
-                                >
-                                  No
-                                </ToggleGroupItem>
-                              </ToggleGroup>
-                            </div>
-
-                            {/* Conditional Inputs */}
-                            {useCharacteristicLoad ? (
-                              <FormField
-                                control={form.control}
-                                name="characteristic_load"
-                                render={({ field }) => (
-                                  <FormItem>
-                                    <FormLabel>Characteristic Load (kN/m)</FormLabel>
-                                    <FormControl>
-                                      <Input
-                                        type="number"
-                                        placeholder="e.g. 2.5"
-                                        {...field}
-                                        onChange={(e) => {
-                                          const value = e.target.value === "" ? "" : e.target.value
-                                          field.onChange(value)
-                                        }}
-                                        value={field.value === undefined ? "" : field.value}
-                                        disabled={inputMode === 'chat' && isLoading}
-                                      />
-                                    </FormControl>
-                                    <FormMessage />
-                                  </FormItem>
-                                )}
-                              />
-                            ) : (
-                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                {/* Masonry Density */}
-                                <FormField
-                                  control={form.control}
-                                  name="masonry_density"
-                                  render={({ field }) => (
-                                    <FormItem>
-                                      <FormLabel>Density (kg/m³)</FormLabel>
-                                      <FormControl>
-                                        <Input
-                                          type="number"
-                                          placeholder="e.g. 2400"
-                                          value={field.value}
-                                          onChange={(e) => field.onChange(Number(e.target.value) || 0)}
-                                          disabled={inputMode === 'chat' && isLoading}
-                                        />
-                                      </FormControl>
-                                      <FormMessage />
-                                    </FormItem>
-                                  )}
-                                />
-
-                                {/* Masonry Thickness */}
-                                <FormField
-                                  control={form.control}
-                                  name="masonry_thickness"
-                                  render={({ field }) => (
-                                    <FormItem>
-                                      <FormLabel>Thickness (mm)</FormLabel>
-                                      <FormControl>
-                                        <Input
-                                          type="number"
-                                          placeholder="e.g. 100"
-                                          value={field.value}
-                                          onChange={(e) => field.onChange(Number(e.target.value) || 0)}
-                                          disabled={inputMode === 'chat' && isLoading}
-                                        />
-                                      </FormControl>
-                                      <FormMessage />
-                                    </FormItem>
-                                  )}
-                                />
-
-                                {/* Masonry Height */}
-                                <FormField
-                                  control={form.control}
-                                  name="masonry_height"
-                                  render={({ field }) => (
-                                    <FormItem>
-                                      <FormLabel>Height (m)</FormLabel>
-                                      <FormControl>
-                                        <Input
-                                          type="number"
-                                          placeholder="e.g. 3000"
-                                          value={field.value}
-                                          onChange={(e) => field.onChange(Number(e.target.value) || 0)}
-                                          disabled={inputMode === 'chat' && isLoading}
-                                        />
-                                      </FormControl>
-                                      <FormMessage />
-                                    </FormItem>
-                                  )}
-                                />
-                              </div>
-                            )}
+                            {/* Characteristic Load Input */}
+                            <FormField
+                              control={form.control}
+                              name="characteristic_load"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Characteristic Load (kN/m)</FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      type="number"
+                                      placeholder="e.g. 6"
+                                      {...field}
+                                      onChange={(e) => {
+                                        const value = e.target.value === "" ? 0 : Number(e.target.value)
+                                        field.onChange(value)
+                                      }}
+                                      value={field.value}
+                                      disabled={inputMode === 'chat' && isLoading}
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
                           </div>
                         </div>
 
@@ -1015,59 +873,90 @@ export default function MasonryDesignerForm({
                               </div>
                             </div>
 
-                            {/* Advanced Settings */}
-                            <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-                              <FormField
-                                control={form.control}
-                                name="front_offset"
-                                render={({ field }) => (
-                                  <FormItem>
-                                    <FormLabel>Front Offset (mm)</FormLabel>
-                                    <FormControl>
-                                      <Input
-                                        type="number"
-                                        placeholder="12"
-                                        value={field.value}
-                                        onChange={(e) => field.onChange(Number(e.target.value) || 0)}
-                                        disabled={inputMode === 'chat' && isLoading}
-                                        min="-50"
-                                        max="100"
-                                        step="1"
-                                      />
-                                    </FormControl>
-                                    <FormDescription>
-                                      Additional projection adjustment
-                                    </FormDescription>
-                                    <FormMessage />
-                                  </FormItem>
-                                )}
-                              />
+                            {/* Advanced Facade Offsets Toggle */}
+                            <div className="mt-6">
+                              <div className="space-y-4">
+                                <div className="flex items-center space-x-2">
+                                  <FormField
+                                    control={form.control}
+                                    name="use_custom_facade_offsets"
+                                    render={({ field }) => (
+                                      <FormItem className="flex flex-row items-center space-x-3 space-y-0">
+                                        <FormControl>
+                                          <Switch
+                                            checked={field.value}
+                                            onCheckedChange={field.onChange}
+                                            disabled={inputMode === 'chat' && isLoading}
+                                          />
+                                        </FormControl>
+                                        <div className="space-y-1 leading-none">
+                                          <FormLabel>Custom Facade Offsets</FormLabel>
+                                          <FormDescription>
+                                            Adjust front offset and isolation shim thickness
+                                          </FormDescription>
+                                        </div>
+                                      </FormItem>
+                                    )}
+                                  />
+                                </div>
 
-                              <FormField
-                                control={form.control}
-                                name="isolation_shim_thickness"
-                                render={({ field }) => (
-                                  <FormItem>
-                                    <FormLabel>Isolation Shim Thickness (mm)</FormLabel>
-                                    <FormControl>
-                                      <Input
-                                        type="number"
-                                        placeholder="3"
-                                        value={field.value}
-                                        onChange={(e) => field.onChange(Number(e.target.value) || 0)}
-                                        disabled={inputMode === 'chat' && isLoading}
-                                        min="0"
-                                        max="20"
-                                        step="0.5"
-                                      />
-                                    </FormControl>
-                                    <FormDescription>
-                                      Thickness of isolation material
-                                    </FormDescription>
-                                    <FormMessage />
-                                  </FormItem>
-                                )}
-                              />
+                              {/* Conditional Facade Offset Fields */}
+                              {form.watch("use_custom_facade_offsets") && (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                  <FormField
+                                    control={form.control}
+                                    name="front_offset"
+                                    render={({ field }) => (
+                                      <FormItem>
+                                        <FormLabel>Front Offset (mm)</FormLabel>
+                                        <FormControl>
+                                          <Input
+                                            type="number"
+                                            placeholder="12"
+                                            value={field.value}
+                                            onChange={(e) => field.onChange(Number(e.target.value) || 0)}
+                                            disabled={inputMode === 'chat' && isLoading}
+                                            min="-50"
+                                            max="100"
+                                            step="1"
+                                          />
+                                        </FormControl>
+                                        <FormDescription>
+                                          Additional projection adjustment
+                                        </FormDescription>
+                                        <FormMessage />
+                                      </FormItem>
+                                    )}
+                                  />
+
+                                  <FormField
+                                    control={form.control}
+                                    name="isolation_shim_thickness"
+                                    render={({ field }) => (
+                                      <FormItem>
+                                        <FormLabel>Isolation Shim Thickness (mm)</FormLabel>
+                                        <FormControl>
+                                          <Input
+                                            type="number"
+                                            placeholder="3"
+                                            value={field.value}
+                                            onChange={(e) => field.onChange(Number(e.target.value) || 0)}
+                                            disabled={inputMode === 'chat' && isLoading}
+                                            min="0"
+                                            max="20"
+                                            step="0.5"
+                                          />
+                                        </FormControl>
+                                        <FormDescription>
+                                          Thickness of isolation material
+                                        </FormDescription>
+                                        <FormMessage />
+                                      </FormItem>
+                                    )}
+                                  />
+                                </div>
+                              )}
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -1307,47 +1196,40 @@ export default function MasonryDesignerForm({
                                       Dim D (Inverted Brackets Only)
                                       <span className="text-xs text-blue-600 cursor-help" title="Distance from bracket bottom to fixing point for inverted brackets">ⓘ</span>
                                     </Label>
-                                    <ToggleGroup
-                                      type="single"
-                                      value={form.watch("use_custom_dim_d") ? "custom" : "default"}
-                                      onValueChange={(value) => {
-                                        if (value) {
-                                          const useCustom = value === "custom";
-                                          form.setValue("use_custom_dim_d", useCustom);
-                                          if (!useCustom) {
-                                            form.setValue("dim_d", 130);
-                                          } else {
-                                            // When switching to custom, set a reasonable default if current value is the default
-                                            const currentDimD = form.getValues("dim_d");
-                                            if (currentDimD === 130) {
-                                              form.setValue("dim_d", 200);
-                                            }
-                                          }
-                                        }
-                                      }}
-                                      className="justify-start gap-2 mb-3"
-                                    >
-                                      <ToggleGroupItem
-                                        value="default"
-                                        aria-label="Auto Optimize Dim D"
-                                        className={cn(
-                                          "min-w-[120px] text-xs",
-                                          !form.watch("use_custom_dim_d") && "bg-[rgb(194,242,14)] text-black hover:brightness-95"
+
+                                    <div className="flex items-center space-x-2">
+                                      <FormField
+                                        control={form.control}
+                                        name="use_custom_dim_d"
+                                        render={({ field }) => (
+                                          <FormItem className="flex flex-row items-center space-x-3 space-y-0">
+                                            <FormControl>
+                                              <Switch
+                                                checked={field.value}
+                                                onCheckedChange={(checked) => {
+                                                  field.onChange(checked);
+                                                  if (!checked) {
+                                                    form.setValue("dim_d", 130);
+                                                  } else {
+                                                    const currentDimD = form.getValues("dim_d");
+                                                    if (currentDimD === 130) {
+                                                      form.setValue("dim_d", 200);
+                                                    }
+                                                  }
+                                                }}
+                                                disabled={inputMode === 'chat' && isLoading}
+                                              />
+                                            </FormControl>
+                                            <div className="space-y-1 leading-none">
+                                              <FormLabel>Custom Dim D</FormLabel>
+                                              <FormDescription>
+                                                Override auto-optimized Dim D value
+                                              </FormDescription>
+                                            </div>
+                                          </FormItem>
                                         )}
-                                      >
-                                        Auto Optimize
-                                      </ToggleGroupItem>
-                                      <ToggleGroupItem
-                                        value="custom"
-                                        aria-label="Custom Dim D"
-                                        className={cn(
-                                          "min-w-[120px] text-xs",
-                                          form.watch("use_custom_dim_d") && "bg-[rgb(194,242,14)] text-black hover:brightness-95"
-                                        )}
-                                      >
-                                        Custom Value
-                                      </ToggleGroupItem>
-                                    </ToggleGroup>
+                                      />
+                                    </div>
 
                                     {/* Conditional Custom Input */}
                                     {form.watch("use_custom_dim_d") ? (
@@ -1675,12 +1557,12 @@ export default function MasonryDesignerForm({
                                           <div className="flex justify-between items-center mb-2">
                                             <FormLabel>Max Bracket Position (mm)</FormLabel>
                                             <span className="text-sm tabular-nums">
-                                              {field.value ?? -200} mm {(field.value ?? -200) >= 0 ? "(above slab)" : "(below slab)"}
+                                              {field.value ?? -200} mm
                                             </span>
                                           </div>
                                           <FormDescription className="mb-3">
-                                            Maximum allowable bracket position relative to top of slab in 5mm increments.
-                                            Negative values = below slab, positive values = above slab. When exceeded, the angle will be extended to compensate.
+                                            Maximum allowable bracket position in 5mm increments.
+                                            0 is at top of slab (often negative). When exceeded, the angle will be extended to compensate.
                                           </FormDescription>
                                         </div>
                                         <FormControl>

@@ -18,22 +18,10 @@ export const formSchema = z.object({
     .number()
     .min(-600, { message: "Support level must be at least -600mm" })
     .max(500, { message: "Support level must be at most 500mm" }),
-  characteristic_load: z.coerce.string().optional(),
-  masonry_density: z.coerce
+  characteristic_load: z.coerce
     .number()
-    .min(1500, { message: "Masonry density must be at least 1500 kg/m³" })
-    .max(2500, { message: "Masonry density must be at most 2500 kg/m³" })
-    .default(2000),
-  masonry_thickness: z.coerce
-    .number()
-    .min(50, { message: "Masonry thickness must be at least 50mm" })
-    .max(250, { message: "Masonry thickness must be at most 250mm" })
-    .default(102.5),
-  masonry_height: z.coerce
-    .number()
-    .min(1, { message: "Masonry height must be at least 1m" })
-    .max(10, { message: "Masonry height must be at most 10m" })
-    .default(6),
+    .min(1, { message: "Characteristic load must be at least 1 kN/m" })
+    .max(50, { message: "Characteristic load must be at most 50 kN/m" }),
   has_notch: z.boolean().default(false),
   notch_height: z.coerce
     .number()
@@ -94,6 +82,7 @@ export const formSchema = z.object({
     .default(3),
   material_type: z.nativeEnum(MaterialType).default(MaterialType.BRICK),
   use_custom_load_position: z.boolean().default(false),
+  use_custom_facade_offsets: z.boolean().default(false),
 
   // Angle extension fields for exclusion zones
   enable_angle_extension: z.boolean().default(false),
