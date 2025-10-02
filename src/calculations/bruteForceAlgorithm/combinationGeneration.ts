@@ -87,10 +87,76 @@ function isValidCombination(params: GeneticParameters, inputs: DesignInputs): bo
 }
 
 /**
+ * Filters fixing positions to exclude those that would violate minimum bracket height
+ * when combined with exclusion zone constraints.
+ *
+ * @param positions - Array of fixing positions to filter
+ * @param inputs - Design inputs containing exclusion zone and support level
+ * @returns Filtered array of valid fixing positions
+ */
+const filterFixingPositionsForExclusionZone = (positions: number[], inputs: DesignInputs): number[] => {
+    // Import validation function
+    const { validateFixingPositionWithExclusionZone } = require('../angleExtensionCalculations');
+    const { determineBracketType } = require('../bracketAngleSelection');
+
+    // Determine bracket type from support level
+    const bracket_type = determineBracketType(inputs.support_level);
+
+    console.log(`\n🔍 FILTERING FIXING POSITIONS FOR EXCLUSION ZONE:`);
+    console.log(`  Bracket type: ${bracket_type}`);
+    console.log(`  Support level: ${inputs.support_level}mm`);
+    console.log(`  Exclusion zone: ${inputs.max_allowable_bracket_extension}mm`);
+    console.log(`  Checking ${positions.length} positions...`);
+
+    const validPositions: number[] = [];
+    const invalidPositions: { position: number; reason: string }[] = [];
+
+    for (const fixing_position of positions) {
+        const validation = validateFixingPositionWithExclusionZone({
+            fixing_position,
+            support_level: inputs.support_level,
+            slab_thickness: inputs.slab_thickness,
+            max_allowable_bracket_extension: inputs.max_allowable_bracket_extension,
+            bracket_type,
+            angle_orientation: 'Standard', // Test with default, will be tested for all orientations later
+            vertical_leg: 60
+        });
+
+        if (validation.isValid) {
+            validPositions.push(fixing_position);
+        } else {
+            invalidPositions.push({
+                position: fixing_position,
+                reason: validation.reason || 'Unknown reason'
+            });
+        }
+    }
+
+    // Log filtering results
+    if (invalidPositions.length > 0) {
+        console.log(`\n❌ FILTERED OUT ${invalidPositions.length} POSITIONS:`);
+        invalidPositions.forEach(({ position, reason }) => {
+            console.log(`  - ${position}mm: ${reason}`);
+        });
+    }
+
+    if (validPositions.length > 0) {
+        console.log(`\n✅ VALID POSITIONS (${validPositions.length}): [${validPositions.join(', ')}]mm`);
+    } else {
+        console.log(`\n⚠️  NO VALID POSITIONS FOUND!`);
+    }
+
+    return validPositions;
+};
+
+/**
  * Generates fixing position combinations for optimization.
  * Starts at 75mm (default) and increments by 5mm steps downward into the slab.
  * Maximum depth is limited to slab thickness - bottom critical edge to maintain minimum edge distance.
- * 
+ *
+ * Also filters out fixing positions that would violate minimum bracket height when combined with
+ * exclusion zone constraints.
+ *
  * @param inputs - Design inputs containing slab thickness and optimization settings
  * @returns Array of fixing positions in mm from top of slab
  */
@@ -123,8 +189,25 @@ const generateFixingPositions = (inputs: DesignInputs): number[] => {
             positions.push(startPosition);
         }
 
-        console.log(`Fixing Position: Optimizing across ${positions.length} positions (${positions[0]}mm to ${positions[positions.length - 1]}mm)`);
-        console.log(`Generated positions: [${positions.join(', ')}]`);
+        console.log(`Fixing Position: Generated ${positions.length} positions (${positions[0]}mm to ${positions[positions.length - 1]}mm)`);
+        console.log(`Initial positions: [${positions.join(', ')}]`);
+
+        // Filter positions based on exclusion zone + minimum bracket height compatibility
+        if (inputs.enable_angle_extension && inputs.max_allowable_bracket_extension !== null) {
+            const filteredPositions = filterFixingPositionsForExclusionZone(positions, inputs);
+
+            if (filteredPositions.length === 0) {
+                console.warn(`⚠️  All fixing positions filtered out due to exclusion zone conflicts!`);
+                console.warn(`   Exclusion zone: ${inputs.max_allowable_bracket_extension}mm`);
+                console.warn(`   Support level: ${inputs.support_level}mm`);
+                console.warn(`   Returning unfiltered positions - design may fail verification.`);
+                return positions; // Return unfiltered to allow error messaging in evaluation
+            }
+
+            console.log(`✅ Filtered to ${filteredPositions.length} valid positions after exclusion zone check`);
+            return filteredPositions;
+        }
+
         return positions;
     }
 };

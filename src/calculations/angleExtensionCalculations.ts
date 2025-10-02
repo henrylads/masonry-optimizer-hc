@@ -271,6 +271,147 @@ export function validateAngleExtensionLimits(
 }
 
 /**
+ * Validates if a fixing position is compatible with exclusion zone and minimum bracket height requirements
+ *
+ * This function checks if applying an exclusion zone constraint would reduce the bracket below
+ * its structural minimum height, which would make the design invalid.
+ *
+ * @param params Validation parameters
+ * @returns Validation result with details
+ */
+export function validateFixingPositionWithExclusionZone(params: {
+  fixing_position: number;
+  support_level: number;
+  slab_thickness: number;
+  max_allowable_bracket_extension: number | null;
+  bracket_type: BracketType;
+  angle_orientation?: AngleOrientation;
+  vertical_leg?: number;
+}): {
+  isValid: boolean;
+  original_bracket_height: number;
+  limited_bracket_height: number;
+  minimum_required_height: number;
+  bracket_reduction: number;
+  reason?: string;
+} {
+  const {
+    fixing_position,
+    support_level,
+    slab_thickness,
+    max_allowable_bracket_extension,
+    bracket_type,
+    angle_orientation = 'Standard',
+    vertical_leg = 60
+  } = params;
+
+  // Import minimum height constants
+  const BRACKET_ANGLE_CONSTANTS_LOCAL = {
+    STANDARD_BRACKET_MIN_HEIGHT: 150,
+    INVERTED_BRACKET_MIN_HEIGHT: 175
+  };
+
+  const minimum_required_height = bracket_type === 'Standard'
+    ? BRACKET_ANGLE_CONSTANTS_LOCAL.STANDARD_BRACKET_MIN_HEIGHT
+    : BRACKET_ANGLE_CONSTANTS_LOCAL.INVERTED_BRACKET_MIN_HEIGHT;
+
+  // Calculate original bracket height based on bracket type
+  let original_bracket_height: number;
+
+  if (bracket_type === 'Standard') {
+    // Standard bracket calculation: |support_level| - fixing_position + 40mm (Y constant)
+    const Y_CONSTANT = 40;
+
+    // Check if using inverted angle (affects geometry)
+    if (angle_orientation === 'Inverted') {
+      // Standard bracket with inverted angle geometry
+      const fixing_point = -fixing_position;
+      const bracket_top = fixing_point + Y_CONSTANT;
+      const angle_bottom = support_level - vertical_leg;
+      original_bracket_height = Math.abs(bracket_top - angle_bottom);
+    } else {
+      // Standard bracket with standard angle
+      original_bracket_height = Math.abs(support_level) - fixing_position + Y_CONSTANT;
+    }
+
+    // Apply minimum
+    original_bracket_height = Math.max(original_bracket_height, minimum_required_height);
+
+  } else {
+    // Inverted bracket - simplified calculation for validation
+    // Actual height depends on Dim D, but for validation we use a representative value
+    const min_dim_d = 135;
+    const bracket_top_from_ssl = support_level >= 0 ? support_level : support_level;
+    const bracket_bottom_from_ssl = -(fixing_position + min_dim_d);
+    original_bracket_height = Math.abs(bracket_top_from_ssl - bracket_bottom_from_ssl);
+
+    // Apply minimum
+    original_bracket_height = Math.max(original_bracket_height, minimum_required_height);
+  }
+
+  // If no exclusion zone, always valid
+  if (max_allowable_bracket_extension === null || max_allowable_bracket_extension === undefined) {
+    return {
+      isValid: true,
+      original_bracket_height,
+      limited_bracket_height: original_bracket_height,
+      minimum_required_height,
+      bracket_reduction: 0
+    };
+  }
+
+  // Calculate how exclusion zone would limit the bracket
+  let bracket_reduction = 0;
+  let limited_bracket_height = original_bracket_height;
+
+  if (bracket_type === 'Standard') {
+    // For standard brackets, check if bracket bottom would exceed exclusion zone
+    const Y_CONSTANT = 40;
+    const bracket_bottom_position = fixing_position + original_bracket_height - Y_CONSTANT;
+
+    if (bracket_bottom_position > Math.abs(max_allowable_bracket_extension)) {
+      const max_allowed_bracket_bottom = Math.abs(max_allowable_bracket_extension);
+      const limited_height_raw = max_allowed_bracket_bottom - fixing_position + Y_CONSTANT;
+      limited_bracket_height = Math.max(0, limited_height_raw);
+      bracket_reduction = original_bracket_height - limited_bracket_height;
+    }
+  }
+  // Note: Inverted bracket validation is more complex due to Dim D variations,
+  // so we primarily focus on standard brackets for fixing position filtering
+
+  // Check if limited height violates minimum
+  const violates_minimum = limited_bracket_height < minimum_required_height;
+
+  console.log(`🔍 VALIDATION: Fixing ${fixing_position}mm, ${bracket_type} bracket:`, {
+    original_bracket_height,
+    limited_bracket_height,
+    minimum_required_height,
+    bracket_reduction,
+    exclusion_zone: max_allowable_bracket_extension,
+    violates_minimum
+  });
+
+  if (violates_minimum) {
+    return {
+      isValid: false,
+      original_bracket_height,
+      limited_bracket_height,
+      minimum_required_height,
+      bracket_reduction,
+      reason: `Exclusion zone would reduce bracket to ${limited_bracket_height}mm, below minimum ${minimum_required_height}mm`
+    };
+  }
+
+  return {
+    isValid: true,
+    original_bracket_height,
+    limited_bracket_height,
+    minimum_required_height,
+    bracket_reduction
+  };
+}
+
+/**
  * Main angle extension calculation function that combines all logic
  * Now includes automatic angle orientation flipping for inverted brackets
  *
