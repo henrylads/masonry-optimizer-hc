@@ -29,7 +29,6 @@ export interface PDFReportData {
 
 export interface FormattedDesignInputs {
   structuralParameters: { label: string; value: string; unit?: string }[];
-  masonryParameters: { label: string; value: string; unit?: string }[];
   notchConfiguration: { label: string; value: string; unit?: string }[];
   fixingConfiguration: { label: string; value: string; unit?: string }[];
   limitationSettings: { label: string; value: string; unit?: string }[];
@@ -75,12 +74,10 @@ export const extractDesignInputs = (formData: FormDataType): FormattedDesignInpu
       { label: 'Slab Thickness', value: formData.slab_thickness.toString(), unit: 'mm' },
       { label: 'Cavity Width', value: formData.cavity.toString(), unit: 'mm' },
       { label: 'Support Level', value: formData.support_level.toString(), unit: 'mm' },
-      { label: 'Characteristic Load', value: formData.characteristic_load || 'Auto-calculated', unit: 'kN/m' }
-    ],
-    masonryParameters: [
-      { label: 'Masonry Density', value: formData.masonry_density.toString(), unit: 'kg/m³' },
-      { label: 'Masonry Thickness', value: formData.masonry_thickness.toString(), unit: 'mm' },
-      { label: 'Masonry Height', value: formData.masonry_height.toString(), unit: 'm' }
+      { label: 'Characteristic Load', value: formData.characteristic_load.toString(), unit: 'kN/m' },
+      { label: 'Facade Thickness', value: formData.facade_thickness.toString(), unit: 'mm' },
+      { label: 'Material Type', value: formData.material_type },
+      { label: 'Load Position', value: formData.load_position?.toFixed(2) || '0.33' }
     ],
     notchConfiguration: formData.has_notch ? [
       { label: 'Notch Enabled', value: 'Yes' },

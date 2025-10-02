@@ -100,20 +100,16 @@ export class CalculationPDFGenerator {
     this.addSubsectionTitle('1.1 Structural Parameters');
     this.addParameterTable(this.data.designInputs.structuralParameters);
 
-    // Masonry Parameters
-    this.addSubsectionTitle('1.2 Masonry Parameters');
-    this.addParameterTable(this.data.designInputs.masonryParameters);
-
     // Notch Configuration
-    this.addSubsectionTitle('1.3 Notch Configuration');
+    this.addSubsectionTitle('1.2 Notch Configuration');
     this.addParameterTable(this.data.designInputs.notchConfiguration);
 
     // Fixing Configuration
-    this.addSubsectionTitle('1.4 Fixing Configuration');
+    this.addSubsectionTitle('1.3 Fixing Configuration');
     this.addParameterTable(this.data.designInputs.fixingConfiguration);
 
     // Limitation Settings
-    this.addSubsectionTitle('1.5 Limitation Settings');
+    this.addSubsectionTitle('1.4 Limitation Settings');
     this.addParameterTable(this.data.designInputs.limitationSettings);
 
     this.currentY += 10;
