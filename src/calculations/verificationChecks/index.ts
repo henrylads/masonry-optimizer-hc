@@ -182,7 +182,7 @@ export const verifyAll = (
 
     const angleToBracketResults = verifyAngleToBracketConnection(
         appliedShearKN,
-        90,  // Horizontal leg length B
+        horizontalLeg,  // Use dynamic horizontal leg (same as deflection calculation)
         mathModel.b,  // Bearing length from mathematical model
         mathModel.I,  // Rise to bolt from mathematical model
         params.boltDiameter
@@ -191,9 +191,9 @@ export const verifyAll = (
     if (detailedMode) {
         console.log('\n=== ANGLE TO BRACKET CONNECTION RESULTS ===');
         console.log('Applied Shear:', appliedShearKN, 'kN');
-        console.log('Horizontal Leg:', 90, 'mm');
-        console.log('Bearing Length:', mathModel.b, 'mm');
-        console.log('Rise to Bolt:', mathModel.I, 'mm');
+        console.log('Horizontal Leg (B):', horizontalLeg, 'mm', angleParams.horizontal_leg ? '(dynamic)' : '(fallback)');
+        console.log('Bearing Length (b):', mathModel.b, 'mm');
+        console.log('Rise to Bolt (I):', mathModel.I, 'mm');
         console.log('Bolt Diameter:', params.boltDiameter, 'mm');
         console.log('M_b (Moment):', angleToBracketResults.M_b, 'kNm');
         console.log('N_bolt (Tension Force):', angleToBracketResults.N_bolt, 'kN');
