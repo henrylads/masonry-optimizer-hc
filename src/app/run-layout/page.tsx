@@ -1,17 +1,15 @@
 "use client"
 
-import { useState, useEffect } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { RunLayoutDisplay } from '@/components/run-layout-display';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
 import { ArrowLeft } from 'lucide-react';
 
-export default function RunLayoutPage() {
+function RunLayoutContent() {
   const searchParams = useSearchParams();
-  const router = useRouter();
   const bccFromUrl = searchParams.get('bcc');
   const [bracketCentres, setBracketCentres] = useState<number>(bccFromUrl ? Number(bccFromUrl) : 500);
 
@@ -102,5 +100,17 @@ export default function RunLayoutPage() {
         </Card>
       </div>
     </main>
+  );
+}
+
+export default function RunLayoutPage() {
+  return (
+    <Suspense fallback={
+      <main className="container mx-auto p-6 max-w-7xl">
+        <div className="text-center py-12">Loading...</div>
+      </main>
+    }>
+      <RunLayoutContent />
+    </Suspense>
   );
 }
