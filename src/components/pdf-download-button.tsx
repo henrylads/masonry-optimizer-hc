@@ -6,11 +6,13 @@ import { Download, FileText, Loader2 } from 'lucide-react';
 import { OptimizationResult } from '@/types/optimization-types';
 import { FormDataType } from '@/types/form-schema';
 import { generatePDFReport } from '@/utils/pdf-generator';
+import { ShapeDiverOutputs } from '@/components/shapediver';
 // import { useToast } from '@/hooks/use-toast'; // Toast system not available
 
 interface PDFDownloadButtonProps {
   optimizationResult: OptimizationResult;
   designInputs: FormDataType;
+  shapeDiverOutputs?: ShapeDiverOutputs;
   disabled?: boolean;
   variant?: 'default' | 'outline' | 'secondary' | 'ghost' | 'link' | 'destructive';
   size?: 'default' | 'sm' | 'lg' | 'icon';
@@ -24,6 +26,7 @@ interface PDFDownloadButtonProps {
 export const PDFDownloadButton: React.FC<PDFDownloadButtonProps> = ({
   optimizationResult,
   designInputs,
+  shapeDiverOutputs,
   disabled = false,
   variant = 'outline',
   size = 'default',
@@ -49,7 +52,7 @@ export const PDFDownloadButton: React.FC<PDFDownloadButtonProps> = ({
       }
 
       // Generate and download the PDF
-      await generatePDFReport(optimizationResult, designInputs);
+      await generatePDFReport(optimizationResult, designInputs, shapeDiverOutputs);
 
       // Log successful generation for debugging
       console.log('📄 PDF report generated successfully', {

@@ -848,6 +848,7 @@ export function ResultsDisplay({ result, history, designInputs }: ResultsDisplay
             <PDFDownloadButton
               optimizationResult={result}
               designInputs={designInputs || {} as FormDataType} // Use empty object if not available
+              shapeDiverOutputs={shapeDiverOutputs}
               variant="outline"
               disabled={!designInputs} // Disable if no design inputs available
             />

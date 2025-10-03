@@ -1,6 +1,7 @@
 import jsPDF from 'jspdf';
 import { FormDataType } from '@/types/form-schema';
 import { OptimizationResult } from '@/types/optimization-types';
+import { ShapeDiverOutputs } from '@/components/shapediver';
 import {
   extractPDFReportData,
   PDFReportData,
@@ -17,6 +18,7 @@ export class CalculationPDFGenerator {
   private pageWidth: number;
   private margin: number;
   private data: PDFReportData;
+  private shapeDiverOutputs?: ShapeDiverOutputs;
 
   constructor() {
     this.doc = new jsPDF();
@@ -30,15 +32,19 @@ export class CalculationPDFGenerator {
   /**
    * Main method to generate the complete calculation report
    */
-  async generateReport(result: OptimizationResult, formData: FormDataType): Promise<void> {
+  async generateReport(result: OptimizationResult, formData: FormDataType, shapeDiverOutputs?: ShapeDiverOutputs): Promise<void> {
     try {
       // Extract all data needed for the PDF
       this.data = extractPDFReportData(result, formData);
+      this.shapeDiverOutputs = shapeDiverOutputs;
 
       // Build the PDF document
       this.addHeader();
       this.addDesignInputsSection();
       this.addFinalDesignSection();
+      if (shapeDiverOutputs) {
+        this.addShapeDiverOutputsSection();
+      }
       this.addCalculationsSection();
       this.addVerificationSummarySection();
       this.addFooter();
@@ -138,11 +144,69 @@ export class CalculationPDFGenerator {
   }
 
   /**
+   * Add ShapeDiver outputs section
+   */
+  private addShapeDiverOutputsSection(): void {
+    this.checkPageBreak(60);
+    this.addSectionTitle('3. ShapeDiver 3D Model Outputs');
+
+    const outputs: { label: string; value: string; unit?: string }[] = [];
+
+    if (this.shapeDiverOutputs?.totalSystemWeight !== undefined) {
+      outputs.push({
+        label: 'Total System Weight',
+        value: this.shapeDiverOutputs.totalSystemWeight.toFixed(2),
+        unit: 'kg'
+      });
+    }
+
+    if (this.shapeDiverOutputs?.totalSystemWeight !== undefined && this.data.finalDesign.performance) {
+      // Calculate weight per meter from total weight and bracket centres
+      const bracketCentres = parseFloat(this.data.finalDesign.genetic.find(p => p.label === 'Bracket Centres')?.value || '0');
+      if (bracketCentres > 0) {
+        const weightPerMeter = (this.shapeDiverOutputs.totalSystemWeight / bracketCentres) * 1000;
+        outputs.push({
+          label: 'Total Weight per Meter',
+          value: weightPerMeter.toFixed(2),
+          unit: 'kg/m'
+        });
+      }
+    }
+
+    if (this.shapeDiverOutputs?.totalSystemEmbodiedCarbon !== undefined) {
+      outputs.push({
+        label: 'Embodied Carbon',
+        value: this.shapeDiverOutputs.totalSystemEmbodiedCarbon.toFixed(2),
+        unit: 'kg CO2e'
+      });
+    }
+
+    if (this.shapeDiverOutputs?.totalSystemPerimeterLength !== undefined) {
+      outputs.push({
+        label: 'Perimeter Length',
+        value: this.shapeDiverOutputs.totalSystemPerimeterLength.toFixed(2),
+        unit: 'mm'
+      });
+    }
+
+    if (outputs.length > 0) {
+      this.addParameterTable(outputs);
+    } else {
+      this.doc.setFontSize(9);
+      this.doc.setFont(undefined, 'italic');
+      this.doc.text('No 3D model outputs available', this.margin + 5, this.currentY);
+      this.currentY += 10;
+    }
+
+    this.currentY += 10;
+  }
+
+  /**
    * Add detailed calculations section
    */
   private addCalculationsSection(): void {
     this.checkPageBreak(80);
-    this.addSectionTitle('3. Detailed Calculations');
+    this.addSectionTitle('4. Detailed Calculations');
 
     this.data.calculations.forEach((calc, index) => {
       this.checkPageBreak(100);
@@ -155,7 +219,7 @@ export class CalculationPDFGenerator {
    */
   private addCalculationSubsection(calc: FormattedCalculation, number: number): void {
     // Calculation title and description
-    this.addSubsectionTitle(`3.${number} ${calc.name}`);
+    this.addSubsectionTitle(`4.${number} ${calc.name}`);
     this.doc.setFontSize(9);
     this.doc.setFont(undefined, 'normal');
     this.doc.text(calc.description, this.margin, this.currentY);
@@ -233,7 +297,7 @@ export class CalculationPDFGenerator {
    */
   private addVerificationSummarySection(): void {
     this.checkPageBreak(100);
-    this.addSectionTitle('4. Verification Summary');
+    this.addSectionTitle('5. Verification Summary');
 
     // Create summary table
     const tableData = [
@@ -383,8 +447,9 @@ export class CalculationPDFGenerator {
  */
 export const generatePDFReport = async (
   result: OptimizationResult,
-  formData: FormDataType
+  formData: FormDataType,
+  shapeDiverOutputs?: ShapeDiverOutputs
 ): Promise<void> => {
   const generator = new CalculationPDFGenerator();
-  await generator.generateReport(result, formData);
+  await generator.generateReport(result, formData, shapeDiverOutputs);
 };
