@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useEffect, useRef, useMemo, useState, useCallback } from 'react';
-import { Check, X, AlertTriangle, TrendingUp, Zap, Target, Scale, Leaf, Ruler, Settings, Wrench, Box, Edit3, Save, XCircle, RotateCcw, Loader2, CheckCircle } from 'lucide-react'
+import { Check, X, AlertTriangle, TrendingUp, Zap, Target, Scale, Leaf, Ruler, Settings, Wrench, Box, Edit3, Save, XCircle, RotateCcw, Loader2, CheckCircle, ArrowRight } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ShapeDiverCard, ShapeDiverOutputs } from './shapediver'
 import { Button } from "@/components/ui/button"
@@ -37,6 +37,7 @@ import {
 } from "@/components/ui/select"
 import { PDFDownloadButton } from '@/components/pdf-download-button'
 import { FormDataType } from '@/types/form-schema'
+import Link from 'next/link'
 
 interface ResultsDisplayProps {
   result: OptimisationResult | null
@@ -829,14 +830,29 @@ export function ResultsDisplay({ result, history, designInputs }: ResultsDisplay
     <div className="space-y-6">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold">Optimisation Results</h2>
-        {result && result.calculated?.detailed_verification_results && (
-          <PDFDownloadButton
-            optimizationResult={result}
-            designInputs={designInputs || {} as FormDataType} // Use empty object if not available
-            variant="outline"
-            disabled={!designInputs} // Disable if no design inputs available
-          />
-        )}
+        <div className="flex gap-2">
+          {result && displayedResult?.genetic?.bracket_centres && (
+            <Button variant="outline" className="gap-2" asChild>
+              <Link
+                href={`/run-layout?bcc=${displayedResult.genetic.bracket_centres}`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Ruler className="h-4 w-4" />
+                Run Layout Optimizer
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </Button>
+          )}
+          {result && result.calculated?.detailed_verification_results && (
+            <PDFDownloadButton
+              optimizationResult={result}
+              designInputs={designInputs || {} as FormDataType} // Use empty object if not available
+              variant="outline"
+              disabled={!designInputs} // Disable if no design inputs available
+            />
+          )}
+        </div>
       </div>
 
       {/* Hero Section - Key Results Summary */}
