@@ -163,6 +163,19 @@ export default function MasonryDesignerForm({
     },
   })
 
+  // Check for characteristic_load from density calculator on mount
+  React.useEffect(() => {
+    const storedLoad = localStorage.getItem('characteristic_load');
+    if (storedLoad) {
+      const loadValue = parseFloat(storedLoad);
+      if (!isNaN(loadValue)) {
+        form.setValue('characteristic_load', loadValue);
+        // Clear the value from localStorage after using it
+        localStorage.removeItem('characteristic_load');
+      }
+    }
+  }, [form]);
+
   // Watch form values and clear results when they change
   React.useEffect(() => {
     const subscription = form.watch(() => {

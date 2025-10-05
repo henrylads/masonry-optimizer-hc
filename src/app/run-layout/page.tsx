@@ -7,6 +7,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ArrowLeft } from 'lucide-react';
+import { MainNavigation } from '@/components/main-navigation';
+import { AuthHeader } from '@/components/auth-header';
 
 function RunLayoutContent() {
   const searchParams = useSearchParams();
@@ -21,16 +23,19 @@ function RunLayoutContent() {
   }, [bccFromUrl]);
 
   return (
-    <main className="container mx-auto p-6 max-w-7xl">
-      <div className="mb-6">
-        <button
-          onClick={() => window.close()}
-          className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Close Window
-        </button>
-      </div>
+    <div className="min-h-screen">
+      <AuthHeader />
+      <MainNavigation />
+      <main className="container mx-auto p-6 max-w-7xl">
+        <div className="mb-6">
+          <button
+            onClick={() => window.close()}
+            className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Close Window
+          </button>
+        </div>
 
       <div className="space-y-6">
         <div>
@@ -99,16 +104,19 @@ function RunLayoutContent() {
           </CardContent>
         </Card>
       </div>
-    </main>
+      </main>
+    </div>
   );
 }
 
 export default function RunLayoutPage() {
   return (
     <Suspense fallback={
-      <main className="container mx-auto p-6 max-w-7xl">
-        <div className="text-center py-12">Loading...</div>
-      </main>
+      <div className="min-h-screen">
+        <main className="container mx-auto p-6 max-w-7xl">
+          <div className="text-center py-12">Loading...</div>
+        </main>
+      </div>
     }>
       <RunLayoutContent />
     </Suspense>
