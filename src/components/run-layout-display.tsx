@@ -23,7 +23,7 @@ interface RunLayoutDisplayProps {
 }
 
 export function RunLayoutDisplay({ bracketCentres }: RunLayoutDisplayProps) {
-  const [totalRunLength, setTotalRunLength] = useState<number>(2321); // Default to worked example
+  const [totalRunLengthMeters, setTotalRunLengthMeters] = useState<number>(2.321); // Default to worked example in meters
   const [result, setResult] = useState<RunOptimizationResult | null>(null);
   const [isCalculating, setIsCalculating] = useState(false);
 
@@ -31,7 +31,7 @@ export function RunLayoutDisplay({ bracketCentres }: RunLayoutDisplayProps) {
     setIsCalculating(true);
     try {
       const request: RunOptimizationRequest = {
-        totalRunLength,
+        totalRunLength: totalRunLengthMeters * 1000, // Convert meters to mm
         bracketCentres,
         minEdgeDistance: 35,
         maxEdgeDistance: 0.5 * bracketCentres
@@ -63,18 +63,18 @@ export function RunLayoutDisplay({ bracketCentres }: RunLayoutDisplayProps) {
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="totalRunLength">Total Run Length (mm)</Label>
+              <Label htmlFor="totalRunLength">Total Run Length (m)</Label>
               <Input
                 id="totalRunLength"
                 type="number"
-                value={totalRunLength}
-                onChange={(e) => setTotalRunLength(Number(e.target.value))}
+                value={totalRunLengthMeters}
+                onChange={(e) => setTotalRunLengthMeters(Number(e.target.value))}
                 min={0}
-                max={250000}
-                step={5}
+                max={250}
+                step={0.1}
               />
               <p className="text-xs text-muted-foreground">
-                Range: 0 - 250,000mm (250m)
+                Range: 0 - 250m
               </p>
             </div>
 
@@ -94,7 +94,7 @@ export function RunLayoutDisplay({ bracketCentres }: RunLayoutDisplayProps) {
             <div className="flex items-end">
               <Button
                 onClick={calculateLayout}
-                disabled={isCalculating || totalRunLength <= 0}
+                disabled={isCalculating || totalRunLengthMeters <= 0}
                 className="w-full"
               >
                 {isCalculating ? 'Calculating...' : 'Calculate Layout'}

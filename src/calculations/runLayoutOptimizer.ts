@@ -283,7 +283,8 @@ export function generateSegmentations(
   return segmentations.filter(seg => {
     // IMPORTANT: Gaps at both ends AND between pieces = (numPieces + 1) gaps total
     const totalWithGaps = seg.reduce((sum, len) => sum + len, 0) + (seg.length + 1) * gap;
-    return totalWithGaps === totalLength && seg.length <= 50; // Max 50 pieces
+    // Increased max pieces from 50 to 200 to support longer runs (up to 250m+)
+    return totalWithGaps === totalLength && seg.length <= 200;
   });
 }
 
@@ -459,8 +460,8 @@ export function generateCustomSegmentations(
   // Calculate minimum number of pieces needed
   const minPieces = Math.ceil(totalLength / (maxAngleLength + gap));
 
-  // Try different piece counts
-  for (let numPieces = minPieces; numPieces <= Math.min(minPieces + 3, 10); numPieces++) {
+  // Try different piece counts (increased limit from 10 to support longer runs)
+  for (let numPieces = minPieces; numPieces <= Math.min(minPieces + 3, 200); numPieces++) {
     // IMPORTANT: Gaps at both ends AND between pieces = (numPieces + 1) gaps total
     const totalGapLength = (numPieces + 1) * gap;
     const availableLength = totalLength - totalGapLength;
