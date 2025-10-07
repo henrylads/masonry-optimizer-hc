@@ -379,16 +379,26 @@ export function generateSegmentations(
     startIndex: number
   ): void {
     // Base case: if remaining is small enough, add as final piece
+    // The 'remaining' value includes space for (last piece + final gap)
+    // So we check if it's <= (max piece + gap)
     if (remaining <= standardLengths[0] + gap) {
-      if (remaining > 0) {
-        // IMPORTANT: Validate that custom piece doesn't exceed max length
-        const customPieceLength = remaining - gap; // Account for final gap
-        if (customPieceLength <= RUN_LAYOUT_CONSTANTS.MAX_ANGLE_LENGTH && customPieceLength > 0) {
+      if (remaining > gap) {
+        // Extract the piece length: remaining = piece + gap, so piece = remaining - gap
+        const customPieceLength = remaining - gap;
+
+        // Validate that custom piece is within acceptable range
+        // Minimum: 150mm (practical minimum for manufacturing and bracket placement)
+        // Maximum: MAX_ANGLE_LENGTH (1490mm)
+        const MIN_PIECE_LENGTH = 150;
+
+        if (customPieceLength >= MIN_PIECE_LENGTH &&
+            customPieceLength <= RUN_LAYOUT_CONSTANTS.MAX_ANGLE_LENGTH) {
           segmentations.push([...current, customPieceLength]);
         }
-        // If custom piece is too long, don't add this segmentation
-        // The algorithm will try other combinations
-      } else if (remaining === 0) {
+        // If custom piece is too small or too large, don't add this segmentation
+        // The algorithm will try other combinations (e.g., using more 990mm pieces)
+      } else if (remaining === gap) {
+        // Exactly one gap remaining - current pieces fit perfectly
         segmentations.push([...current]);
       }
       return;
@@ -411,12 +421,15 @@ export function generateSegmentations(
   buildCombinations(totalLength, [], 0);
 
   // Filter out invalid combinations (too many pieces, negative remainders, etc.)
-  return segmentations.filter(seg => {
-    // IMPORTANT: Gaps at both ends AND between pieces = (numPieces + 1) gaps total
-    const totalWithGaps = seg.reduce((sum, len) => sum + len, 0) + (seg.length + 1) * gap;
-    // Increased max pieces from 50 to 200 to support longer runs (up to 250m+)
+  const validSegmentations = segmentations.filter(seg => {
+    // IMPORTANT: The pieces include the final gap already (subtracted during recursion)
+    // So we only need to add gaps for: start + between pieces = seg.length gaps
+    // NOT (seg.length + 1) because the end gap is already accounted for
+    const totalWithGaps = seg.reduce((sum, len) => sum + len, 0) + seg.length * gap;
     return totalWithGaps === totalLength && seg.length <= 200;
   });
+
+  return validSegmentations;
 }
 
 /**
