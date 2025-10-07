@@ -26,6 +26,7 @@ export function RunLayoutDisplay({ bracketCentres }: RunLayoutDisplayProps) {
   const [totalRunLengthMeters, setTotalRunLengthMeters] = useState<number>(2.321); // Default to worked example in meters
   const [result, setResult] = useState<RunOptimizationResult | null>(null);
   const [isCalculating, setIsCalculating] = useState(false);
+  const [selectedOptionIndex, setSelectedOptionIndex] = useState<number>(0);
 
   const calculateLayout = () => {
     setIsCalculating(true);
@@ -39,6 +40,7 @@ export function RunLayoutDisplay({ bracketCentres }: RunLayoutDisplayProps) {
 
       const optimizationResult = optimizeRunLayout(request);
       setResult(optimizationResult);
+      setSelectedOptionIndex(0); // Reset to optimal when recalculating
     } catch (error) {
       console.error('Run layout optimization failed:', error);
       alert('Failed to calculate run layout: ' + (error as Error).message);
@@ -114,7 +116,7 @@ export function RunLayoutDisplay({ bracketCentres }: RunLayoutDisplayProps) {
                     <div>
                       <p className="text-sm text-blue-600 font-medium">Total Pieces</p>
                       <p className="text-2xl font-bold text-blue-900">
-                        {result.optimal.pieceCount}
+                        {result.allOptions[selectedOptionIndex].pieceCount}
                       </p>
                     </div>
                     <Package className="h-8 w-8 text-blue-600" />
@@ -128,7 +130,7 @@ export function RunLayoutDisplay({ bracketCentres }: RunLayoutDisplayProps) {
                     <div>
                       <p className="text-sm text-green-600 font-medium">Total Brackets</p>
                       <p className="text-2xl font-bold text-green-900">
-                        {result.optimal.totalBrackets}
+                        {result.allOptions[selectedOptionIndex].totalBrackets}
                       </p>
                     </div>
                     <Settings className="h-8 w-8 text-green-600" />
@@ -156,13 +158,22 @@ export function RunLayoutDisplay({ bracketCentres }: RunLayoutDisplayProps) {
                     <div>
                       <p className="text-sm text-orange-600 font-medium">Avg Spacing</p>
                       <p className="text-2xl font-bold text-orange-900">
-                        {result.optimal.averageSpacing.toFixed(0)}mm
+                        {result.allOptions[selectedOptionIndex].averageSpacing.toFixed(0)}mm
                       </p>
                     </div>
                   </div>
                 </CardContent>
               </Card>
             </div>
+
+            {/* Show which option is selected */}
+            {selectedOptionIndex > 0 && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <p className="text-sm text-blue-800">
+                  <strong>Viewing Option {selectedOptionIndex + 1}</strong> - Click "Optimal" in the table below to return to the best option
+                </p>
+              </div>
+            )}
 
             {/* Piece Breakdown Table */}
             <div>
@@ -179,7 +190,7 @@ export function RunLayoutDisplay({ bracketCentres }: RunLayoutDisplayProps) {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {result.optimal.pieces.map((piece, index) => (
+                  {result.allOptions[selectedOptionIndex].pieces.map((piece, index) => (
                     <TableRow key={index}>
                       <TableCell className="font-medium">{index + 1}</TableCell>
                       <TableCell>{piece.length}</TableCell>
@@ -208,8 +219,9 @@ export function RunLayoutDisplay({ bracketCentres }: RunLayoutDisplayProps) {
                   <div className="min-w-full pt-8" style={{ minWidth: '800px' }}>
                     <div className="relative h-32 bg-gray-100 border border-gray-300 rounded" style={{ marginTop: '24px' }}>
                       {(() => {
+                        const selectedOption = result.allOptions[selectedOptionIndex];
                         // Calculate total length including all gaps
-                        const totalLength = result.optimal.totalLength;
+                        const totalLength = selectedOption.totalLength;
                         let cumulativePosition = 10; // Start gap
                         const elements: JSX.Element[] = [];
 
@@ -226,7 +238,7 @@ export function RunLayoutDisplay({ bracketCentres }: RunLayoutDisplayProps) {
                           />
                         );
 
-                        result.optimal.pieces.forEach((piece, pieceIndex) => {
+                        selectedOption.pieces.forEach((piece, pieceIndex) => {
                           const pieceStartPercent = (cumulativePosition / totalLength) * 100;
                           const pieceWidthPercent = (piece.length / totalLength) * 100;
 
@@ -292,8 +304,8 @@ export function RunLayoutDisplay({ bracketCentres }: RunLayoutDisplayProps) {
                           );
 
                           // Add spacing label across gap to next piece
-                          if (pieceIndex < result.optimal.pieces.length - 1) {
-                            const nextPiece = result.optimal.pieces[pieceIndex + 1];
+                          if (pieceIndex < selectedOption.pieces.length - 1) {
+                            const nextPiece = selectedOption.pieces[pieceIndex + 1];
                             const lastBracketThisPiece = piece.positions[piece.positions.length - 1];
                             const firstBracketNextPiece = nextPiece.positions[0];
 
@@ -319,7 +331,7 @@ export function RunLayoutDisplay({ bracketCentres }: RunLayoutDisplayProps) {
                           cumulativePosition += piece.length + 10; // Add gap after piece
 
                           // Add gap indicator after piece (if not last)
-                          if (pieceIndex < result.optimal.pieces.length - 1) {
+                          if (pieceIndex < selectedOption.pieces.length - 1) {
                             const gapStartPercent = (cumulativePosition - 10) / totalLength * 100;
                             elements.push(
                               <div
@@ -380,7 +392,7 @@ export function RunLayoutDisplay({ bracketCentres }: RunLayoutDisplayProps) {
                 </div>
 
                 <p className="text-xs text-muted-foreground">
-                  Total run: {result.optimal.totalLength}mm ({result.optimal.gapCount} gaps × 10mm = {result.optimal.totalGapDistance}mm)
+                  Total run: {result.allOptions[selectedOptionIndex].totalLength}mm ({result.allOptions[selectedOptionIndex].gapCount} gaps × 10mm = {result.allOptions[selectedOptionIndex].totalGapDistance}mm)
                 </p>
               </div>
             </div>
@@ -422,10 +434,16 @@ export function RunLayoutDisplay({ bracketCentres }: RunLayoutDisplayProps) {
                   </TableHeader>
                   <TableBody>
                     {result.allOptions.slice(0, 5).map((option, index) => (
-                      <TableRow key={index} className={index === 0 ? 'bg-green-50' : ''}>
+                      <TableRow
+                        key={index}
+                        className={`cursor-pointer hover:bg-gray-100 ${selectedOptionIndex === index ? 'bg-blue-100 hover:bg-blue-100' : index === 0 ? 'bg-green-50' : ''}`}
+                        onClick={() => setSelectedOptionIndex(index)}
+                      >
                         <TableCell>
                           {index === 0 ? (
                             <Badge className="bg-green-600">Optimal</Badge>
+                          ) : selectedOptionIndex === index ? (
+                            <Badge className="bg-blue-600">Viewing</Badge>
                           ) : (
                             `Option ${index + 1}`
                           )}

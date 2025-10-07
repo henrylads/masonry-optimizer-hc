@@ -419,24 +419,28 @@ export function generateSegmentations(
  *
  * Scoring criteria:
  * 1. Primary: Total bracket count (lower is better)
- * 2. Secondary: Average spacing (higher is better, so inverse)
- * 3. Tertiary: Number of unique piece lengths (lower is better)
+ * 2. Secondary: Total piece count (lower is better)
+ * 3. Tertiary: Average spacing (higher is better, so inverse)
+ * 4. Quaternary: Number of unique piece lengths (lower is better)
  *
  * @param segmentation Segmentation to score
  * @returns Score value (lower is better)
  */
 export function calculateSegmentationScore(segmentation: RunSegmentation): number {
-  // Primary: Total brackets (weight: 1000)
-  const bracketScore = segmentation.totalBrackets * 1000;
+  // Primary: Total brackets (weight: 10000)
+  const bracketScore = segmentation.totalBrackets * 10000;
 
-  // Secondary: Average spacing (inverse, weight: 10)
+  // Secondary: Total pieces (weight: 100)
+  const pieceScore = segmentation.pieceCount * 100;
+
+  // Tertiary: Average spacing (inverse, weight: 10)
   // Higher average spacing is better, so we subtract from max
   const spacingScore = (600 - segmentation.averageSpacing) * 10;
 
-  // Tertiary: Unique piece count (weight: 1)
+  // Quaternary: Unique piece count (weight: 1)
   const varietyScore = segmentation.uniquePieceLengths;
 
-  return bracketScore + spacingScore + varietyScore;
+  return bracketScore + pieceScore + spacingScore + varietyScore;
 }
 
 /**
