@@ -381,7 +381,13 @@ export function generateSegmentations(
     // Base case: if remaining is small enough, add as final piece
     if (remaining <= standardLengths[0] + gap) {
       if (remaining > 0) {
-        segmentations.push([...current, remaining]);
+        // IMPORTANT: Validate that custom piece doesn't exceed max length
+        const customPieceLength = remaining - gap; // Account for final gap
+        if (customPieceLength <= RUN_LAYOUT_CONSTANTS.MAX_ANGLE_LENGTH && customPieceLength > 0) {
+          segmentations.push([...current, customPieceLength]);
+        }
+        // If custom piece is too long, don't add this segmentation
+        // The algorithm will try other combinations
       } else if (remaining === 0) {
         segmentations.push([...current]);
       }
