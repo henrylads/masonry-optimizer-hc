@@ -1948,3 +1948,353 @@ User should test PDF export functionality to confirm:
 2. Structural parameters section includes new fields (facade_thickness, material_type, load_position)
 3. No references to removed masonry parameters
 4. All sections numbered correctly
+
+---
+
+## Run Layout Optimizer - Symmetrical Bracket Placement and Input Improvements
+
+**Date**: October 7, 2025
+**Issues**:
+1. Long runs (>250m) failing with "No valid segmentation found" error
+2. Run layout input in millimeters instead of meters
+3. Final piece in multi-piece runs not using symmetrical bracket placement
+4. Short runs (<1m) generating invalid piece configurations
+5. Average spacing calculation not including cross-gap spacings
+
+### Problem 1: Long Run Support (150m+ runs)
+
+**Issue**: Run layout optimizer had hardcoded limit of 50 pieces maximum, preventing optimization of runs longer than ~75m.
+
+**User Example**: 150m run with 500mm bracket centres failing with "No valid segmentation found" error.
+
+**Root Cause**:
+- Line 286 in `generateSegmentations()`: `seg.length <= 50` (max 50 pieces)
+- Line 464 in `generateCustomSegmentations()`: `numPieces <= Math.min(minPieces + 3, 10)` (max 10 pieces)
+- For 150m run: needs ~100 pieces at 1490mm length, but limited to 50
+
+**Solution Implemented**:
+
+**File**: `src/calculations/runLayoutOptimizer.ts`
+
+1. **Increased max pieces from 50 to 200** (line 287):
+```typescript
+// BEFORE:
+return totalWithGaps === totalLength && seg.length <= 50; // Max 50 pieces
+
+// AFTER:
+// Increased max pieces from 50 to 200 to support longer runs (up to 250m+)
+return totalWithGaps === totalLength && seg.length <= 200;
+```
+
+2. **Increased custom segmentation limit from 10 to 200** (line 464):
+```typescript
+// BEFORE:
+for (let numPieces = minPieces; numPieces <= Math.min(minPieces + 3, 10); numPieces++)
+
+// AFTER:
+// Try different piece counts (increased limit from 10 to support longer runs)
+for (let numPieces = minPieces; numPieces <= Math.min(minPieces + 3, 200); numPieces++)
+```
+
+**Result**: Now supports runs up to 250m+ (project specification 0-250m+)
+
+### Problem 2: Input Unit Change (Millimeters → Meters)
+
+**Issue**: Users entering 150000 instead of 150 for a 150m run - poor UX for large values.
+
+**Solution Implemented**:
+
+**File**: `src/components/run-layout-display.tsx`
+
+1. **Changed state variable to meters** (line 26):
+```typescript
+// BEFORE:
+const [totalRunLength, setTotalRunLength] = useState<number>(2321); // mm
+
+// AFTER:
+const [totalRunLengthMeters, setTotalRunLengthMeters] = useState<number>(2.321); // meters
+```
+
+2. **Convert to mm for calculation** (line 34):
+```typescript
+const request: RunOptimizationRequest = {
+    totalRunLength: totalRunLengthMeters * 1000, // Convert meters to mm
+    // ...
+};
+```
+
+3. **Updated input field**:
+- Label: "Total Run Length (m)" (was "Total Run Length (mm)")
+- Max: 250 (was 250000)
+- Step: 0.1 (was 5)
+- Help text: "Range: 0 - 250m" (was "Range: 0 - 250,000mm (250m)")
+
+**Result**: Users enter "150" instead of "150000" for 150m runs
+
+### Problem 3: Symmetrical Bracket Placement on Final Piece
+
+**Issue**: Final piece in multi-piece runs and single-piece runs were using asymmetric edge distances instead of symmetrical bracket placement.
+
+**User Requirement**:
+- Last piece should have brackets placed symmetrically for aesthetic and practical reasons
+- ODD brackets (e.g., 3): Place middle bracket at center, space others by bracket centres
+- EVEN brackets (e.g., 4): Place middle two at ±0.5×bracket centres from center
+- Validate and adjust for edge distance constraints (e_min, e_max)
+
+**Solution Implemented**:
+
+**File**: `src/calculations/runLayoutOptimizer.ts`
+
+1. **Created `calculateSymmetricalBracketPositions()` function** (lines 217-306):
+
+**ODD bracket logic**:
+```typescript
+if (bracketCount % 2 === 1) {
+    // Place middle bracket at center
+    const middleIndex = Math.floor(bracketCount / 2);
+    const centerPosition = length / 2;
+    positions[middleIndex] = centerPosition;
+
+    // Place other brackets symmetrically
+    for (let i = 0; i < middleIndex; i++) {
+        const offset = (middleIndex - i) * bracketCentres;
+        positions[i] = centerPosition - offset;
+        positions[bracketCount - 1 - i] = centerPosition + offset;
+    }
+}
+```
+
+**EVEN bracket logic**:
+```typescript
+else {
+    // Place middle two at ±0.5×bracketCentres from center
+    const center = length / 2;
+    const halfSpacing = bracketCentres / 2;
+
+    positions[middleLeftIndex] = center - halfSpacing;
+    positions[middleRightIndex] = center + halfSpacing;
+
+    // Place other brackets symmetrically
+    // ...
+}
+```
+
+**Edge constraint validation**:
+```typescript
+// If edges violate constraints, shift all brackets equally by 1mm at a time
+while ((startEdge < e_min || startEdge > e_max || endEdge < e_min || endEdge > e_max) && iterations < 200) {
+    if (startEdge < e_min) {
+        shiftAmount = 1;  // Shift right
+    } else if (endEdge < e_min) {
+        shiftAmount = -1; // Shift left
+    }
+
+    for (let i = 0; i < bracketCount; i++) {
+        positions[i] += shiftAmount;
+    }
+}
+```
+
+2. **Integrated into `createSegmentation()`** (lines 448-475):
+```typescript
+// For single-piece runs OR last piece in multi-piece runs: use symmetrical placement
+if (!isMultiPiece || (isLast && !isFirst)) {
+    // Try decreasing bracket count until we find valid configuration
+    for (let tryCount = optimalBracketCount; tryCount >= 2; tryCount--) {
+        try {
+            validPiece = calculateSymmetricalBracketPositions(length, tryCount, bracketCentres, constraints);
+            break;
+        } catch (error) {
+            continue; // Try fewer brackets
+        }
+    }
+}
+```
+
+**Examples**:
+
+**1035mm piece with 3 brackets (ODD):**
+```
+Center: 1035/2 = 517.5mm
+Position 1: 517.5 - 400 = 117.5mm
+Position 2: 517.5mm (center)
+Position 3: 517.5 + 400 = 917.5mm
+Edges: 117.5mm and 117.5mm ✓
+```
+
+**1600mm piece with 4 brackets (EVEN):**
+```
+Center: 1600/2 = 800mm
+Position 1: 800 - 200 = 600mm
+Position 2: 800 + 200 = 1000mm
+(then space outer brackets)
+Positions: 200mm, 600mm, 1000mm, 1400mm
+Edges: 200mm and 200mm ✓
+```
+
+### Problem 4: Invalid Short Piece Generation
+
+**Issue**: For 800mm (0.8m) run with 400mm centres, custom segmentation was generating 2×385mm pieces, but 385mm is too short for even 2 brackets (requires minimum 470mm: 2×35mm edges + 400mm spacing).
+
+**Solution Implemented**:
+
+**File**: `src/calculations/runLayoutOptimizer.ts`
+
+1. **Added minimum piece length validation** (lines 693-700):
+```typescript
+// BEFORE:
+if (rounded > maxAngleLength || rounded <= RUN_LAYOUT_CONSTANTS.LONG_ANGLE_THRESHOLD) {
+
+// AFTER:
+// Calculate minimum piece length needed for 2 brackets (minimum viable)
+// Min length = 2 * min_edge + bracketCentres (for 2 brackets)
+const minPieceLength = 2 * RUN_LAYOUT_CONSTANTS.MIN_EDGE_DISTANCE + bracketCentres;
+
+if (rounded > maxAngleLength || rounded < minPieceLength) {
+    valid = false;
+    break;
+}
+```
+
+2. **Added same check to even-split logic** (lines 743-744):
+```typescript
+const minPieceLength = 2 * RUN_LAYOUT_CONSTANTS.MIN_EDGE_DISTANCE + bracketCentres;
+if (evenPieceLength <= maxAngleLength && evenPieceLength >= minPieceLength) {
+```
+
+**Result**:
+- 800mm run with 400mm c/c: Rejects 2×385mm (invalid), generates 1×780mm (valid with 2 brackets)
+- Minimum piece length = 2×35 + 400 = 470mm enforced
+
+### Problem 5: Average Spacing Calculation
+
+**Issue**: Average spacing only counted within-piece spacings, not bracket-to-bracket spacings across 10mm gaps between pieces.
+
+**User Report**: "2.5m run with 400mm c/c showing 5×400mm gaps and 1×323mm gap"
+
+**Root Cause**: Cross-gap spacing = 245mm (end edge) + 10mm (gap) + 117.5mm (start edge next piece) = 372.5mm, but wasn't included in average.
+
+**Solution Implemented**:
+
+**File**: `src/calculations/runLayoutOptimizer.ts` (lines 520-550)
+
+**BEFORE**:
+```typescript
+const totalSpacings = pieces.reduce((sum, p) => sum + p.spacing * (p.bracketCount - 1), 0);
+const totalSpacingCount = pieces.reduce((sum, p) => sum + (p.bracketCount - 1), 0);
+const averageSpacing = totalSpacingCount > 0 ? totalSpacings / totalSpacingCount : 0;
+```
+
+**AFTER**:
+```typescript
+// Calculate average spacing including cross-gap spacings
+let totalSpacings = 0;
+let totalSpacingCount = 0;
+
+for (let pieceIndex = 0; pieceIndex < pieces.length; pieceIndex++) {
+    const piece = pieces[pieceIndex];
+
+    // Calculate spacings within the piece
+    for (let i = 0; i < piece.positions.length - 1; i++) {
+        const spacing = piece.positions[i + 1] - piece.positions[i];
+        totalSpacings += spacing;
+        totalSpacingCount++;
+    }
+
+    // Calculate cross-gap spacing to next piece (if not last piece)
+    if (pieceIndex < pieces.length - 1) {
+        const nextPiece = pieces[pieceIndex + 1];
+        const edgeDistanceThisPiece = piece.length - piece.positions[piece.positions.length - 1];
+        const edgeDistanceNextPiece = nextPiece.positions[0];
+        const crossGapSpacing = edgeDistanceThisPiece + gap + edgeDistanceNextPiece;
+
+        totalSpacings += crossGapSpacing;
+        totalSpacingCount++;
+    }
+}
+
+const averageSpacing = totalSpacingCount > 0 ? totalSpacings / totalSpacingCount : 0;
+```
+
+**Result**: Average now includes all bracket-to-bracket spacings, including across gaps
+
+### Files Modified
+
+1. **`src/calculations/runLayoutOptimizer.ts`**
+   - Added `calculateSymmetricalBracketPositions()` function (100 lines)
+   - Increased max piece limits from 50/10 to 200
+   - Added minimum piece length validation
+   - Updated average spacing calculation to include cross-gap spacings
+   - Integrated symmetrical placement for single-piece and last-piece scenarios
+
+2. **`src/components/run-layout-display.tsx`**
+   - Changed input from millimeters to meters
+   - Updated state variable names and conversion logic
+   - Updated input field properties (max, step, label)
+
+3. **`docs/progress.md`**
+   - Added comprehensive documentation of all changes
+
+### Technical Details
+
+**Symmetrical Placement Algorithm**:
+1. Calculate optimal bracket count for piece length
+2. Try decreasing bracket counts until valid configuration found
+3. For ODD: Place middle bracket at center, space others by bracket centres
+4. For EVEN: Place middle two at ±0.5×bracket centres, space others
+5. Validate edge distances (e_min ≤ edge ≤ e_max)
+6. If invalid, shift all brackets equally by 1mm until valid or max iterations
+
+**Edge Constraints**:
+- e_min = 35mm (minimum edge distance)
+- e_max = 0.5 × bracketCentres (typically 250mm for 500mm centres)
+
+**Cross-Gap Spacing Formula**:
+```
+cross_gap_spacing = edge_this_piece + gap (10mm) + edge_next_piece
+```
+
+### Testing
+
+**Test Case 1: 2.5m run with 400mm c/c**
+- Expected: 1435mm + 1035mm pieces
+- Last piece (1035mm): 3 brackets at 117.5mm, 517.5mm, 917.5mm ✓
+- Edges: 117.5mm and 117.5mm (symmetrical) ✓
+- Average spacing: Includes cross-gap ✓
+
+**Test Case 2: 0.8m run with 400mm c/c**
+- Single piece: 780mm (after gaps)
+- 2 brackets at 190mm and 590mm ✓
+- Edges: 190mm and 190mm (symmetrical) ✓
+
+**Test Case 3: 150m run with 500mm c/c**
+- ~100 pieces required
+- Now succeeds (was failing with 50-piece limit) ✓
+
+### Impact Assessment
+
+**User Experience**: ✅ Improved
+- Input in meters is more intuitive (150 instead of 150000)
+- Last piece now aesthetically symmetrical
+- Supports full 0-250m range as specified
+
+**Accuracy**: ✅ Enhanced
+- Average spacing now includes all bracket-to-bracket distances
+- No invalid short pieces generated
+- Proper edge constraint validation
+
+**Code Quality**: ✅ Maintained
+- Clear separation of symmetrical vs asymmetric logic
+- Comprehensive edge case handling
+- Detailed logging for debugging
+
+### Conclusion
+
+The run layout optimizer now provides:
+- ✅ **Long run support**: Up to 250m+ (was limited to ~75m)
+- ✅ **User-friendly input**: Meters instead of millimeters
+- ✅ **Symmetrical final pieces**: Aesthetic and practical bracket placement
+- ✅ **Robust validation**: Rejects impossible configurations early
+- ✅ **Accurate metrics**: Average spacing includes cross-gap spacings
+
+The system correctly optimizes multi-piece masonry runs with proper symmetrical placement on final pieces and accurate average spacing calculations.

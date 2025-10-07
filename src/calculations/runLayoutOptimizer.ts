@@ -205,6 +205,105 @@ export function calculateNonStandardPiece(
 }
 
 /**
+ * Calculate symmetrical bracket positions for the final piece in a run
+ * Used for aesthetic and practical reasons on the last piece
+ *
+ * @param length Angle length (mm)
+ * @param bracketCount Number of brackets
+ * @param bracketCentres Bracket spacing (mm)
+ * @param constraints Edge distance constraints
+ * @returns Angle piece with symmetrical bracket positions
+ */
+export function calculateSymmetricalBracketPositions(
+  length: number,
+  bracketCount: number,
+  bracketCentres: number,
+  constraints: EdgeDistanceConstraints
+): AnglePiece {
+  const { e_min, e_max } = constraints;
+  const positions: number[] = [];
+
+  if (bracketCount % 2 === 1) {
+    // ODD number of brackets: place middle bracket at center
+    const middleIndex = Math.floor(bracketCount / 2);
+    const centerPosition = length / 2;
+
+    // Place middle bracket at center
+    positions[middleIndex] = centerPosition;
+
+    // Place other brackets symmetrically around center
+    for (let i = 0; i < middleIndex; i++) {
+      const offset = (middleIndex - i) * bracketCentres;
+      positions[i] = centerPosition - offset;
+      positions[bracketCount - 1 - i] = centerPosition + offset;
+    }
+  } else {
+    // EVEN number of brackets: place middle two at ±0.5*bracketCentres from center
+    const center = length / 2;
+    const halfSpacing = bracketCentres / 2;
+
+    const middleLeftIndex = (bracketCount / 2) - 1;
+    const middleRightIndex = bracketCount / 2;
+
+    positions[middleLeftIndex] = center - halfSpacing;
+    positions[middleRightIndex] = center + halfSpacing;
+
+    // Place other brackets symmetrically
+    for (let i = 0; i < middleLeftIndex; i++) {
+      const offset = (middleLeftIndex - i) * bracketCentres;
+      positions[i] = positions[middleLeftIndex] - offset;
+      positions[bracketCount - 1 - i] = positions[middleRightIndex] + offset;
+    }
+  }
+
+  // Check edge distances and adjust if needed
+  let startEdge = positions[0];
+  let endEdge = length - positions[bracketCount - 1];
+
+  // If edges violate constraints, shift all brackets equally by 1mm at a time
+  let iterations = 0;
+  while ((startEdge < e_min || startEdge > e_max || endEdge < e_min || endEdge > e_max) && iterations < 200) {
+    iterations++;
+
+    // Determine how much to shift
+    let shiftAmount = 0;
+
+    if (startEdge < e_min) {
+      // Start edge too small - shift all brackets right
+      shiftAmount = 1;
+    } else if (endEdge < e_min) {
+      // End edge too small - shift all brackets left
+      shiftAmount = -1;
+    } else if (startEdge > e_max && endEdge > e_max) {
+      // Both edges too large - this configuration is impossible
+      throw new Error(`Cannot fit ${bracketCount} brackets with ${bracketCentres}mm spacing in ${length}mm piece (min edges would be ${startEdge}mm and ${endEdge}mm, max allowed is ${e_max}mm)`);
+    }
+
+    // Apply shift to all brackets
+    for (let i = 0; i < bracketCount; i++) {
+      positions[i] += shiftAmount;
+    }
+
+    startEdge = positions[0];
+    endEdge = length - positions[bracketCount - 1];
+  }
+
+  // If we couldn't find valid positions after 200 iterations, the configuration is impossible
+  if (iterations >= 200) {
+    throw new Error(`Could not find valid symmetrical bracket configuration for ${length}mm piece with ${bracketCount} brackets after ${iterations} iterations`);
+  }
+
+  return {
+    length,
+    bracketCount,
+    spacing: bracketCentres,
+    startOffset: positions[0],
+    positions,
+    isStandard: false
+  };
+}
+
+/**
  * Validate edge distances for a piece
  *
  * @param piece Angle piece to validate
@@ -346,7 +445,39 @@ export function createSegmentation(
       const isLast = i === pieceLengths.length - 1;
       const isMultiPiece = pieceLengths.length > 1;
 
-      piece = calculateNonStandardPiece(length, bracketCentres, constraints);
+      // For single-piece runs OR last piece in multi-piece runs: use symmetrical placement
+      if (!isMultiPiece || (isLast && !isFirst)) {
+        // Calculate optimal bracket count for symmetrical placement
+        // Start with minimum needed, try increasing until we find a valid configuration
+        let optimalBracketCount = Math.max(2, Math.ceil(length / bracketCentres));
+        let validPiece = null;
+
+        // Try decreasing bracket count first (prefer fewer brackets)
+        for (let tryCount = optimalBracketCount; tryCount >= 2; tryCount--) {
+          try {
+            validPiece = calculateSymmetricalBracketPositions(length, tryCount, bracketCentres, constraints);
+            console.log(`  Successfully placed ${tryCount} brackets symmetrically in ${!isMultiPiece ? 'single' : 'last'} piece (${length}mm)`);
+            break;
+          } catch (error) {
+            // This bracket count doesn't work, try fewer
+            continue;
+          }
+        }
+
+        if (!validPiece) {
+          throw new Error(`Could not find any valid symmetrical bracket configuration for ${length}mm piece`);
+        }
+
+        piece = validPiece;
+        pieces.push(piece);
+        totalBrackets += piece.bracketCount;
+        continue; // Skip to next piece
+      }
+
+      // Calculate initial piece to get bracket count for multi-piece middle/first pieces
+      const initialPiece = calculateNonStandardPiece(length, bracketCentres, constraints);
+
+      piece = initialPiece;
 
       // If multi-piece run, adjust edge distances to maintain 500mm across gaps
       if (isMultiPiece && piece.bracketCount >= 2) {
@@ -368,10 +499,6 @@ export function createSegmentation(
           // First piece: only end edge is inner (adjacent to gap)
           endEdge = targetInnerEdge;
           startEdge = length - (piece.bracketCount - 1) * bracketCentres - endEdge;
-        } else if (isLast && !isFirst) {
-          // Last piece: only start edge is inner (adjacent to gap)
-          startEdge = targetInnerEdge;
-          endEdge = length - (piece.bracketCount - 1) * bracketCentres - startEdge;
         } else if (!isFirst && !isLast) {
           // Middle piece: both edges inner
           startEdge = targetInnerEdge;
@@ -411,9 +538,36 @@ export function createSegmentation(
   const gapCount = pieces.length + 1;
   const totalGapDistance = gapCount * RUN_LAYOUT_CONSTANTS.GAP_BETWEEN_PIECES;
 
-  // Calculate average spacing
-  const totalSpacings = pieces.reduce((sum, p) => sum + p.spacing * (p.bracketCount - 1), 0);
-  const totalSpacingCount = pieces.reduce((sum, p) => sum + (p.bracketCount - 1), 0);
+  // Calculate average spacing including cross-gap spacings
+  let totalSpacings = 0;
+  let totalSpacingCount = 0;
+
+  for (let pieceIndex = 0; pieceIndex < pieces.length; pieceIndex++) {
+    const piece = pieces[pieceIndex];
+
+    // Calculate spacings within the piece
+    for (let i = 0; i < piece.positions.length - 1; i++) {
+      const spacing = piece.positions[i + 1] - piece.positions[i];
+      totalSpacings += spacing;
+      totalSpacingCount++;
+    }
+
+    // Calculate cross-gap spacing to next piece (if not last piece)
+    if (pieceIndex < pieces.length - 1) {
+      const nextPiece = pieces[pieceIndex + 1];
+      const lastBracketThisPiece = piece.positions[piece.positions.length - 1];
+      const firstBracketNextPiece = nextPiece.positions[0];
+
+      // Cross-gap spacing = (piece length - last bracket position) + gap + first bracket position of next piece
+      const edgeDistanceThisPiece = piece.length - lastBracketThisPiece;
+      const edgeDistanceNextPiece = firstBracketNextPiece;
+      const crossGapSpacing = edgeDistanceThisPiece + gap + edgeDistanceNextPiece;
+
+      totalSpacings += crossGapSpacing;
+      totalSpacingCount++;
+    }
+  }
+
   const averageSpacing = totalSpacingCount > 0 ? totalSpacings / totalSpacingCount : 0;
 
   // Count unique piece lengths
@@ -536,7 +690,11 @@ export function generateCustomSegmentations(
         // Round to 1mm (we'll adjust at the end)
         const rounded = Math.round(length);
 
-        if (rounded > maxAngleLength || rounded <= RUN_LAYOUT_CONSTANTS.LONG_ANGLE_THRESHOLD) {
+        // Calculate minimum piece length needed for 2 brackets (minimum viable)
+        // Min length = 2 * min_edge + bracketCentres (for 2 brackets)
+        const minPieceLength = 2 * RUN_LAYOUT_CONSTANTS.MIN_EDGE_DISTANCE + bracketCentres;
+
+        if (rounded > maxAngleLength || rounded < minPieceLength) {
           valid = false;
           break;
         }
@@ -582,7 +740,8 @@ export function generateCustomSegmentations(
 
     // Strategy 2: Even split (original approach)
     const evenPieceLength = availableLength / numPieces;
-    if (evenPieceLength <= maxAngleLength && evenPieceLength > RUN_LAYOUT_CONSTANTS.LONG_ANGLE_THRESHOLD) {
+    const minPieceLength = 2 * RUN_LAYOUT_CONSTANTS.MIN_EDGE_DISTANCE + bracketCentres;
+    if (evenPieceLength <= maxAngleLength && evenPieceLength >= minPieceLength) {
       const roundedLength = Math.round(evenPieceLength / RUN_LAYOUT_CONSTANTS.LENGTH_INCREMENT)
         * RUN_LAYOUT_CONSTANTS.LENGTH_INCREMENT;
       const pieces = Array(numPieces).fill(roundedLength);
