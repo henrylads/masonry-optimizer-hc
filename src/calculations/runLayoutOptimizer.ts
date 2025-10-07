@@ -223,6 +223,9 @@ export function calculateSymmetricalBracketPositions(
   const { e_min, e_max } = constraints;
   const positions: number[] = [];
 
+  console.log(`\n=== Calculating symmetrical positions for ${length}mm, ${bracketCount} brackets, ${bracketCentres}mm centres ===`);
+  console.log(`Constraints: e_min=${e_min}mm, e_max=${e_max}mm`);
+
   if (bracketCount % 2 === 1) {
     // ODD number of brackets: place middle bracket at center
     const middleIndex = Math.floor(bracketCount / 2);
@@ -260,23 +263,42 @@ export function calculateSymmetricalBracketPositions(
   let startEdge = positions[0];
   let endEdge = length - positions[bracketCount - 1];
 
+  console.log(`Initial positions:`, positions);
+  console.log(`Initial edges: start=${startEdge.toFixed(2)}mm, end=${endEdge.toFixed(2)}mm`);
+
   // If edges violate constraints, shift all brackets equally by 1mm at a time
   let iterations = 0;
-  while ((startEdge < e_min || startEdge > e_max || endEdge < e_min || endEdge > e_max) && iterations < 200) {
+  const maxIterations = 1000; // Increased to handle larger adjustments
+
+  while ((startEdge < e_min || startEdge > e_max || endEdge < e_min || endEdge > e_max) && iterations < maxIterations) {
     iterations++;
+
+    if (iterations === 1 || iterations % 100 === 0) {
+      console.log(`Iteration ${iterations}: start=${startEdge.toFixed(2)}mm, end=${endEdge.toFixed(2)}mm`);
+    }
 
     // Determine how much to shift
     let shiftAmount = 0;
 
     if (startEdge < e_min) {
-      // Start edge too small - shift all brackets right
+      // Start edge too small - shift all brackets right (increase positions)
       shiftAmount = 1;
     } else if (endEdge < e_min) {
-      // End edge too small - shift all brackets left
+      // End edge too small - shift all brackets left (decrease positions)
       shiftAmount = -1;
+    } else if (startEdge > e_max && endEdge <= e_max) {
+      // Start edge too large, end edge ok - shift left to reduce start edge
+      shiftAmount = -1;
+    } else if (endEdge > e_max && startEdge <= e_max) {
+      // End edge too large, start edge ok - shift right to reduce end edge
+      shiftAmount = 1;
     } else if (startEdge > e_max && endEdge > e_max) {
-      // Both edges too large - this configuration is impossible
-      throw new Error(`Cannot fit ${bracketCount} brackets with ${bracketCentres}mm spacing in ${length}mm piece (min edges would be ${startEdge}mm and ${endEdge}mm, max allowed is ${e_max}mm)`);
+      // Both edges too large - shift toward the edge that's less over to balance them
+      if (startEdge - e_max > endEdge - e_max) {
+        shiftAmount = -1; // Start edge is more over, shift left to reduce it
+      } else {
+        shiftAmount = 1; // End edge is more over, shift right to reduce it
+      }
     }
 
     // Apply shift to all brackets
@@ -288,10 +310,14 @@ export function calculateSymmetricalBracketPositions(
     endEdge = length - positions[bracketCount - 1];
   }
 
-  // If we couldn't find valid positions after 200 iterations, the configuration is impossible
-  if (iterations >= 200) {
+  // If we couldn't find valid positions after max iterations, the configuration is impossible
+  if (iterations >= maxIterations) {
+    console.log(`FAILED after ${iterations} iterations. Final edges: start=${startEdge.toFixed(2)}mm, end=${endEdge.toFixed(2)}mm`);
     throw new Error(`Could not find valid symmetrical bracket configuration for ${length}mm piece with ${bracketCount} brackets after ${iterations} iterations`);
   }
+
+  console.log(`SUCCESS after ${iterations} iterations! Final edges: start=${startEdge.toFixed(2)}mm, end=${endEdge.toFixed(2)}mm`);
+  console.log(`Final positions:`, positions);
 
   return {
     length,
@@ -465,10 +491,13 @@ export function createSegmentation(
         }
 
         if (!validPiece) {
-          throw new Error(`Could not find any valid symmetrical bracket configuration for ${length}mm piece`);
+          // Could not achieve symmetrical placement - fall back to standard non-symmetrical placement
+          console.log(`  ⚠️ Could not place brackets symmetrically in ${!isMultiPiece ? 'single' : 'last'} piece (${length}mm) - falling back to non-symmetrical placement`);
+          piece = calculateNonStandardPiece(length, bracketCentres, constraints);
+        } else {
+          piece = validPiece;
         }
 
-        piece = validPiece;
         pieces.push(piece);
         totalBrackets += piece.bracketCount;
         continue; // Skip to next piece
