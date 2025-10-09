@@ -171,22 +171,48 @@ export function calculateNonStandardPiece(
 
     // Strategy 2: Try spacing rounded to slot pitch (50mm increments)
     const idealSpacing = length / bracketCount;
-    const spacing = Math.ceil(idealSpacing / slotPitch) * slotPitch;
 
-    if (spacing <= bracketCentres) {
-      const overhang = (length - (bracketCount - 1) * spacing) / 2;
+    // Try rounding up first (preferred - maintains larger spacing)
+    const spacingRoundedUp = Math.ceil(idealSpacing / slotPitch) * slotPitch;
+
+    if (spacingRoundedUp <= bracketCentres) {
+      const overhang = (length - (bracketCount - 1) * spacingRoundedUp) / 2;
 
       if (overhang >= e_min && overhang <= e_max) {
-        // Valid configuration found with slot pitch alignment
+        // Valid configuration found with slot pitch alignment (rounded up)
         const positions = Array.from(
           { length: bracketCount },
-          (_, i) => overhang + i * spacing
+          (_, i) => overhang + i * spacingRoundedUp
         );
 
         return {
           length,
           bracketCount,
-          spacing,
+          spacing: spacingRoundedUp,
+          startOffset: overhang,
+          positions,
+          isStandard: false
+        };
+      }
+    }
+
+    // Try rounding down as well (allows tighter spacing when needed)
+    const spacingRoundedDown = Math.floor(idealSpacing / slotPitch) * slotPitch;
+
+    if (spacingRoundedDown > 0 && spacingRoundedDown <= bracketCentres) {
+      const overhang = (length - (bracketCount - 1) * spacingRoundedDown) / 2;
+
+      if (overhang >= e_min && overhang <= e_max) {
+        // Valid configuration found with slot pitch alignment (rounded down)
+        const positions = Array.from(
+          { length: bracketCount },
+          (_, i) => overhang + i * spacingRoundedDown
+        );
+
+        return {
+          length,
+          bracketCount,
+          spacing: spacingRoundedDown,
           startOffset: overhang,
           positions,
           isStandard: false
