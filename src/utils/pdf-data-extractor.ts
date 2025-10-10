@@ -289,7 +289,7 @@ export const extractCalculations = (verificationResults: VerificationResults): F
   if (combinedResults) {
     calculations.push({
       name: 'Combined Tension-Shear Check',
-      description: 'Combined tension and shear check for channel fixing',
+      description: 'Combined tension and shear check for channel fixing with interaction formulas',
       inputs: [
         { parameter: 'Tensile Force (N_ed)', value: safeToString(combinedResults.N_ed), unit: 'kN' },
         { parameter: 'Shear Force (V_ed)', value: safeToString(combinedResults.V_ed), unit: 'kN' },
@@ -297,22 +297,57 @@ export const extractCalculations = (verificationResults: VerificationResults): F
         { parameter: 'Shear Resistance (V_rd)', value: safeToString(combinedResults.V_rd), unit: 'kN' }
       ],
       formulas: [
-        { step: '1. Check Formula 1', formula: '(N_ed/N_rd) + (V_ed/V_rd) ≤ 1.0', result: safeToString(combinedResults.U_combined_1) },
-        { step: '2. Check Formula 2', formula: '(N_ed/N_rd)² + (V_ed/V_rd)² ≤ 1.2', result: safeToString(combinedResults.U_combined_2) }
+        { step: '1. Calculate tension ratio', formula: 'Tension Ratio = N_ed / N_rd', result: safeToString(combinedResults.N_ratio) },
+        { step: '2. Calculate shear ratio', formula: 'Shear Ratio = V_ed / V_rd', result: safeToString(combinedResults.V_ratio) },
+        { step: '3. Formula 1', formula: '(N_ed/N_rd)^1.5 + (V_ed/V_rd)^1.5 ≤ 1.0', result: safeToString(combinedResults.U_combined_1) },
+        { step: '4. Formula 2', formula: '(N_ed/N_rd + V_ed/V_rd) / 1.2 ≤ 1.0', result: safeToString(combinedResults.U_combined_2) },
+        { step: '5. Combined check', formula: 'min(Formula1, Formula2) ≤ 1.0', result: combinedResults.passes ? 'PASS' : 'FAIL' }
       ],
       outputs: [
         { parameter: 'Tension Ratio', value: safeToString(combinedResults.N_ratio) },
         { parameter: 'Shear Ratio', value: safeToString(combinedResults.V_ratio) },
         { parameter: 'Combined Check 1', value: safeToString(combinedResults.U_combined_1) },
-        { parameter: 'Combined Check 2', value: safeToString(combinedResults.U_combined_2) }
+        { parameter: 'Combined Check 2', value: safeToString(combinedResults.U_combined_2) },
+        { parameter: 'Result', value: combinedResults.passes ? 'PASS' : 'FAIL', unit: '' }
       ],
-      utilization: Math.max(safeNumber(combinedResults.U_combined_1), safeNumber(combinedResults.U_combined_2)) * 100,
+      utilization: Math.min(safeNumber(combinedResults.U_combined_1), safeNumber(combinedResults.U_combined_2)) * 100,
       passes: combinedResults.passes ?? false
     });
   }
 
-  // 6-10. Add remaining verification checks with similar structure...
-  // (Fixing Check, Dropping Below Slab, Total Deflection, Packer Effects, Bracket Design)
+  // 6. Fixing Check
+  const fixingResults = verificationResults.fixingResults;
+  if (fixingResults) {
+    calculations.push({
+      name: 'Fixing Check',
+      description: 'Channel fixing capacity check with combined interaction formulas',
+      inputs: [
+        { parameter: 'Applied Shear (V_ed)', value: safeToString(fixingResults.appliedShear), unit: 'kN' },
+        { parameter: 'Applied Moment (M_ed)', value: safeToString(fixingResults.appliedMoment), unit: 'kNm' },
+        { parameter: 'Tensile Force (N_ed)', value: safeToString(fixingResults.tensileForce), unit: 'kN' },
+        { parameter: 'Shear Capacity (V_Rd)', value: safeToString(fixingResults.channelShearCapacity), unit: 'kN' },
+        { parameter: 'Tension Capacity (N_Rd)', value: safeToString(fixingResults.channelTensionCapacity), unit: 'kN' }
+      ],
+      formulas: [
+        { step: '1. Check individual shear', formula: 'V_ed ≤ V_Rd', result: fixingResults.channelShearCheckPasses ? 'PASS' : 'FAIL' },
+        { step: '2. Check individual tension', formula: 'N_ed ≤ N_Rd', result: fixingResults.channelTensionCheckPasses ? 'PASS' : 'FAIL' },
+        { step: '3. Formula 1', formula: '(N_ed/N_Rd)^1.5 + (V_ed/V_Rd)^1.5 ≤ 1.0', result: fixingResults.channelCombinedUtilization ? safeToString(fixingResults.channelCombinedUtilization) : 'N/A' },
+        { step: '4. Formula 2', formula: '(N_ed/N_Rd + V_ed/V_Rd) / 1.2 ≤ 1.0', result: fixingResults.channelCombinedUtilization ? safeToString(fixingResults.channelCombinedUtilization) : 'N/A' },
+        { step: '5. Combined check', formula: 'min(Formula1, Formula2) ≤ 1.0', result: fixingResults.channelCombinedCheckPasses ? 'PASS' : 'FAIL' }
+      ],
+      outputs: [
+        { parameter: 'Shear Check', value: fixingResults.channelShearCheckPasses ? 'PASS' : 'FAIL', unit: '' },
+        { parameter: 'Tension Check', value: fixingResults.channelTensionCheckPasses ? 'PASS' : 'FAIL', unit: '' },
+        { parameter: 'Combined Utilization', value: fixingResults.channelCombinedUtilization ? safeToString(fixingResults.channelCombinedUtilization) : 'N/A', unit: '' },
+        { parameter: 'Combined Check', value: fixingResults.channelCombinedCheckPasses ? 'PASS' : 'FAIL', unit: '' }
+      ],
+      utilization: fixingResults.channelCombinedUtilization ? safeNumber(fixingResults.channelCombinedUtilization) * 100 : 0,
+      passes: fixingResults.passes ?? false
+    });
+  }
+
+  // 7-10. Add remaining verification checks with similar structure...
+  // (Dropping Below Slab, Total Deflection, Packer Effects, Bracket Design)
 
   return calculations;
 };
@@ -374,11 +409,16 @@ export const extractVerificationSummary = (verificationResults: VerificationResu
   }
 
   if (verificationResults.fixingResults) {
+    // Calculate utilization from the combined check (most critical)
+    const combinedUtil = verificationResults.fixingResults.channelCombinedUtilization
+      ? verificationResults.fixingResults.channelCombinedUtilization * 100
+      : 0;
+
     summaryItems.push({
       checkName: 'Fixing Check',
       result: verificationResults.fixingResults.passes ? 'PASS' : 'FAIL',
-      utilization: 0, // Would need to calculate from fixing results
-      criticalValue: 'Check details'
+      utilization: combinedUtil,
+      criticalValue: `${combinedUtil.toFixed(1)}%`
     });
   }
 

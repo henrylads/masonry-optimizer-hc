@@ -19,14 +19,21 @@ import type {
  *
  * Formula: L = k × C - 10mm (where k is number of brackets, C is spacing)
  * Maximum length: 1490mm (sheet manufacturing limit)
+ * Updated to include 25mm increment bracket centres (200-500)
  */
 export const STANDARD_LENGTH_TABLE: Record<number, number[]> = {
   500: [1490, 990],
+  475: [1415, 940, 465],
   450: [1340, 890],
+  425: [1275, 850, 425],
   400: [1190, 790],
+  375: [1115, 740],
   350: [1390, 1040, 690],
+  325: [1290, 965, 640],
   300: [1490, 1190, 890, 590],
+  275: [1090, 815, 540],
   250: [1490, 1240, 990, 740, 490],
+  225: [1115, 890, 665, 440],
   200: [1390, 1190, 990, 790, 590, 390]
 };
 

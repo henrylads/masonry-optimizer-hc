@@ -1,8 +1,8 @@
 /**
  * Valid bracket centre distances in mm
- * Must be in 50mm increments between 200mm and 600mm
+ * Must be in 25mm increments between 200mm and 600mm
  */
-export type BracketCentres = 200 | 250 | 300 | 350 | 400 | 450 | 500 | 550 | 600;
+export type BracketCentres = 200 | 225 | 250 | 275 | 300 | 325 | 350 | 375 | 400 | 425 | 450 | 475 | 500 | 550 | 600;
 
 /**
  * Valid bracket thicknesses in mm

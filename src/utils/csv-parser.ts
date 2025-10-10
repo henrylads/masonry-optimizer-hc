@@ -5,7 +5,7 @@ import type { SlabThickness, BracketCentres } from '@/types/validationTypes';
 /**
  * Zod schema for validating ChannelType values
  */
-const ChannelTypeSchema = z.enum(['CPRO38', 'CPRO50', 'R-HPTIII-70', 'R-HPTIII-90']);
+const ChannelTypeSchema = z.enum(['CPRO38', 'CPRO50', 'CPRO52', 'R-HPTIII-70', 'R-HPTIII-90']);
 
 /**
  * Zod schema for validating parsed ChannelSpec objects
@@ -67,8 +67,9 @@ interface ParseState {
 function extractChannelType(description: string): ChannelType | null {
   if (description.includes('CPRO38')) return 'CPRO38';
   if (description.includes('CPRO50')) return 'CPRO50';
-  if (description.includes('R-HPTIII') && description.includes('70mm')) return 'R-HPTIII-70';
-  if (description.includes('R-HPTIII') && description.includes('90mm')) return 'R-HPTIII-90';
+  if (description.includes('CPRO52')) return 'CPRO52';
+  if (description.includes('HPTIII-70mm') || (description.includes('R-HPTIII') && description.includes('70mm'))) return 'R-HPTIII-70';
+  if (description.includes('HPTIII-90mm') || (description.includes('R-HPTIII') && description.includes('90mm'))) return 'R-HPTIII-90';
   return null;
 }
 

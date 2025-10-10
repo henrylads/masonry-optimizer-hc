@@ -52,6 +52,10 @@ export interface FixingResults {
     channelShearCheckPasses?: boolean;
     /** Whether channel tension check passes */
     channelTensionCheckPasses?: boolean;
+    /** Combined utilization factor (0-1 scale, ≤1.0 passes) */
+    channelCombinedUtilization?: number;
+    /** Whether combined interaction check passes */
+    channelCombinedCheckPasses?: boolean;
     /** Whether all checks pass */
     passes: boolean;
 }
@@ -182,24 +186,45 @@ export function verifyFixing(
 
     // --- Channel Capacity Check ---
     const channelSpec = getChannelSpec(channelType, slabThickness, bracketCentres);
-    
+
     let channelShearCapacity: number | undefined = undefined;
     let channelTensionCapacity: number | undefined = undefined;
     let channelShearCheckPasses: boolean | undefined = undefined;
     let channelTensionCheckPasses: boolean | undefined = undefined;
+    let channelCombinedCheckPasses: boolean | undefined = undefined;
+    let channelCombinedUtilization: number | undefined = undefined;
 
     if (channelSpec) {
         channelShearCapacity = channelSpec.maxForces.shear;
         channelTensionCapacity = channelSpec.maxForces.tension;
-        
+
         // Check calculated forces against channel capacities
         // Note: V_ed_fixing is used for shear check as it's the shear at the fixing plane
         channelShearCheckPasses = V_ed_fixing <= channelShearCapacity;
         channelTensionCheckPasses = N_ed_fixing <= channelTensionCapacity;
+
+        // Combined utilization check (interaction between shear and tension)
+        // Two formulas must be satisfied:
+        // Formula 1: (N_ed/N_Rd)^1.5 + (V_ed/V_Rd)^1.5 ≤ 1.0
+        // Formula 2: (N_ed/N_Rd + V_ed/V_Rd) / 1.2 ≤ 1.0
+        // Take the minimum (most critical) result
+        const tensionUtilization = N_ed_fixing / channelTensionCapacity;
+        const shearUtilization = V_ed_fixing / channelShearCapacity;
+
+        // Formula 1: Power 1.5 interaction
+        const formula1 = Math.pow(tensionUtilization, 1.5) + Math.pow(shearUtilization, 1.5);
+
+        // Formula 2: Linear interaction divided by 1.2
+        const formula2 = (tensionUtilization + shearUtilization) / 1.2;
+
+        // Use the minimum (most critical) result
+        channelCombinedUtilization = Math.min(formula1, formula2);
+        channelCombinedCheckPasses = channelCombinedUtilization <= 1.0;
     } else {
         // Handle case where channel spec is not found - fail checks
         channelShearCheckPasses = false;
         channelTensionCheckPasses = false;
+        channelCombinedCheckPasses = false;
         console.warn(`Channel spec not found for: ${channelType}, ${slabThickness}, ${bracketCentres}`);
     }
     // --- End Channel Capacity Check ---
@@ -208,10 +233,11 @@ export function verifyFixing(
     const concreteChecksPass = tensileLoadResults.momentEquilibriumPasses &&
         tensileLoadResults.shearEquilibriumPasses &&
         tensileLoadResults.depthCheckPasses;
-        
-    const allChecksPass = concreteChecksPass && 
-                          (channelShearCheckPasses === true) && 
-                          (channelTensionCheckPasses === true);
+
+    const allChecksPass = concreteChecksPass &&
+                          (channelShearCheckPasses === true) &&
+                          (channelTensionCheckPasses === true) &&
+                          (channelCombinedCheckPasses === true);
 
     return {
         appliedShear: roundToTwelveDecimals(V_ed_fixing),
@@ -222,6 +248,8 @@ export function verifyFixing(
         channelTensionCapacity: channelTensionCapacity ? roundToTwelveDecimals(channelTensionCapacity) : undefined,
         channelShearCheckPasses,
         channelTensionCheckPasses,
+        channelCombinedUtilization: channelCombinedUtilization ? roundToTwelveDecimals(channelCombinedUtilization) : undefined,
+        channelCombinedCheckPasses,
         passes: allChecksPass
     };
 } 

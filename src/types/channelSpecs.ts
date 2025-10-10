@@ -1,7 +1,7 @@
 import type { BracketCentres, SlabThickness } from './validationTypes';
 
 // Supported channel families
-export type ChannelType = 'CPRO38' | 'CPRO50' | 'R-HPTIII-70' | 'R-HPTIII-90';
+export type ChannelType = 'CPRO38' | 'CPRO50' | 'CPRO52' | 'R-HPTIII-70' | 'R-HPTIII-90';
 
 /**
  * Channel specification from the shear/tension forces table

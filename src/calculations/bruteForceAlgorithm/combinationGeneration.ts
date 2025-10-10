@@ -11,7 +11,7 @@ import type {
 
 // Define the possible values for each genetic parameter
 // These should align with the constraints and generation logic in the GA if possible
-const POSSIBLE_BRACKET_CENTRES: BracketCentres[] = [200, 250, 300, 350, 400, 450, 500]; // Matches channel specs data
+const POSSIBLE_BRACKET_CENTRES: BracketCentres[] = [200, 225, 250, 275, 300, 325, 350, 375, 400, 425, 450, 475, 500]; // Matches channel specs data - 25mm increments
 const POSSIBLE_BRACKET_THICKNESS: BracketThickness[] = [3, 4]; // Example values
 const POSSIBLE_ANGLE_THICKNESS: AngleThickness[] = [3, 4, 5, 6, 8]; // Example values
 const POSSIBLE_BOLT_DIAMETER: BoltDiameter[] = [10, 12]; // Example values

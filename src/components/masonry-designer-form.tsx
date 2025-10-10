@@ -363,7 +363,7 @@ export default function MasonryDesignerForm({
               if (channelProduct !== 'all') {
                 channelTypes.push(channelProduct as ChannelType);
               } else {
-                channelTypes.push('CPRO38', 'CPRO50');
+                channelTypes.push('CPRO38', 'CPRO50', 'CPRO52');
               }
 
               if (postfixProduct !== 'all') {
@@ -381,11 +381,11 @@ export default function MasonryDesignerForm({
               if (channelProduct && channelProduct !== 'all') {
                 channelTypes.push(channelProduct as ChannelType);
               } else {
-                channelTypes.push('CPRO38', 'CPRO50');
+                channelTypes.push('CPRO38', 'CPRO50', 'CPRO52');
               }
             }
 
-            return channelTypes.length > 0 ? channelTypes : ['CPRO38','CPRO50','R-HPTIII-70','R-HPTIII-90'] as ChannelType[];
+            return channelTypes.length > 0 ? channelTypes : ['CPRO38','CPRO50','CPRO52','R-HPTIII-70','R-HPTIII-90'] as ChannelType[];
           })()
         },
         isAngleLengthLimited: values.is_angle_length_limited,
@@ -1069,6 +1069,7 @@ export default function MasonryDesignerForm({
                                             <SelectItem value="all">All Channels</SelectItem>
                                             <SelectItem value="CPRO38">CPRO38</SelectItem>
                                             <SelectItem value="CPRO50">CPRO50</SelectItem>
+                                            <SelectItem value="CPRO52">CPRO52</SelectItem>
                                           </SelectContent>
                                         </Select>
                                       </FormControl>
