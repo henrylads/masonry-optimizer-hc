@@ -1,6 +1,7 @@
 import { roundToTwelveDecimals } from '@/utils/precision';
 import { getChannelSpec } from '@/data/channelSpecs';
 import { SYSTEM_DEFAULTS } from '@/constants';
+import type { SteelFixingCapacity } from '@/types/steelFixingTypes';
 
 /**
  * Constants for fixing calculations
@@ -33,6 +34,30 @@ export interface TensileLoadResults {
 }
 
 /**
+ * Results from steel fixing verification
+ */
+export interface SteelFixingResults {
+    /** Applied shear force per fixing (kN) - Fv,Ed */
+    appliedShear: number;
+    /** Applied tension force per fixing (kN) - Ft,Ed */
+    appliedTension: number;
+    /** Shear capacity (kN) - Fv,Rd */
+    shearCapacity: number;
+    /** Tension capacity (kN) - Ft,Rd */
+    tensionCapacity: number;
+    /** Shear utilization: Fv,Ed / Fv,Rd */
+    shearUtilization: number;
+    /** Tension utilization: Ft,Ed / Ft,Rd (raw, before factor) */
+    tensionUtilization: number;
+    /** Adjusted tension utilization: Ft,Ed / (1.4 × Ft,Rd) (used in combined check) */
+    adjustedTensionUtilization: number;
+    /** Combined utilization: (Fv,Ed / Fv,Rd) + (Ft,Ed / (1.4 × Ft,Rd)) */
+    combinedUtilization: number;
+    /** Whether combined check passes (≤ 1.0) */
+    passes: boolean;
+}
+
+/**
  * Interface for fixing verification results
  */
 export interface FixingResults {
@@ -56,6 +81,8 @@ export interface FixingResults {
     channelCombinedUtilization?: number;
     /** Whether combined interaction check passes */
     channelCombinedCheckPasses?: boolean;
+    /** Steel fixing results (only for steel fixing types) */
+    steelFixingResults?: SteelFixingResults;
     /** Whether all checks pass */
     passes: boolean;
 }
@@ -251,5 +278,54 @@ export function verifyFixing(
         channelCombinedUtilization: channelCombinedUtilization ? roundToTwelveDecimals(channelCombinedUtilization) : undefined,
         channelCombinedCheckPasses,
         passes: allChecksPass
+    };
+}
+
+/**
+ * Verify steel fixing capacity
+ *
+ * Steel fixing combined check formula:
+ * (Fv,Ed / Fv,Rd) + (Ft,Ed / (1.4 × Ft,Rd)) ≤ 1.0
+ *
+ * Where:
+ * - Fv,Ed = Applied shear load per fixing (kN)
+ * - Fv,Rd = Shear capacity of fixing (kN)
+ * - Ft,Ed = Applied tension load per fixing (kN)
+ * - Ft,Rd = Tension capacity of fixing (kN)
+ * - 1.4 = Tension factor reducing severity of tension check
+ *
+ * @param appliedShear - Applied shear force per fixing in kN (Fv,Ed)
+ * @param appliedTension - Applied tension force per fixing in kN (Ft,Ed)
+ * @param capacity - Steel fixing capacity specification
+ * @returns Steel fixing verification results
+ */
+export function verifySteelFixing(
+    appliedShear: number,
+    appliedTension: number,
+    capacity: SteelFixingCapacity
+): SteelFixingResults {
+    // Shear utilization: Fv,Ed / Fv,Rd
+    const shearUtilization = appliedShear / capacity.shearCapacity;
+
+    // Tension utilization (raw): Ft,Ed / Ft,Rd
+    const tensionUtilization = appliedTension / capacity.tensileCapacity;
+
+    // Tension factor of 1.4 applied to capacity (makes tension check less critical)
+    const tensionFactor = 1.4;
+    const adjustedTensionUtilization = appliedTension / (tensionFactor * capacity.tensileCapacity);
+
+    // Combined check: (Fv,Ed / Fv,Rd) + (Ft,Ed / (1.4 × Ft,Rd)) ≤ 1.0
+    const combinedUtilization = shearUtilization + adjustedTensionUtilization;
+
+    return {
+        appliedShear: roundToTwelveDecimals(appliedShear),
+        appliedTension: roundToTwelveDecimals(appliedTension),
+        shearCapacity: capacity.shearCapacity,
+        tensionCapacity: capacity.tensileCapacity,
+        shearUtilization: roundToTwelveDecimals(shearUtilization),
+        tensionUtilization: roundToTwelveDecimals(tensionUtilization),
+        adjustedTensionUtilization: roundToTwelveDecimals(adjustedTensionUtilization),
+        combinedUtilization: roundToTwelveDecimals(combinedUtilization),
+        passes: combinedUtilization <= 1.0
     };
 } 

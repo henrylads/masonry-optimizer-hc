@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type { ChannelType } from './channelSpecs';
+import type { FrameFixingType, SteelSection, SteelBoltSize } from './steelFixingTypes';
 import { MaterialType } from './userInputs';
 
 /**
@@ -69,6 +70,15 @@ export interface DesignInputs {
 
     /** Enable angle extension feature for handling exclusion zones */
     enable_angle_extension?: boolean;
+
+    /** Frame fixing type - determines concrete vs steel workflow */
+    frame_fixing_type?: FrameFixingType;
+
+    /** Steel section specification (only for steel fixing types) */
+    steel_section?: SteelSection;
+
+    /** Steel bolt size (only for steel fixing types) */
+    steel_bolt_size?: SteelBoltSize;
 }
 
 export const DesignInputsSchema = z.object({

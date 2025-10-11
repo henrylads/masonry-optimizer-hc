@@ -3,10 +3,21 @@ import { MaterialType } from './userInputs'
 
 // Define the form schema with validation
 export const formSchema = z.object({
+  // Frame fixing type selector
+  frame_fixing_type: z.enum([
+    'concrete-cast-in',
+    'concrete-post-fix',
+    'concrete-all',
+    'steel-ibeam',
+    'steel-rhs-shs'
+  ]).default('concrete-all'),
+
+  // Slab thickness - optional (required only for concrete types)
   slab_thickness: z.coerce
     .number()
     .min(150, { message: "Slab thickness must be at least 150mm" })
-    .max(500, { message: "Slab thickness must be at most 500mm" }),
+    .max(500, { message: "Slab thickness must be at most 500mm" })
+    .optional(),
   cavity: z.coerce
     .number()
     .min(50, { message: "Cavity width must be at least 50mm" })
@@ -94,6 +105,17 @@ export const formSchema = z.object({
     .refine((val) => val === undefined || val % 5 === 0, {
       message: "Max bracket position must be in 5mm increments",
     }),
+
+  // Steel fixing fields
+  steel_section_type: z.enum(['I-BEAM', 'RHS', 'SHS']).optional(),
+  use_custom_steel_section: z.boolean().default(false),
+  steel_section_size: z.string().optional(),
+  custom_steel_height: z.coerce
+    .number()
+    .min(20, { message: "Custom steel height must be at least 20mm" })
+    .max(1000, { message: "Custom steel height must be at most 1000mm" })
+    .optional(),
+  steel_bolt_size: z.enum(['M10', 'M12', 'M16']).optional(),
 }).refine((data) => {
   // Conditional validation for notch fields
   if (data.has_notch) {
@@ -114,7 +136,47 @@ export const formSchema = z.object({
   return true;
 }, {
   message: "When angle extension is enabled, max bracket position must be specified (-1000 to 500mm)",
-  path: ["max_allowable_bracket_extension"], // This will show the error on the max_allowable_bracket_extension field
+  path: ["max_allowable_bracket_extension"],
+}).refine((data) => {
+  // Validate slab_thickness required for concrete types
+  if (data.frame_fixing_type?.startsWith('concrete')) {
+    return data.slab_thickness !== undefined && data.slab_thickness >= 150;
+  }
+  return true;
+}, {
+  message: "Slab thickness is required for concrete fixing types",
+  path: ["slab_thickness"]
+}).refine((data) => {
+  // Validate steel section required for steel types
+  if (data.frame_fixing_type?.startsWith('steel')) {
+    if (data.use_custom_steel_section) {
+      return data.custom_steel_height !== undefined && data.custom_steel_height >= 20;
+    } else {
+      return data.steel_section_size !== undefined && data.steel_section_size.length > 0;
+    }
+  }
+  return true;
+}, {
+  message: "Steel section specification is required for steel fixing types",
+  path: ["steel_section_size"]
+}).refine((data) => {
+  // Validate steel section type required for steel types
+  if (data.frame_fixing_type?.startsWith('steel')) {
+    return data.steel_section_type !== undefined;
+  }
+  return true;
+}, {
+  message: "Steel section type is required for steel fixing types",
+  path: ["steel_section_type"]
+}).refine((data) => {
+  // Validate steel bolt size required for steel types
+  if (data.frame_fixing_type?.startsWith('steel')) {
+    return data.steel_bolt_size !== undefined;
+  }
+  return true;
+}, {
+  message: "Bolt size is required for steel fixing types",
+  path: ["steel_bolt_size"]
 })
 
 export type FormDataType = z.infer<typeof formSchema> 
