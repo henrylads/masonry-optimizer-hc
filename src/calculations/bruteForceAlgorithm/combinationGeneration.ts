@@ -16,6 +16,62 @@ const POSSIBLE_BRACKET_THICKNESS: BracketThickness[] = [3, 4]; // Example values
 const POSSIBLE_ANGLE_THICKNESS: AngleThickness[] = [3, 4, 5, 6, 8]; // Example values
 const POSSIBLE_BOLT_DIAMETER: BoltDiameter[] = [10, 12]; // Example values
 
+// Bracket thickness rule thresholds
+const BRACKET_THICKNESS_RULE = {
+    LOAD_THRESHOLD: 4, // kN/m
+    DISTANCE_FROM_SLAB: 50 // mm - distance beyond slab edges
+} as const;
+
+/**
+ * Determines if bracket thickness must be 4mm based on load and support level
+ * Rule: When load > 4 kN/m AND support is more than 50mm outside the slab boundaries,
+ * bracket thickness must be 4mm.
+ *
+ * @param characteristicLoad - Applied load in kN/m
+ * @param supportLevel - Support level in mm (0 = top of slab, negative = below top)
+ * @param slabThickness - Slab thickness in mm
+ * @returns true if 4mm bracket thickness is required
+ */
+function requiresThickBracket(
+    characteristicLoad: number,
+    supportLevel: number,
+    slabThickness: number
+): boolean {
+    const highLoad = characteristicLoad > BRACKET_THICKNESS_RULE.LOAD_THRESHOLD;
+
+    // Calculate slab boundaries
+    const topOfSlab = 0;
+    const bottomOfSlab = -slabThickness;
+
+    // Check if support is more than 50mm outside slab boundaries
+    const aboveSlabThreshold = topOfSlab + BRACKET_THICKNESS_RULE.DISTANCE_FROM_SLAB;
+    const belowSlabThreshold = bottomOfSlab - BRACKET_THICKNESS_RULE.DISTANCE_FROM_SLAB;
+
+    const farFromSlab = supportLevel > aboveSlabThreshold || supportLevel < belowSlabThreshold;
+
+    return highLoad && farFromSlab;
+}
+
+/**
+ * Gets valid bracket thicknesses for given conditions
+ *
+ * @param characteristicLoad - Applied load in kN/m
+ * @param supportLevel - Support level in mm
+ * @param slabThickness - Slab thickness in mm
+ * @returns Array of valid bracket thicknesses
+ */
+function getValidBracketThicknesses(
+    characteristicLoad: number,
+    supportLevel: number,
+    slabThickness: number
+): BracketThickness[] {
+    if (requiresThickBracket(characteristicLoad, supportLevel, slabThickness)) {
+        console.log(`⚠️  Bracket thickness rule applied: Load=${characteristicLoad}kN/m, Support=${supportLevel}mm, Slab=${slabThickness}mm → Only 4mm bracket allowed`);
+        return [4]; // Only 4mm allowed
+    }
+    return POSSIBLE_BRACKET_THICKNESS; // Both 3mm and 4mm allowed
+}
+
 // Dim D values for inverted brackets (135-450mm range in 5mm increments, aligned with ShapeDiver)
 // Generate array from 135 to 450 in 5mm steps: [135, 140, 145, 150, ..., 445, 450]
 const POSSIBLE_DIM_D_VALUES: number[] = Array.from(
@@ -290,11 +346,10 @@ export function generateAllCombinations(inputs: DesignInputs): GeneticParameters
             });
 
             for (const bracket_centres of centresForChannel) {
-            for (const bracket_thickness of POSSIBLE_BRACKET_THICKNESS) {
-                // Example constraint: Bracket thickness might depend on load/centres
-                // Add specific validation logic here if needed, similar to GA's generateBracketThickness
-                // For now, we assume all listed thicknesses are potentially valid
+            // Get valid bracket thicknesses based on load and support position
+            const validBracketThicknesses = getValidBracketThicknesses(characteristicLoad, supportLevel, slabThickness);
 
+            for (const bracket_thickness of validBracketThicknesses) {
                 for (const angle_thickness of POSSIBLE_ANGLE_THICKNESS) {
                     const vertical_leg = POSSIBLE_VERTICAL_LEG(angle_thickness);
                     for (const bolt_diameter of POSSIBLE_BOLT_DIAMETER) {
