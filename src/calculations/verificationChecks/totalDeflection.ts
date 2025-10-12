@@ -58,15 +58,23 @@ export const verifyTotalDeflection = (
         (384 * Es_sr * Ixx_3);
 
     // Calculate total deflection of system
-    const Total_deflection_of_system_raw = Def_included ? 
+    const Total_deflection_of_system_raw = Def_included ?
         Total_Vertical_Deflection_raw + Addition_deflection_span_raw :
         Total_Vertical_Deflection_raw;
+
+    // Check against limit
+    const passes = Total_deflection_of_system_raw <= TOTAL_DEFLECTION_CONSTANTS.MAX_DEFLECTION;
+
+    // Debug logging for deflection check
+    if (!passes) {
+        console.log(`❌ DEFLECTION FAILURE: ${Total_deflection_of_system_raw.toFixed(9)}mm > ${TOTAL_DEFLECTION_CONSTANTS.MAX_DEFLECTION}mm limit`);
+    }
 
     // Round final results to 12 decimal places
     return {
         Total_Vertical_Deflection: roundToTwelveDecimals(Total_Vertical_Deflection_raw),
         Addition_deflection_span: roundToTwelveDecimals(Addition_deflection_span_raw),
         Total_deflection_of_system: roundToTwelveDecimals(Total_deflection_of_system_raw),
-        passes: Total_deflection_of_system_raw <= TOTAL_DEFLECTION_CONSTANTS.MAX_DEFLECTION
+        passes
     };
 }; 

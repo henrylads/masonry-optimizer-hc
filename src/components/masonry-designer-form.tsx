@@ -27,6 +27,8 @@ import type { ChannelType } from '@/types/channelSpecs'
 import { getChannelSpec } from '@/data/channelSpecs'
 import { runBruteForce } from '@/calculations/bruteForceAlgorithm'
 import { formSchema } from '@/types/form-schema'
+import { getSectionSizes } from '@/data/steelSections'
+import type { SteelSectionType } from '@/types/steelFixingTypes'
 
 // Import chat interface components
 import { ChatInterface } from '@/components/chat-interface'
@@ -135,6 +137,7 @@ export default function MasonryDesignerForm({
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      frame_fixing_type: 'concrete-all',
       slab_thickness: 225,
       cavity: 100,
       support_level: -200,
@@ -160,6 +163,12 @@ export default function MasonryDesignerForm({
       use_custom_facade_offsets: false,
       enable_angle_extension: false,
       max_allowable_bracket_extension: -200,
+      // Steel fixing defaults
+      steel_section_type: 'I-BEAM',
+      use_custom_steel_section: false,
+      steel_section_size: '127x76',
+      custom_steel_height: 127,
+      steel_bolt_size: 'all',
     },
   })
 
@@ -206,6 +215,34 @@ export default function MasonryDesignerForm({
           formErrors: form.formState.errors,
           isValid: form.formState.isValid
         });
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [form]);
+
+  // Sync frame_fixing_type with fixing_type and steel_section_type fields
+  React.useEffect(() => {
+    const subscription = form.watch((value, { name }) => {
+      if (name === 'frame_fixing_type') {
+        const frameType = value.frame_fixing_type;
+
+        // Map frame_fixing_type to fixing_type for backend (concrete types)
+        if (frameType === 'concrete-cast-in') {
+          form.setValue('fixing_type', 'channel-fix');
+        } else if (frameType === 'concrete-post-fix') {
+          form.setValue('fixing_type', 'post-fix');
+        } else if (frameType === 'concrete-all') {
+          form.setValue('fixing_type', 'all');
+        }
+
+        // Map frame_fixing_type to steel_section_type (steel types)
+        if (frameType === 'steel-ibeam') {
+          form.setValue('steel_section_type', 'I-BEAM');
+        } else if (frameType === 'steel-rhs') {
+          form.setValue('steel_section_type', 'RHS');
+        } else if (frameType === 'steel-shs') {
+          form.setValue('steel_section_type', 'SHS');
+        }
       }
     });
     return () => subscription.unsubscribe();
@@ -296,7 +333,15 @@ export default function MasonryDesignerForm({
         channelType = 'CPRO38';
       }
       const bracketCentres = 500;
-      const channelSpec = getChannelSpec(channelType, values.slab_thickness, bracketCentres);
+
+      // For steel frames, use effective height; for concrete, use slab thickness
+      const effectiveThicknessForLookup = values.frame_fixing_type?.startsWith('steel')
+        ? (values.use_custom_steel_section && values.custom_steel_height
+            ? values.custom_steel_height
+            : parseInt(values.steel_section_size?.split('x')[0] || '0'))
+        : values.slab_thickness;
+
+      const channelSpec = getChannelSpec(channelType, effectiveThicknessForLookup, bracketCentres);
       const criticalEdges = channelSpec ? 
         { top: channelSpec.edgeDistances.top, bottom: channelSpec.edgeDistances.bottom } : 
         { top: 75, bottom: 150 };
@@ -329,13 +374,38 @@ export default function MasonryDesignerForm({
         isolation_shim_thickness: values.isolation_shim_thickness
       });
 
+      // Calculate effective height for steel fixings and build steel_section object
+      const isSteelFrame = values.frame_fixing_type?.startsWith('steel');
+      let effectiveSlabThickness = values.slab_thickness;
+      let steelSection = null;
+
+      if (isSteelFrame) {
+        if (values.use_custom_steel_section && values.custom_steel_height) {
+          effectiveSlabThickness = values.custom_steel_height;
+        } else if (values.steel_section_size) {
+          // Extract height from steel section size (e.g., "203x133" -> 203)
+          const height = parseInt(values.steel_section_size.split('x')[0]);
+          effectiveSlabThickness = height || values.slab_thickness;
+        }
+        console.log('🔩 STEEL FRAME: Using effective height:', effectiveSlabThickness, 'mm');
+
+        // Build steel_section object for the algorithm
+        steelSection = {
+          sectionType: values.steel_section_type,
+          size: values.use_custom_steel_section ? null : values.steel_section_size,
+          customHeight: values.use_custom_steel_section ? values.custom_steel_height : undefined,
+          effectiveHeight: effectiveSlabThickness
+        };
+        console.log('🔩 STEEL SECTION OBJECT:', steelSection);
+      }
+
       // Prepare configuration
       const optimizationConfig = {
         maxGenerations: 100,
         designInputs: {
           support_level: values.support_level,
           cavity_width: values.cavity,
-          slab_thickness: values.slab_thickness,
+          slab_thickness: effectiveSlabThickness,
           characteristic_load: characteristicLoad,
           top_critical_edge: criticalEdges.top,
           bottom_critical_edge: criticalEdges.bottom,
@@ -355,6 +425,10 @@ export default function MasonryDesignerForm({
           // Add angle extension parameters for exclusion zones
           enable_angle_extension: values.enable_angle_extension,
           max_allowable_bracket_extension: values.enable_angle_extension ? values.max_allowable_bracket_extension : null,
+          // Add steel fixing parameters
+          frame_fixing_type: values.frame_fixing_type,
+          steel_section: steelSection, // Pass the constructed steel_section object
+          steel_bolt_size: values.steel_bolt_size,
           allowed_channel_types: (() => {
             const channelTypes: ChannelType[] = [];
 
@@ -413,7 +487,10 @@ export default function MasonryDesignerForm({
         slab_thickness: optimizationConfig.designInputs.slab_thickness,
         characteristic_load: optimizationConfig.designInputs.characteristic_load,
         enable_angle_extension: optimizationConfig.designInputs.enable_angle_extension,
-        max_allowable_bracket_extension: optimizationConfig.designInputs.max_allowable_bracket_extension
+        max_allowable_bracket_extension: optimizationConfig.designInputs.max_allowable_bracket_extension,
+        frame_fixing_type: optimizationConfig.designInputs.frame_fixing_type,
+        steel_section: optimizationConfig.designInputs.steel_section,
+        steel_bolt_size: optimizationConfig.designInputs.steel_bolt_size
       });
 
       // Run optimization
@@ -572,6 +649,290 @@ export default function MasonryDesignerForm({
                   <TabsContent value="input">
                     <Form {...form}>
                       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                        {/* Frame Fixing Type Section */}
+                        <div className="col-span-full">
+                          <div className="rounded-lg border p-6 bg-gradient-to-br from-primary/5 to-primary/10">
+                            <FormField
+                              control={form.control}
+                              name="frame_fixing_type"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className="text-lg font-semibold">Frame Fixing Type</FormLabel>
+                                  <Select onValueChange={field.onChange} value={field.value}>
+                                    <FormControl>
+                                      <SelectTrigger className="h-12 text-base font-medium">
+                                        <SelectValue placeholder="Select frame fixing type" />
+                                      </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                      <SelectItem value="concrete-cast-in">Concrete (Cast-in Channel)</SelectItem>
+                                      <SelectItem value="concrete-post-fix">Concrete (Post-Fix)</SelectItem>
+                                      <SelectItem value="concrete-all">Concrete (All)</SelectItem>
+                                      <SelectItem value="steel-ibeam">Steelwork (I-Beam)</SelectItem>
+                                      <SelectItem value="steel-rhs">Steelwork (RHS)</SelectItem>
+                                      <SelectItem value="steel-shs">Steelwork (SHS)</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                  <FormDescription>
+                                    Select the type of structural frame and fixing method
+                                  </FormDescription>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+                        </div>
+
+                        {/* Concrete Product Selection - for all concrete types */}
+                        {form.watch('frame_fixing_type')?.startsWith('concrete') && (
+                          <div className="col-span-full">
+                            <div className="rounded-lg border p-6">
+                              <div className="flex items-center gap-2 mb-4">
+                                <div className="p-2 rounded-lg bg-primary/10">
+                                  <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                                  </svg>
+                                </div>
+                                <div>
+                                  <h3 className="text-lg font-semibold">Product Selection</h3>
+                                  <p className="text-sm text-muted-foreground">Select which products to consider</p>
+                                </div>
+                              </div>
+
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {/* Channel Fix Type - show for cast-in and all */}
+                                {(form.watch('frame_fixing_type') === 'concrete-cast-in' || form.watch('frame_fixing_type') === 'concrete-all') && (
+                                  <FormField
+                                    control={form.control}
+                                    name="channel_product"
+                                    render={({ field }) => (
+                                      <FormItem>
+                                        <FormLabel>Channel Fix Type</FormLabel>
+                                        <FormControl>
+                                          <Select
+                                            value={field.value}
+                                            onValueChange={field.onChange}
+                                          >
+                                            <SelectTrigger>
+                                              <SelectValue placeholder="Select channel type" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                              <SelectItem value="all">All Channels</SelectItem>
+                                              <SelectItem value="CPRO38">CPRO38</SelectItem>
+                                              <SelectItem value="CPRO50">CPRO50</SelectItem>
+                                              <SelectItem value="CPRO52">CPRO52</SelectItem>
+                                            </SelectContent>
+                                          </Select>
+                                        </FormControl>
+                                        <FormMessage />
+                                      </FormItem>
+                                    )}
+                                  />
+                                )}
+
+                                {/* Post Fix Type - show for post-fix and all */}
+                                {(form.watch('frame_fixing_type') === 'concrete-post-fix' || form.watch('frame_fixing_type') === 'concrete-all') && (
+                                  <FormField
+                                    control={form.control}
+                                    name="postfix_product"
+                                    render={({ field }) => (
+                                      <FormItem>
+                                        <FormLabel>Post Fix Type</FormLabel>
+                                        <FormControl>
+                                          <Select
+                                            value={field.value}
+                                            onValueChange={field.onChange}
+                                          >
+                                            <SelectTrigger>
+                                              <SelectValue placeholder="Select post type" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                              <SelectItem value="all">All Post-Fix</SelectItem>
+                                              <SelectItem value="R-HPTIII-70">R-HPTIII-70</SelectItem>
+                                              <SelectItem value="R-HPTIII-90">R-HPTIII-90</SelectItem>
+                                            </SelectContent>
+                                          </Select>
+                                        </FormControl>
+                                        <FormMessage />
+                                      </FormItem>
+                                    )}
+                                  />
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Steel Section Configuration (only for steel fixing types) */}
+                        {form.watch('frame_fixing_type')?.startsWith('steel') && (
+                          <div className="col-span-full">
+                            <div className="rounded-lg border p-6">
+                              <div className="flex items-center gap-2 mb-4">
+                                <div className="p-2 rounded-lg bg-orange-500/10">
+                                  <svg className="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                                  </svg>
+                                </div>
+                                <div>
+                                  <h3 className="text-lg font-semibold">Steel Section Configuration</h3>
+                                  <p className="text-sm text-muted-foreground">Specify the steel section type and size</p>
+                                </div>
+                              </div>
+
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {/* Steel Section Size or Custom Height */}
+                                {!form.watch('use_custom_steel_section') ? (
+                                  <FormField
+                                    control={form.control}
+                                    name="steel_section_size"
+                                    render={({ field }) => {
+                                      const frameType = form.watch('frame_fixing_type');
+                                      let availableSizes: string[] = [];
+                                      let sectionLabel = 'Standard Size';
+
+                                      if (frameType === 'steel-ibeam') {
+                                        availableSizes = getSectionSizes('I-BEAM');
+                                        sectionLabel = 'I-Beam Size';
+                                      } else if (frameType === 'steel-rhs') {
+                                        availableSizes = getSectionSizes('RHS');
+                                        sectionLabel = 'RHS Size';
+                                      } else if (frameType === 'steel-shs') {
+                                        availableSizes = getSectionSizes('SHS');
+                                        sectionLabel = 'SHS Size';
+                                      }
+
+                                      return (
+                                        <FormItem>
+                                          <FormLabel>{sectionLabel}</FormLabel>
+                                          <Select onValueChange={field.onChange} value={field.value}>
+                                            <FormControl>
+                                              <SelectTrigger>
+                                                <SelectValue placeholder="Select size" />
+                                              </SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent className="max-h-60">
+                                              {availableSizes.map(size => (
+                                                <SelectItem key={size} value={size}>{size}</SelectItem>
+                                              ))}
+                                            </SelectContent>
+                                          </Select>
+                                          <FormMessage />
+                                        </FormItem>
+                                      );
+                                    }}
+                                  />
+                                ) : (
+                                  <FormField
+                                    control={form.control}
+                                    name="custom_steel_height"
+                                    render={({ field }) => (
+                                      <FormItem>
+                                        <FormLabel>Custom Height (mm)</FormLabel>
+                                        <FormControl>
+                                          <Input
+                                            type="number"
+                                            step="1"
+                                            placeholder="e.g. 150"
+                                            value={field.value}
+                                            onChange={(e) => field.onChange(Number(e.target.value) || 0)}
+                                          />
+                                        </FormControl>
+                                        <FormMessage />
+                                      </FormItem>
+                                    )}
+                                  />
+                                )}
+
+                                {/* Bolt Size Selection */}
+                                <FormField
+                                  control={form.control}
+                                  name="steel_bolt_size"
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>Bolt Size Options</FormLabel>
+                                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                        <FormControl>
+                                          <SelectTrigger>
+                                            <SelectValue placeholder="Select bolt sizes" />
+                                          </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                          <SelectItem value="all">All Bolt Sizes (M10/M12/M16)</SelectItem>
+                                          <SelectItem value="M10">M10 Only</SelectItem>
+                                          <SelectItem value="M12">M12 Only</SelectItem>
+                                          <SelectItem value="M16">M16 Only</SelectItem>
+                                        </SelectContent>
+                                      </Select>
+                                      <FormDescription className="text-xs">
+                                        Algorithm will test selected bolt sizes
+                                      </FormDescription>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+                              </div>
+
+                              {/* Custom Section Toggle */}
+                              <div className="mt-4">
+                                <FormField
+                                  control={form.control}
+                                  name="use_custom_steel_section"
+                                  render={({ field }) => (
+                                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                                      <div className="space-y-0.5">
+                                        <FormLabel>Use Custom Section Height</FormLabel>
+                                        <FormDescription className="text-xs">
+                                          Enter a custom height instead of selecting a standard size
+                                        </FormDescription>
+                                      </div>
+                                      <FormControl>
+                                        <Switch
+                                          checked={field.value}
+                                          onCheckedChange={field.onChange}
+                                        />
+                                      </FormControl>
+                                    </FormItem>
+                                  )}
+                                />
+                              </div>
+
+                              {/* Display Calculated Steel Section Height */}
+                              <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                                <div className="flex items-center justify-between">
+                                  <div>
+                                    <div className="text-sm font-medium text-blue-900">Effective Section Height</div>
+                                    <div className="text-xs text-blue-700 mt-1">
+                                      {form.watch('use_custom_steel_section')
+                                        ? 'From custom height input'
+                                        : 'Extracted from selected steel section size'}
+                                    </div>
+                                  </div>
+                                  <div className="text-2xl font-bold text-blue-900 font-mono">
+                                    {(() => {
+                                      const useCustom = form.watch('use_custom_steel_section');
+                                      const customHeight = form.watch('custom_steel_height');
+                                      const sectionSize = form.watch('steel_section_size');
+                                      const sectionType = form.watch('steel_section_type');
+
+                                      if (useCustom) {
+                                        return customHeight ? `${customHeight}mm` : '—';
+                                      } else if (sectionSize) {
+                                        // Extract first number from size (e.g., "203x133" -> 203)
+                                        const height = parseInt(sectionSize.split('x')[0]);
+                                        return height ? `${height}mm` : '—';
+                                      }
+                                      return '—';
+                                    })()}
+                                  </div>
+                                </div>
+                                <div className="text-xs text-blue-600 mt-2">
+                                  ℹ️ This height replaces slab thickness for steel frame calculations
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
                         {/* Design Parameters Section */}
                         <div className="col-span-full">
                           <div className="rounded-lg border p-6">
@@ -588,27 +949,29 @@ export default function MasonryDesignerForm({
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                              {/* Slab Thickness */}
-                              <FormField
-                                control={form.control}
-                                name="slab_thickness"
-                                render={({ field }) => (
-                                  <FormItem>
-                                    <FormLabel>Slab Thickness (mm)</FormLabel>
-                                    <FormControl>
-                                      <Input
-                                        type="number"
-                                        step="5"
-                                        placeholder="e.g. 200"
-                                        value={field.value}
-                                        onChange={(e) => field.onChange(Number(e.target.value) || 0)}
-                                        disabled={inputMode === 'chat' && isLoading}
-                                      />
-                                    </FormControl>
-                                    <FormMessage />
-                                  </FormItem>
-                                )}
-                              />
+                              {/* Slab Thickness - only for concrete types */}
+                              {form.watch('frame_fixing_type')?.startsWith('concrete') && (
+                                <FormField
+                                  control={form.control}
+                                  name="slab_thickness"
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>Slab Thickness (mm)</FormLabel>
+                                      <FormControl>
+                                        <Input
+                                          type="number"
+                                          step="5"
+                                          placeholder="e.g. 200"
+                                          value={field.value}
+                                          onChange={(e) => field.onChange(Number(e.target.value) || 0)}
+                                          disabled={inputMode === 'chat' && isLoading}
+                                        />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+                              )}
 
                               {/* Cavity Width */}
                               <FormField
@@ -974,7 +1337,8 @@ export default function MasonryDesignerForm({
                           </div>
                         </div>
 
-                        {/* Fixing Options Section */}
+                        {/* Fixing Customization - for all concrete types */}
+                        {form.watch('frame_fixing_type')?.startsWith('concrete') && (
                           <div className="col-span-full">
                             <div className="rounded-lg border p-6">
                               <div className="flex items-center gap-2 mb-4">
@@ -985,126 +1349,9 @@ export default function MasonryDesignerForm({
                                   </svg>
                                 </div>
                                 <div>
-                                  <h3 className="text-lg font-semibold">Fixing Options</h3>
-                                  <p className="text-sm text-muted-foreground">Select fixing types and configuration options</p>
+                                  <h3 className="text-lg font-semibold">Fixing Customization</h3>
+                                  <p className="text-sm text-muted-foreground">Customize fixing position and dimensions</p>
                                 </div>
-                              </div>
-
-                              {/* Fixing Type Toggle */}
-                              <FormField
-                                control={form.control}
-                                name="fixing_type"
-                                render={({ field }) => (
-                                  <FormItem className="mb-6">
-                                    <FormLabel>Fixing Type</FormLabel>
-                                    <FormControl>
-                                      <ToggleGroup
-                                        type="single"
-                                        value={field.value || "all"}
-                                        onValueChange={(value) => {
-                                          if (value) {
-                                            field.onChange(value);
-                                          }
-                                        }}
-                                        className="justify-start gap-2"
-                                        variant="outline"
-                                        size="default"
-                                      >
-                                        <ToggleGroupItem
-                                          value="post-fix"
-                                          aria-label="Post Fix"
-                                          className={cn(
-                                            "min-w-[100px]",
-                                            field.value === "post-fix" && "bg-[rgb(194,242,14)] text-black hover:brightness-95"
-                                          )}
-                                        >
-                                          Post Fix
-                                        </ToggleGroupItem>
-                                        <ToggleGroupItem
-                                          value="channel-fix"
-                                          aria-label="Channel Fix"
-                                          className={cn(
-                                            "min-w-[100px]",
-                                            field.value === "channel-fix" && "bg-[rgb(194,242,14)] text-black hover:brightness-95"
-                                          )}
-                                        >
-                                          Channel Fix
-                                        </ToggleGroupItem>
-                                        <ToggleGroupItem
-                                          value="all"
-                                          aria-label="All Options"
-                                          className={cn(
-                                            "min-w-[100px]",
-                                            field.value === "all" && "bg-[rgb(194,242,14)] text-black hover:brightness-95"
-                                          )}
-                                        >
-                                          All Options
-                                        </ToggleGroupItem>
-                                      </ToggleGroup>
-                                    </FormControl>
-                                    <FormMessage />
-                                  </FormItem>
-                                )}
-                              />
-
-                              {/* Side-by-side Product Selection */}
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {/* Channel Fix Type */}
-                                <FormField
-                                  control={form.control}
-                                  name="channel_product"
-                                  render={({ field }) => (
-                                    <FormItem>
-                                      <FormLabel>Channel Fix Type</FormLabel>
-                                      <FormControl>
-                                        <Select
-                                          value={field.value}
-                                          onValueChange={field.onChange}
-                                          disabled={form.watch("fixing_type") === 'post-fix'}
-                                        >
-                                          <SelectTrigger>
-                                            <SelectValue placeholder="Select channel type" />
-                                          </SelectTrigger>
-                                          <SelectContent>
-                                            <SelectItem value="all">All Channels</SelectItem>
-                                            <SelectItem value="CPRO38">CPRO38</SelectItem>
-                                            <SelectItem value="CPRO50">CPRO50</SelectItem>
-                                            <SelectItem value="CPRO52">CPRO52</SelectItem>
-                                          </SelectContent>
-                                        </Select>
-                                      </FormControl>
-                                      <FormMessage />
-                                    </FormItem>
-                                  )}
-                                />
-
-                                {/* Post Fix Type */}
-                                <FormField
-                                  control={form.control}
-                                  name="postfix_product"
-                                  render={({ field }) => (
-                                    <FormItem>
-                                      <FormLabel>Post Fix Type</FormLabel>
-                                      <FormControl>
-                                        <Select
-                                          value={field.value}
-                                          onValueChange={field.onChange}
-                                          disabled={form.watch("fixing_type") === 'channel-fix'}
-                                        >
-                                          <SelectTrigger>
-                                            <SelectValue placeholder="Select post type" />
-                                          </SelectTrigger>
-                                          <SelectContent>
-                                            <SelectItem value="all">All Post-Fix</SelectItem>
-                                            <SelectItem value="R-HPTIII-70">R-HPTIII-70</SelectItem>
-                                            <SelectItem value="R-HPTIII-90">R-HPTIII-90</SelectItem>
-                                          </SelectContent>
-                                        </Select>
-                                      </FormControl>
-                                      <FormMessage />
-                                    </FormItem>
-                                  )}
-                                />
                               </div>
 
                               {/* Fixing Position Configuration */}
@@ -1294,6 +1541,7 @@ export default function MasonryDesignerForm({
                               </div>
                             </div>
                           </div>
+                        )}
 
                         {/* Advanced Options Section */}
                         <div className="col-span-full">

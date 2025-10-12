@@ -1,6 +1,8 @@
 import type { DesignInputs } from '@/types/designInputs';
 import { getValidBracketAngleCombinations } from '../bracketAngleSelection';
 import { getValidBracketCentres as getValidCentres, getAvailableChannelTypes } from '@/data/channelSpecs';
+import { getSteelFixingCapacity } from '@/data/steelFixingCapacities';
+import type { SteelBoltSize } from '@/types/steelFixingTypes';
 import type {
     BracketCentres,
     BracketThickness,
@@ -15,6 +17,16 @@ const POSSIBLE_BRACKET_CENTRES: BracketCentres[] = [200, 225, 250, 275, 300, 325
 const POSSIBLE_BRACKET_THICKNESS: BracketThickness[] = [3, 4]; // Example values
 const POSSIBLE_ANGLE_THICKNESS: AngleThickness[] = [3, 4, 5, 6, 8]; // Example values
 const POSSIBLE_BOLT_DIAMETER: BoltDiameter[] = [10, 12]; // Example values
+
+// Steel fixing bolt sizes
+const POSSIBLE_STEEL_BOLT_SIZES: SteelBoltSize[] = ['M10', 'M12', 'M16'];
+
+// Steel fixing edge distances (1.2 × hole diameter in mm)
+const STEEL_EDGE_DISTANCES = {
+    'M10': 13.2,  // Ø11mm × 1.2
+    'M12': 15.6,  // Ø13mm × 1.2
+    'M16': 21.6   // Ø18mm × 1.2
+} as const;
 
 // Bracket thickness rule thresholds
 const BRACKET_THICKNESS_RULE = {
@@ -206,7 +218,44 @@ const filterFixingPositionsForExclusionZone = (positions: number[], inputs: Desi
 };
 
 /**
- * Generates fixing position combinations for optimization.
+ * Generates fixing positions for STEEL fixings based on bolt hole edge distance rules.
+ * For steel fixings: edge distance = 1.2 × hole diameter
+ *
+ * The total edge distance is SPLIT between top and bottom edges:
+ * - Top edge distance = (1.2 × hole diameter) / 2
+ * - Bottom edge distance = (1.2 × hole diameter) / 2
+ *
+ * Uses the largest edge distance (M16 = 21.6mm total, 10.8mm each edge) to ensure all positions work for all bolt sizes.
+ * Range: (edge_distance/2) to (steel_height - edge_distance/2) in 5mm increments
+ *
+ * @param steelHeight - Height of steel section in mm
+ * @returns Array of valid fixing positions for steel in mm from top
+ */
+const generateSteelFixingPositions = (steelHeight: number): number[] => {
+    // Use M16 edge distance (largest) to ensure all positions work for all bolt sizes
+    const totalEdgeDistance = STEEL_EDGE_DISTANCES['M16']; // 21.6mm total
+    const edgeDistancePerSide = totalEdgeDistance / 2; // 10.8mm per side
+
+    const minPosition = Math.ceil(edgeDistancePerSide / 5) * 5; // Round up to nearest 5mm
+    const maxPosition = steelHeight - edgeDistancePerSide;
+
+    const positions: number[] = [];
+    for (let pos = minPosition; pos <= maxPosition; pos += 5) {
+        positions.push(pos);
+    }
+
+    // Ensure at least one position
+    if (positions.length === 0) {
+        positions.push(minPosition);
+    }
+
+    console.log(`🔩 Steel fixing positions: ${positions.length} positions from ${positions[0]}mm to ${positions[positions.length - 1]}mm (edge distance per side: ${edgeDistancePerSide}mm, total: ${totalEdgeDistance}mm, steel height: ${steelHeight}mm)`);
+
+    return positions;
+};
+
+/**
+ * Generates fixing position combinations for optimization (CONCRETE fixings).
  * Starts at 75mm (default) and increments by 5mm steps downward into the slab.
  * Maximum depth is limited to slab thickness - bottom critical edge to maintain minimum edge distance.
  *
@@ -289,19 +338,96 @@ export function generateAllCombinations(inputs: DesignInputs): GeneticParameters
     const supportLevel = inputs.support_level;
     const slabThickness = inputs.slab_thickness;
 
+    // Check if using steel fixings
+    const isSteelFrame = inputs.frame_fixing_type?.startsWith('steel');
+
     // Track filtering statistics
     let totalGenerated = 0;
     let filteredOut = 0;
 
     // Get valid bracket/angle combinations for this support level
     const validBracketAngleCombinations = getValidBracketAngleCombinations(supportLevel);
-    
+
     console.log(`Support Level: ${supportLevel}mm`);
+    console.log(`Frame Fixing Type: ${inputs.frame_fixing_type || 'concrete (default)'}`);
     console.log(`Valid Bracket/Angle Combinations: ${validBracketAngleCombinations.length}`);
     validBracketAngleCombinations.forEach((combo, index) => {
         console.log(`  ${index + 1}: ${combo.bracket_type} bracket + ${combo.angle_orientation} angle`);
     });
 
+    // STEEL FIXING PATH
+    if (isSteelFrame && inputs.steel_section) {
+        console.log(`🔩 STEEL FIXING MODE: Section ${inputs.steel_section.sectionType}, Height: ${inputs.steel_section.effectiveHeight}mm`);
+
+        // Determine which bolt sizes to test
+        let boltSizesToTest: SteelBoltSize[] = POSSIBLE_STEEL_BOLT_SIZES;
+        if (inputs.steel_bolt_size && inputs.steel_bolt_size !== 'all') {
+            boltSizesToTest = [inputs.steel_bolt_size as SteelBoltSize];
+            console.log(`  Testing specific bolt size: ${inputs.steel_bolt_size}`);
+        } else {
+            console.log(`  Testing all bolt sizes: ${boltSizesToTest.join(', ')}`);
+        }
+
+        // Generate fixing positions for STEEL (using steel-specific edge distances)
+        const fixingPositions = generateSteelFixingPositions(inputs.steel_section.effectiveHeight);
+
+        // Generate combinations for steel fixings (no channel iteration needed)
+        for (const bracketAngleCombo of validBracketAngleCombinations) {
+            for (const steelBoltSize of boltSizesToTest) {
+                for (const fixingPosition of fixingPositions) {
+                    // Load constraint for bracket centres
+                    const centresForSteel = POSSIBLE_BRACKET_CENTRES.filter(bc => {
+                        const max = characteristicLoad > 5 ? 500 : 600;
+                        return bc <= max;
+                    });
+
+                    for (const bracket_centres of centresForSteel) {
+                        // Get valid bracket thicknesses
+                        const validBracketThicknesses = getValidBracketThicknesses(characteristicLoad, supportLevel, slabThickness);
+
+                        for (const bracket_thickness of validBracketThicknesses) {
+                            for (const angle_thickness of POSSIBLE_ANGLE_THICKNESS) {
+                                const vertical_leg = POSSIBLE_VERTICAL_LEG(angle_thickness);
+
+                                // Convert steel bolt size to bolt diameter for GeneticParameters
+                                const bolt_diameter = parseInt(steelBoltSize.substring(1)) as BoltDiameter;
+
+                                // Generate Dim D values for inverted brackets
+                                const max_dim_d_for_slab = slabThickness - fixingPosition;
+                                const dimDValues = bracketAngleCombo.bracket_type === 'Inverted'
+                                    ? POSSIBLE_DIM_D_VALUES.filter(d => d <= max_dim_d_for_slab)
+                                    : [undefined];
+
+                                for (const dim_d of dimDValues) {
+                                    const geneticParams: GeneticParameters = {
+                                        bracket_centres,
+                                        bracket_thickness,
+                                        angle_thickness,
+                                        vertical_leg,
+                                        bolt_diameter,
+                                        bracket_type: bracketAngleCombo.bracket_type,
+                                        angle_orientation: bracketAngleCombo.angle_orientation,
+                                        channel_type: 'NONE' as any, // Not used for steel
+                                        fixing_position: fixingPosition,
+                                        dim_d: dim_d,
+                                        steel_bolt_size: steelBoltSize // Add steel bolt size to params
+                                    };
+
+                                    totalGenerated++;
+                                    combinations.push(geneticParams);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        console.log(`🔩 Steel fixing combinations generated: ${combinations.length}`);
+        return combinations;
+    }
+
+    // CONCRETE FIXING PATH (original logic)
     // Determine allowed channel types (default to all available channel types from CSV data)
     const usingChannelSpecs = Array.isArray(inputs.allowed_channel_types) && inputs.allowed_channel_types.length > 0;
     const allowedChannelTypes = usingChannelSpecs

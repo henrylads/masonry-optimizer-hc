@@ -2,20 +2,22 @@ import { NextResponse } from 'next/server';
 import { MasonryInputs } from '@/types/forms';
 import { runBruteForce } from '@/calculations/bruteForceAlgorithm';
 import { calculateAreaLoad, calculateCharacteristicUDL } from '@/calculations/loadingCalculations';
+import { getSectionHeight } from '@/data/steelSections';
+import type { SteelSectionType } from '@/types/steelFixingTypes';
 
 // Default brute force algorithm configuration
 const DEFAULT_BF_CONFIG = {
   maxGenerations: 100,
 };
 
-// Get critical edge distances based on slab thickness
-function getCriticalEdgeDistances(slabThickness: number) {
+// Get critical edge distances based on slab thickness or steel section height
+function getCriticalEdgeDistances(effectiveHeight: number) {
   // Default to 225mm slab values if exact match not found
-  if (slabThickness === 200) {
+  if (effectiveHeight === 200) {
     return { top: 75, bottom: 125 };
-  } else if (slabThickness === 225) {
+  } else if (effectiveHeight === 225) {
     return { top: 75, bottom: 150 };
-  } else if (slabThickness === 250) {
+  } else if (effectiveHeight === 250) {
     return { top: 75, bottom: 175 };
   }
   // Default to 225mm values
@@ -27,6 +29,16 @@ export async function POST(request: Request) {
   try {
     const data: MasonryInputs = await request.json();
     console.log('API route: Received input data:', data);
+
+    // DEBUGGING: Log steel fixing parameters explicitly
+    console.log('🔍🔍🔍 STEEL PARAMETERS RECEIVED:', {
+      frame_fixing_type: data.frame_fixing_type,
+      steel_section_type: data.steel_section_type,
+      steel_section_size: data.steel_section_size,
+      use_custom_steel_section: data.use_custom_steel_section,
+      custom_steel_height: data.custom_steel_height,
+      steel_bolt_size: data.steel_bolt_size
+    });
     
     // Calculate characteristic load if not provided
     let characteristicLoad = data.characteristic_load;
@@ -45,9 +57,42 @@ export async function POST(request: Request) {
       );
     }
 
-    // Get critical edge distances based on slab thickness
-    const criticalEdges = getCriticalEdgeDistances(data.slab_thickness);
-    console.log('API route: Critical edges for slab thickness', data.slab_thickness, ':', criticalEdges);
+    // Determine if using steel fixing or concrete
+    const isSteelFrame = data.frame_fixing_type?.startsWith('steel');
+
+    console.log('🔍 API ROUTE: Frame type check:', {
+      frame_fixing_type: data.frame_fixing_type,
+      isSteelFrame: isSteelFrame,
+      steel_section_type: data.steel_section_type,
+      steel_section_size: data.steel_section_size,
+      steel_bolt_size: data.steel_bolt_size
+    });
+
+    // For steel fixings, calculate effective height from steel section
+    let effectiveHeight = data.slab_thickness;
+    let steelSection = null;
+
+    if (isSteelFrame) {
+      if (data.use_custom_steel_section && data.custom_steel_height) {
+        effectiveHeight = data.custom_steel_height;
+      } else if (data.steel_section_size && data.steel_section_type) {
+        effectiveHeight = getSectionHeight(data.steel_section_type as SteelSectionType, data.steel_section_size);
+      }
+
+      // Build steel section object
+      steelSection = {
+        sectionType: data.steel_section_type as SteelSectionType,
+        size: data.use_custom_steel_section ? null : data.steel_section_size,
+        customHeight: data.use_custom_steel_section ? data.custom_steel_height : undefined,
+        effectiveHeight
+      };
+
+      console.log('API route: Steel section configured:', steelSection);
+    }
+
+    // Get critical edge distances based on effective height (slab thickness or steel section height)
+    const criticalEdges = getCriticalEdgeDistances(effectiveHeight);
+    console.log('API route: Critical edges for effective height', effectiveHeight, ':', criticalEdges);
 
     // Handle fixing position parameter edge cases
     if (data.fixing_position && !data.enable_fixing_optimization) {
@@ -160,7 +205,7 @@ export async function POST(request: Request) {
         slab_thickness: slabThickness,
         bottom_critical_edge: bottomCriticalEdge,
         max_fixing_depth: maxFixingDepth,
-        rise_to_bolts: riseTobolts
+        rise_to_bolts: actualRiseToBolts
       });
     }
 
@@ -234,7 +279,7 @@ export async function POST(request: Request) {
       designInputs: {
         support_level: data.support_level,
         cavity_width: data.cavity,
-        slab_thickness: data.slab_thickness,
+        slab_thickness: isSteelFrame ? effectiveHeight : data.slab_thickness, // Use effective height for steel
         characteristic_load: characteristicLoad,
         top_critical_edge: criticalEdges.top,
         bottom_critical_edge: criticalEdges.bottom,
@@ -246,7 +291,11 @@ export async function POST(request: Request) {
         load_position: data.load_position ?? (1/3),
         front_offset: data.front_offset ?? 12,
         isolation_shim_thickness: data.isolation_shim_thickness ?? 3,
-        material_type: data.material_type ?? 'brick'
+        material_type: data.material_type ?? 'brick',
+        // Steel fixing parameters
+        frame_fixing_type: data.frame_fixing_type,
+        steel_section: steelSection,
+        steel_bolt_size: data.steel_bolt_size
       }
     };
 

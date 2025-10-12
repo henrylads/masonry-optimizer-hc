@@ -15,6 +15,9 @@ import { SYSTEM_DEFAULTS } from '@/constants';
 import { roundToTwelveDecimals } from '@/utils/precision';
 import { calculateBracketPositioning, AngleLayoutResult } from '../angleLayout';
 import type { DesignInputs } from '@/types/designInputs';
+import { verifySteelFixing } from '../verificationChecks/fixingCheck';
+import { getSteelFixingCapacity } from '@/data/steelFixingCapacities';
+import type { SteelBoltSize } from '@/types/steelFixingTypes';
 
 export interface BruteForceEvaluationResult {
     isValid: boolean;
@@ -196,34 +199,136 @@ export function evaluateBruteForceDesign(
     });
 
     // --- Verification Checks ---
-    const verificationResults = verifyAll(
-        design.calculated.shear_load,
-        {
-            bracketHeight: design.calculated.bracket_height,
-            angleThickness: design.genetic.angle_thickness,
-            bracketProjection: design.calculated.bracket_projection,
-            bearingLength: angleResults.b,
-            riseToBolts: design.calculated.rise_to_bolts,
-            boltDiameter: design.genetic.bolt_diameter,
-            packerThickness: SYSTEM_DEFAULTS.PACKING_THICKNESS,
-            slabThickness: design.calculated.slab_thickness,
-            supportLevel: design.calculated.support_level,
-            notchHeight: design.calculated.notch_height ?? 0,
-            masonry_thickness: design.calculated.facade_thickness ?? 102.5, // Use facade_thickness for fixing check moment arm calculation
-            cavity: design.calculated.cavity_width,
-            drop_below_slab: design.calculated.drop_below_slab,
-            bracketCentres: design.genetic.bracket_centres,
-            characteristicUDL: design.calculated.characteristic_udl,
-            base_plate_width: SYSTEM_DEFAULTS.BASE_PLATE_WIDTH,
-            channelType: design.genetic.channel_type || "CPRO38",
-            concreteGrade: SYSTEM_DEFAULTS.CONCRETE_GRADE,
-            load_position: design.calculated.load_position  // Pass load_position for moment arm calculation
-        },
-        angleResults,
-        mathModelResults,
-        bracketResults,
-        design.genetic.bracket_thickness
-    );
+    // Detect if this is a steel fixing design
+    const isSteelFrame = designInputs.frame_fixing_type?.startsWith('steel');
+
+    let verificationResults: VerificationResults;
+
+    if (isSteelFrame && designInputs.steel_section && design.genetic.steel_bolt_size) {
+        // STEEL FIXING VERIFICATION PATH
+        console.log(`🔩 Evaluating steel fixing: ${designInputs.steel_section.sectionType} ${design.genetic.steel_bolt_size}`);
+
+        // Get steel fixing capacity
+        const steelCapacity = getSteelFixingCapacity(
+            designInputs.steel_section.sectionType,
+            design.genetic.steel_bolt_size as SteelBoltSize
+        );
+
+        // Calculate forces on the fixing
+        // For steel fixings, we need the shear and tension forces at the fixing point
+        const appliedShear = design.calculated.shear_load;
+
+        // Calculate moment and tension using same approach as concrete
+        const L = design.calculated.cavity_width + (design.calculated.facade_thickness ?? 102.5) * (design.calculated.load_position ?? (1/3));
+        const M_ed = (appliedShear * L) / 1000; // kNm
+
+        // For steel fixings, calculate tension directly from moment
+        // Using simplified approach: N_ed = M_ed / rise_to_bolts (converted to same units)
+        const appliedTension = (M_ed * 1000) / design.calculated.rise_to_bolts; // kN
+
+        // Verify steel fixing capacity
+        const steelFixingResults = verifySteelFixing(
+            appliedShear,
+            appliedTension,
+            steelCapacity
+        );
+
+        // Call verifyAll but with steel fixing flag
+        // This will run all other checks (moment, shear, deflection, etc.) but skip concrete fixing checks
+        verificationResults = verifyAll(
+            design.calculated.shear_load,
+            {
+                bracketHeight: design.calculated.bracket_height,
+                angleThickness: design.genetic.angle_thickness,
+                bracketProjection: design.calculated.bracket_projection,
+                bearingLength: angleResults.b,
+                riseToBolts: design.calculated.rise_to_bolts,
+                boltDiameter: design.genetic.bolt_diameter,
+                packerThickness: SYSTEM_DEFAULTS.PACKING_THICKNESS,
+                slabThickness: design.calculated.slab_thickness,
+                supportLevel: design.calculated.support_level,
+                notchHeight: design.calculated.notch_height ?? 0,
+                masonry_thickness: design.calculated.facade_thickness ?? 102.5,
+                cavity: design.calculated.cavity_width,
+                drop_below_slab: design.calculated.drop_below_slab,
+                bracketCentres: design.genetic.bracket_centres,
+                characteristicUDL: design.calculated.characteristic_udl,
+                base_plate_width: SYSTEM_DEFAULTS.BASE_PLATE_WIDTH,
+                channelType: design.genetic.channel_type || "NONE", // Not used for steel
+                concreteGrade: SYSTEM_DEFAULTS.CONCRETE_GRADE,
+                load_position: design.calculated.load_position
+            },
+            angleResults,
+            mathModelResults,
+            bracketResults,
+            design.genetic.bracket_thickness
+        );
+
+        // Override fixing results with steel fixing results
+        verificationResults.fixingResults = {
+            appliedShear: steelFixingResults.appliedShear,
+            appliedMoment: M_ed,
+            tensileForce: steelFixingResults.appliedTension,
+            tensileLoadResults: {
+                tensileLoad: steelFixingResults.appliedTension,
+                compressionZoneLength: 0,
+                momentEquilibriumPasses: true,
+                shearEquilibriumPasses: true,
+                depthCheckPasses: true
+            },
+            steelFixingResults: steelFixingResults,
+            passes: steelFixingResults.passes
+        };
+
+        // Update combined results to include steel fixing check
+        verificationResults.combinedResults.passes = steelFixingResults.passes;
+
+        // Recalculate overall passes based on ALL checks (including steel fixing)
+        verificationResults.passes =
+            verificationResults.momentResults.passes &&
+            verificationResults.shearResults.passes &&
+            verificationResults.deflectionResults.passes &&
+            verificationResults.angleToBracketResults.passes &&
+            verificationResults.bracketDesignResults.passes &&
+            verificationResults.droppingBelowSlabResults.passes &&
+            verificationResults.totalDeflectionResults.passes &&
+            verificationResults.packerResults.passes &&
+            verificationResults.combinedResults.passes &&
+            steelFixingResults.passes;
+
+        console.log(`  Steel fixing check: ${steelFixingResults.passes ? 'PASS' : 'FAIL'} (utilization: ${(steelFixingResults.combinedUtilization * 100).toFixed(1)}%)`);
+
+    } else {
+        // CONCRETE FIXING VERIFICATION PATH (original logic)
+        verificationResults = verifyAll(
+            design.calculated.shear_load,
+            {
+                bracketHeight: design.calculated.bracket_height,
+                angleThickness: design.genetic.angle_thickness,
+                bracketProjection: design.calculated.bracket_projection,
+                bearingLength: angleResults.b,
+                riseToBolts: design.calculated.rise_to_bolts,
+                boltDiameter: design.genetic.bolt_diameter,
+                packerThickness: SYSTEM_DEFAULTS.PACKING_THICKNESS,
+                slabThickness: design.calculated.slab_thickness,
+                supportLevel: design.calculated.support_level,
+                notchHeight: design.calculated.notch_height ?? 0,
+                masonry_thickness: design.calculated.facade_thickness ?? 102.5, // Use facade_thickness for fixing check moment arm calculation
+                cavity: design.calculated.cavity_width,
+                drop_below_slab: design.calculated.drop_below_slab,
+                bracketCentres: design.genetic.bracket_centres,
+                characteristicUDL: design.calculated.characteristic_udl,
+                base_plate_width: SYSTEM_DEFAULTS.BASE_PLATE_WIDTH,
+                channelType: design.genetic.channel_type || "CPRO38",
+                concreteGrade: SYSTEM_DEFAULTS.CONCRETE_GRADE,
+                load_position: design.calculated.load_position  // Pass load_position for moment arm calculation
+            },
+            angleResults,
+            mathModelResults,
+            bracketResults,
+            design.genetic.bracket_thickness
+        );
+    }
 
     // Update design with calculated verification details
     design.calculated.detailed_verification_results = verificationResults;
