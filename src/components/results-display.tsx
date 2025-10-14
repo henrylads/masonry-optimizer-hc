@@ -56,12 +56,14 @@ const groupAlternativesByFixingOption = (alternatives: AlternativeDesign[]) => {
   });
 
   alternatives.forEach(alt => {
-    // Group steel bolt sizes
+    // Group steel bolt sizes + fixing methods (e.g., "M10-SET_SCREW", "M10-BLIND_BOLT")
     if (alt.design.genetic.steel_bolt_size) {
       const boltSize = alt.design.genetic.steel_bolt_size;
-      console.log(`✅ Found steel bolt: ${boltSize}`);
-      if (!steelBolts[boltSize] || alt.totalWeight < steelBolts[boltSize].totalWeight) {
-        steelBolts[boltSize] = alt;
+      const fixingMethod = alt.design.genetic.steel_fixing_method || 'UNKNOWN';
+      const key = `${boltSize}-${fixingMethod}`;
+      console.log(`✅ Found steel bolt: ${key}`);
+      if (!steelBolts[key] || alt.totalWeight < steelBolts[key].totalWeight) {
+        steelBolts[key] = alt;
       }
     }
 
@@ -1449,28 +1451,21 @@ export function ResultsDisplay({ result, history, designInputs }: ResultsDisplay
                     </p>
                   )}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {(['M10', 'M12', 'M16'] as const).map(boltSize => {
-                      const design = steelBolts[boltSize];
+                    {Object.keys(steelBolts).sort().map(key => {
+                      const design = steelBolts[key];
 
-                      if (!design) {
-                        return (
-                          <div key={boltSize} className="p-4 rounded-lg border-2 border-gray-200 bg-gray-50 opacity-60">
-                            <div className="flex items-center justify-between mb-2">
-                              <span className="font-bold text-lg text-gray-500">{boltSize}</span>
-                              <span className="text-xs font-semibold px-2 py-1 bg-gray-400 text-white rounded">N/A</span>
-                            </div>
-                            <div className="text-sm text-gray-500">
-                              <p className="italic">No valid designs found with this bolt size</p>
-                            </div>
-                          </div>
-                        );
-                      }
+                      // Parse the key to extract bolt size and fixing method
+                      const [boltSize, fixingMethod] = key.split('-');
+                      const fixingLabel = fixingMethod === 'SET_SCREW' ? 'Set Screw' :
+                                         fixingMethod === 'BLIND_BOLT' ? 'Blind Bolt' :
+                                         fixingMethod;
 
                       const isOptimal = design.weightDifferencePercent === 0;
 
                       // Find the index of this design in the alternatives array
                       const designIndex = isOptimal ? 0 : result.alternatives.findIndex(alt =>
-                        alt.design.genetic.steel_bolt_size === boltSize
+                        alt.design.genetic.steel_bolt_size === boltSize &&
+                        alt.design.genetic.steel_fixing_method === fixingMethod
                       ) + 1;
 
                       // Check if this design is currently displayed
@@ -1484,7 +1479,7 @@ export function ResultsDisplay({ result, history, designInputs }: ResultsDisplay
 
                       return (
                         <button
-                          key={boltSize}
+                          key={key}
                           onClick={handleClick}
                           className={`p-4 rounded-lg border-2 transition-all text-left w-full ${
                             isCurrentlyViewed
@@ -1495,7 +1490,10 @@ export function ResultsDisplay({ result, history, designInputs }: ResultsDisplay
                           } cursor-pointer`}
                         >
                           <div className="flex items-center justify-between mb-2">
-                            <span className="font-bold text-lg text-teal-900">{boltSize}</span>
+                            <div>
+                              <span className="font-bold text-lg text-teal-900">{boltSize}</span>
+                              <span className="block text-xs text-gray-600 mt-0.5">{fixingLabel}</span>
+                            </div>
                             <div className="flex gap-1">
                               {isCurrentlyViewed && (
                                 <span className="text-xs font-semibold px-2 py-1 bg-blue-500 text-white rounded">VIEWING</span>

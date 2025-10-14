@@ -68,16 +68,45 @@ export interface ReportMetadata {
 /**
  * Extract and format design inputs from form data
  */
-export const extractDesignInputs = (formData: FormDataType): FormattedDesignInputs => {
+export const extractDesignInputs = (formData: FormDataType, result?: OptimizationResult): FormattedDesignInputs => {
+  const isSteelFixing = formData.frame_fixing_type?.startsWith('steel') ?? false;
+  const isConcreteFixing = formData.frame_fixing_type?.startsWith('concrete') ?? false;
+
+  // For steel fixings, get the actual steel section height from the result or calculate from form
+  let effectiveThickness = formData.slab_thickness;
+  if (isSteelFixing) {
+    if (result?.calculated?.slab_thickness) {
+      // Use the calculated value from the result (this is the steel section height for steel fixings)
+      effectiveThickness = result.calculated.slab_thickness;
+    } else if (formData.use_custom_steel_section && formData.custom_steel_height) {
+      effectiveThickness = formData.custom_steel_height;
+    } else if (formData.steel_section_size) {
+      effectiveThickness = parseInt(formData.steel_section_size.split('x')[0]) || 127;
+    }
+  }
+
   return {
     structuralParameters: [
-      { label: 'Slab Thickness', value: formData.slab_thickness.toString(), unit: 'mm' },
+      {
+        label: isSteelFixing ? 'Steel Section Height' : 'Slab Thickness',
+        value: effectiveThickness.toString(),
+        unit: 'mm'
+      },
       { label: 'Cavity Width', value: formData.cavity.toString(), unit: 'mm' },
       { label: 'Support Level', value: formData.support_level.toString(), unit: 'mm' },
       { label: 'Characteristic Load', value: formData.characteristic_load.toString(), unit: 'kN/m' },
       { label: 'Facade Thickness', value: formData.facade_thickness.toString(), unit: 'mm' },
       { label: 'Material Type', value: formData.material_type },
-      { label: 'Load Position', value: formData.load_position?.toFixed(2) || '0.33' }
+      { label: 'Load Position', value: formData.load_position?.toFixed(2) || '0.33' },
+      ...(isSteelFixing ? [
+        { label: 'Steel Section Type', value: formData.steel_section_type || 'N/A' },
+        {
+          label: 'Steel Section Size',
+          value: formData.steel_section_size || formData.custom_steel_height?.toString() || 'N/A',
+          unit: formData.use_custom_steel_section ? 'mm' : undefined
+        },
+        { label: 'Steel Bolt Size', value: formData.steel_bolt_size || 'N/A' }
+      ] : [])
     ],
     notchConfiguration: formData.has_notch ? [
       { label: 'Notch Enabled', value: 'Yes' },
@@ -87,14 +116,33 @@ export const extractDesignInputs = (formData: FormDataType): FormattedDesignInpu
       { label: 'Notch Enabled', value: 'No' }
     ],
     fixingConfiguration: [
-      { label: 'Fixing Type', value: formData.fixing_type },
-      { label: 'Channel Product', value: formData.channel_product || 'all' },
-      { label: 'Post-fix Product', value: formData.postfix_product || 'all' },
-      {
-        label: 'Fixing Position Mode',
-        value: formData.use_custom_fixing_position ? 'Custom Position' : 'Find Optimal Position'
-      },
-      { label: 'Fixing Position', value: formData.fixing_position.toString(), unit: 'mm' }
+      ...(isSteelFixing ? [
+        { label: 'Frame Fixing Type', value: 'Steel' },
+        { label: 'Steel Bolt Size', value: formData.steel_bolt_size || 'all' },
+        {
+          label: 'Fixing Position Mode',
+          value: formData.use_custom_fixing_position ? 'Custom Position' : 'Find Optimal Position'
+        },
+        {
+          label: 'Fixing Position',
+          value: (result?.calculated?.optimized_fixing_position || result?.genetic?.fixing_position || formData.fixing_position).toString(),
+          unit: 'mm from top of steel section'
+        }
+      ] : [
+        { label: 'Frame Fixing Type', value: 'Concrete' },
+        { label: 'Fixing Type', value: formData.fixing_type },
+        { label: 'Channel Product', value: formData.channel_product || 'all' },
+        { label: 'Post-fix Product', value: formData.postfix_product || 'all' },
+        {
+          label: 'Fixing Position Mode',
+          value: formData.use_custom_fixing_position ? 'Custom Position' : 'Find Optimal Position'
+        },
+        {
+          label: 'Fixing Position',
+          value: (result?.calculated?.optimized_fixing_position || result?.genetic?.fixing_position || formData.fixing_position).toString(),
+          unit: 'mm from top of slab'
+        }
+      ])
     ],
     limitationSettings: formData.is_angle_length_limited ? [
       { label: 'Angle Length Limited', value: 'Yes' },
@@ -139,7 +187,12 @@ export const extractFinalDesign = (result: OptimizationResult): FormattedFinalDe
       { label: 'Bolt Diameter', value: genetic.bolt_diameter?.toString() || 'N/A', unit: 'mm' },
       { label: 'Bracket Type', value: genetic.bracket_type || 'N/A' },
       { label: 'Angle Orientation', value: finalAngleOrientation },
-      { label: 'Channel Type', value: genetic.channel_type || 'N/A' },
+      ...(genetic.channel_type && genetic.channel_type !== 'NONE' ? [
+        { label: 'Channel Type', value: genetic.channel_type }
+      ] : []),
+      ...(genetic.steel_bolt_size ? [
+        { label: 'Steel Bolt Size', value: genetic.steel_bolt_size }
+      ] : []),
       { label: 'Fixing Position', value: genetic.fixing_position?.toString() || 'N/A', unit: 'mm' }
     ],
     calculated: [
@@ -318,32 +371,64 @@ export const extractCalculations = (verificationResults: VerificationResults): F
   // 6. Fixing Check
   const fixingResults = verificationResults.fixingResults;
   if (fixingResults) {
-    calculations.push({
-      name: 'Fixing Check',
-      description: 'Channel fixing capacity check with combined interaction formulas',
-      inputs: [
-        { parameter: 'Applied Shear (V_ed)', value: safeToString(fixingResults.appliedShear), unit: 'kN' },
-        { parameter: 'Applied Moment (M_ed)', value: safeToString(fixingResults.appliedMoment), unit: 'kNm' },
-        { parameter: 'Tensile Force (N_ed)', value: safeToString(fixingResults.tensileForce), unit: 'kN' },
-        { parameter: 'Shear Capacity (V_Rd)', value: safeToString(fixingResults.channelShearCapacity), unit: 'kN' },
-        { parameter: 'Tension Capacity (N_Rd)', value: safeToString(fixingResults.channelTensionCapacity), unit: 'kN' }
-      ],
-      formulas: [
-        { step: '1. Check individual shear', formula: 'V_ed ≤ V_Rd', result: fixingResults.channelShearCheckPasses ? 'PASS' : 'FAIL' },
-        { step: '2. Check individual tension', formula: 'N_ed ≤ N_Rd', result: fixingResults.channelTensionCheckPasses ? 'PASS' : 'FAIL' },
-        { step: '3. Formula 1', formula: '(N_ed/N_Rd)^1.5 + (V_ed/V_Rd)^1.5 ≤ 1.0', result: fixingResults.channelCombinedUtilization ? safeToString(fixingResults.channelCombinedUtilization) : 'N/A' },
-        { step: '4. Formula 2', formula: '(N_ed/N_Rd + V_ed/V_Rd) / 1.2 ≤ 1.0', result: fixingResults.channelCombinedUtilization ? safeToString(fixingResults.channelCombinedUtilization) : 'N/A' },
-        { step: '5. Combined check', formula: 'min(Formula1, Formula2) ≤ 1.0', result: fixingResults.channelCombinedCheckPasses ? 'PASS' : 'FAIL' }
-      ],
-      outputs: [
-        { parameter: 'Shear Check', value: fixingResults.channelShearCheckPasses ? 'PASS' : 'FAIL', unit: '' },
-        { parameter: 'Tension Check', value: fixingResults.channelTensionCheckPasses ? 'PASS' : 'FAIL', unit: '' },
-        { parameter: 'Combined Utilization', value: fixingResults.channelCombinedUtilization ? safeToString(fixingResults.channelCombinedUtilization) : 'N/A', unit: '' },
-        { parameter: 'Combined Check', value: fixingResults.channelCombinedCheckPasses ? 'PASS' : 'FAIL', unit: '' }
-      ],
-      utilization: fixingResults.channelCombinedUtilization ? safeNumber(fixingResults.channelCombinedUtilization) * 100 : 0,
-      passes: fixingResults.passes ?? false
-    });
+    // Check if this is steel fixing or channel fixing
+    const isSteelFixing = fixingResults.steelFixingResults !== undefined;
+
+    if (isSteelFixing) {
+      const steelResults = fixingResults.steelFixingResults!;
+      calculations.push({
+        name: 'Steel Bolt Check',
+        description: 'Combined shear and tension check for steel fixing bolts',
+        inputs: [
+          { parameter: 'Applied Shear (Fv,Ed)', value: safeToString(steelResults.appliedShear), unit: 'kN' },
+          { parameter: 'Applied Tension (Ft,Ed)', value: safeToString(steelResults.appliedTension), unit: 'kN' },
+          { parameter: 'Shear Capacity (Fv,Rd)', value: safeToString(steelResults.shearCapacity), unit: 'kN' },
+          { parameter: 'Tension Capacity (Ft,Rd)', value: safeToString(steelResults.tensionCapacity), unit: 'kN' }
+        ],
+        formulas: [
+          { step: '1. Calculate shear utilization', formula: 'Shear Ratio = Fv,Ed / Fv,Rd', result: safeToString(steelResults.shearUtilization) },
+          { step: '2. Calculate adjusted tension utilization', formula: 'Adj. Tension Ratio = Ft,Ed / (1.4 × Ft,Rd)', result: safeToString(steelResults.adjustedTensionUtilization) },
+          { step: '3. Combined check', formula: '(Fv,Ed / Fv,Rd) + (Ft,Ed / (1.4 × Ft,Rd)) ≤ 1.0', result: safeToString(steelResults.combinedUtilization) }
+        ],
+        outputs: [
+          { parameter: 'Shear Utilization', value: safeToString(steelResults.shearUtilization) },
+          { parameter: 'Tension Utilization', value: safeToString(steelResults.tensionUtilization) },
+          { parameter: 'Adjusted Tension Utilization', value: safeToString(steelResults.adjustedTensionUtilization) },
+          { parameter: 'Combined Utilization', value: safeToString(steelResults.combinedUtilization) },
+          { parameter: 'Result', value: steelResults.passes ? 'PASS' : 'FAIL' }
+        ],
+        utilization: safeNumber(steelResults.combinedUtilization) * 100,
+        passes: steelResults.passes
+      });
+    } else {
+      // Keep existing channel fixing calculation
+      calculations.push({
+        name: 'Channel Fixing Check',
+        description: 'Channel fixing capacity check with combined interaction formulas',
+        inputs: [
+          { parameter: 'Applied Shear (V_ed)', value: safeToString(fixingResults.appliedShear), unit: 'kN' },
+          { parameter: 'Applied Moment (M_ed)', value: safeToString(fixingResults.appliedMoment), unit: 'kNm' },
+          { parameter: 'Tensile Force (N_ed)', value: safeToString(fixingResults.tensileForce), unit: 'kN' },
+          { parameter: 'Shear Capacity (V_Rd)', value: safeToString(fixingResults.channelShearCapacity), unit: 'kN' },
+          { parameter: 'Tension Capacity (N_Rd)', value: safeToString(fixingResults.channelTensionCapacity), unit: 'kN' }
+        ],
+        formulas: [
+          { step: '1. Check individual shear', formula: 'V_ed ≤ V_Rd', result: fixingResults.channelShearCheckPasses ? 'PASS' : 'FAIL' },
+          { step: '2. Check individual tension', formula: 'N_ed ≤ N_Rd', result: fixingResults.channelTensionCheckPasses ? 'PASS' : 'FAIL' },
+          { step: '3. Formula 1', formula: '(N_ed/N_Rd)^1.5 + (V_ed/V_Rd)^1.5 ≤ 1.0', result: fixingResults.channelCombinedUtilization ? safeToString(fixingResults.channelCombinedUtilization) : 'N/A' },
+          { step: '4. Formula 2', formula: '(N_ed/N_Rd + V_ed/V_Rd) / 1.2 ≤ 1.0', result: fixingResults.channelCombinedUtilization ? safeToString(fixingResults.channelCombinedUtilization) : 'N/A' },
+          { step: '5. Combined check', formula: 'min(Formula1, Formula2) ≤ 1.0', result: fixingResults.channelCombinedCheckPasses ? 'PASS' : 'FAIL' }
+        ],
+        outputs: [
+          { parameter: 'Shear Check', value: fixingResults.channelShearCheckPasses ? 'PASS' : 'FAIL', unit: '' },
+          { parameter: 'Tension Check', value: fixingResults.channelTensionCheckPasses ? 'PASS' : 'FAIL', unit: '' },
+          { parameter: 'Combined Utilization', value: fixingResults.channelCombinedUtilization ? safeToString(fixingResults.channelCombinedUtilization) : 'N/A', unit: '' },
+          { parameter: 'Combined Check', value: fixingResults.channelCombinedCheckPasses ? 'PASS' : 'FAIL', unit: '' }
+        ],
+        utilization: fixingResults.channelCombinedUtilization ? safeNumber(fixingResults.channelCombinedUtilization) * 100 : 0,
+        passes: fixingResults.passes ?? false
+      });
+    }
   }
 
   // 7-10. Add remaining verification checks with similar structure...
@@ -409,14 +494,17 @@ export const extractVerificationSummary = (verificationResults: VerificationResu
   }
 
   if (verificationResults.fixingResults) {
-    // Calculate utilization from the combined check (most critical)
-    const combinedUtil = verificationResults.fixingResults.channelCombinedUtilization
-      ? verificationResults.fixingResults.channelCombinedUtilization * 100
-      : 0;
+    const fixingRes = verificationResults.fixingResults;
+    const isSteelFixing = fixingRes.steelFixingResults !== undefined;
+
+    const checkName = isSteelFixing ? 'Steel Bolt Check' : 'Channel Fixing Check';
+    const combinedUtil = isSteelFixing
+      ? (fixingRes.steelFixingResults?.combinedUtilization || 0) * 100
+      : (fixingRes.channelCombinedUtilization || 0) * 100;
 
     summaryItems.push({
-      checkName: 'Fixing Check',
-      result: verificationResults.fixingResults.passes ? 'PASS' : 'FAIL',
+      checkName,
+      result: fixingRes.passes ? 'PASS' : 'FAIL',
       utilization: combinedUtil,
       criticalValue: `${combinedUtil.toFixed(1)}%`
     });
@@ -513,7 +601,7 @@ export const extractPDFReportData = (
   }
 
   return {
-    designInputs: extractDesignInputs(formData),
+    designInputs: extractDesignInputs(formData, result),
     finalDesign: extractFinalDesign(result),
     calculations: extractCalculations(verificationResults),
     verificationSummary: extractVerificationSummary(verificationResults),

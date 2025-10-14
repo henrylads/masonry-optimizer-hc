@@ -368,53 +368,95 @@ export function generateAllCombinations(inputs: DesignInputs): GeneticParameters
             console.log(`  Testing all bolt sizes: ${boltSizesToTest.join(', ')}`);
         }
 
+        // Determine which fixing methods to test
+        let fixingMethodsToTest: Array<'SET_SCREW' | 'BLIND_BOLT'> = [];
+        const sectionType = inputs.steel_section.sectionType;
+        const userSelectedMethod = inputs.steel_fixing_method;
+
+        if (sectionType === 'RHS' || sectionType === 'SHS') {
+            // RHS/SHS MUST use blind bolts only
+            fixingMethodsToTest = ['BLIND_BOLT'];
+            console.log(`  ${sectionType} section - MUST use blind bolts`);
+        } else if (sectionType === 'I-BEAM') {
+            // I-Beam can use either method
+            if (userSelectedMethod === 'both') {
+                fixingMethodsToTest = ['SET_SCREW', 'BLIND_BOLT'];
+                console.log(`  I-BEAM section - Testing BOTH set screws and blind bolts`);
+            } else if (userSelectedMethod === 'BLIND_BOLT') {
+                fixingMethodsToTest = ['BLIND_BOLT'];
+                console.log(`  I-BEAM section - Testing blind bolts only`);
+            } else {
+                // Default to set screws for I-Beam (most economical)
+                fixingMethodsToTest = ['SET_SCREW'];
+                console.log(`  I-BEAM section - Testing set screws only (default)`);
+            }
+        } else {
+            // Unknown section type - default to blind bolts for safety
+            fixingMethodsToTest = ['BLIND_BOLT'];
+            console.log(`  Unknown section type - defaulting to blind bolts`);
+        }
+
         // Generate fixing positions for STEEL (using steel-specific edge distances)
         const fixingPositions = generateSteelFixingPositions(inputs.steel_section.effectiveHeight);
+
+        // Track combinations per bolt size and fixing method for diagnostics
+        const combinationsPerBoltSize = new Map<string, number>();
+        boltSizesToTest.forEach(size => {
+            fixingMethodsToTest.forEach(method => {
+                combinationsPerBoltSize.set(`${size}-${method}`, 0);
+            });
+        });
 
         // Generate combinations for steel fixings (no channel iteration needed)
         for (const bracketAngleCombo of validBracketAngleCombinations) {
             for (const steelBoltSize of boltSizesToTest) {
-                for (const fixingPosition of fixingPositions) {
-                    // Load constraint for bracket centres
-                    const centresForSteel = POSSIBLE_BRACKET_CENTRES.filter(bc => {
-                        const max = characteristicLoad > 5 ? 500 : 600;
-                        return bc <= max;
-                    });
+                for (const fixingMethod of fixingMethodsToTest) {
+                    for (const fixingPosition of fixingPositions) {
+                        // Load constraint for bracket centres
+                        const centresForSteel = POSSIBLE_BRACKET_CENTRES.filter(bc => {
+                            const max = characteristicLoad > 5 ? 500 : 600;
+                            return bc <= max;
+                        });
 
-                    for (const bracket_centres of centresForSteel) {
-                        // Get valid bracket thicknesses
-                        const validBracketThicknesses = getValidBracketThicknesses(characteristicLoad, supportLevel, slabThickness);
+                        for (const bracket_centres of centresForSteel) {
+                            // Get valid bracket thicknesses
+                            const validBracketThicknesses = getValidBracketThicknesses(characteristicLoad, supportLevel, slabThickness);
 
-                        for (const bracket_thickness of validBracketThicknesses) {
-                            for (const angle_thickness of POSSIBLE_ANGLE_THICKNESS) {
-                                const vertical_leg = POSSIBLE_VERTICAL_LEG(angle_thickness);
+                            for (const bracket_thickness of validBracketThicknesses) {
+                                for (const angle_thickness of POSSIBLE_ANGLE_THICKNESS) {
+                                    const vertical_leg = POSSIBLE_VERTICAL_LEG(angle_thickness);
 
-                                // Convert steel bolt size to bolt diameter for GeneticParameters
-                                const bolt_diameter = parseInt(steelBoltSize.substring(1)) as BoltDiameter;
+                                    // Convert steel bolt size to bolt diameter for GeneticParameters
+                                    const bolt_diameter = parseInt(steelBoltSize.substring(1)) as BoltDiameter;
+                                    // Generate Dim D values for inverted brackets
+                                    const max_dim_d_for_slab = slabThickness - fixingPosition;
+                                    const dimDValues = bracketAngleCombo.bracket_type === 'Inverted'
+                                        ? POSSIBLE_DIM_D_VALUES.filter(d => d <= max_dim_d_for_slab)
+                                        : [undefined];
 
-                                // Generate Dim D values for inverted brackets
-                                const max_dim_d_for_slab = slabThickness - fixingPosition;
-                                const dimDValues = bracketAngleCombo.bracket_type === 'Inverted'
-                                    ? POSSIBLE_DIM_D_VALUES.filter(d => d <= max_dim_d_for_slab)
-                                    : [undefined];
+                                    for (const dim_d of dimDValues) {
+                                        const geneticParams: GeneticParameters = {
+                                            bracket_centres,
+                                            bracket_thickness,
+                                            angle_thickness,
+                                            vertical_leg,
+                                            bolt_diameter,
+                                            bracket_type: bracketAngleCombo.bracket_type,
+                                            angle_orientation: bracketAngleCombo.angle_orientation,
+                                            channel_type: 'NONE' as any, // Not used for steel
+                                            fixing_position: fixingPosition,
+                                            dim_d: dim_d,
+                                            steel_bolt_size: steelBoltSize, // Add steel bolt size to params
+                                            steel_fixing_method: fixingMethod // Add fixing method to params
+                                        };
 
-                                for (const dim_d of dimDValues) {
-                                    const geneticParams: GeneticParameters = {
-                                        bracket_centres,
-                                        bracket_thickness,
-                                        angle_thickness,
-                                        vertical_leg,
-                                        bolt_diameter,
-                                        bracket_type: bracketAngleCombo.bracket_type,
-                                        angle_orientation: bracketAngleCombo.angle_orientation,
-                                        channel_type: 'NONE' as any, // Not used for steel
-                                        fixing_position: fixingPosition,
-                                        dim_d: dim_d,
-                                        steel_bolt_size: steelBoltSize // Add steel bolt size to params
-                                    };
+                                        totalGenerated++;
+                                        combinations.push(geneticParams);
 
-                                    totalGenerated++;
-                                    combinations.push(geneticParams);
+                                        // Track count for this bolt size + fixing method combination
+                                        const key = `${steelBoltSize}-${fixingMethod}`;
+                                        combinationsPerBoltSize.set(key, (combinationsPerBoltSize.get(key) || 0) + 1);
+                                    }
                                 }
                             }
                         }
@@ -424,6 +466,10 @@ export function generateAllCombinations(inputs: DesignInputs): GeneticParameters
         }
 
         console.log(`🔩 Steel fixing combinations generated: ${combinations.length}`);
+        console.log(`🔩 Breakdown by bolt size:`);
+        combinationsPerBoltSize.forEach((count, size) => {
+            console.log(`   ${size}: ${count} combinations`);
+        });
         return combinations;
     }
 

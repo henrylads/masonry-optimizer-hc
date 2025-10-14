@@ -10,6 +10,26 @@ export interface MasonryInputs {
   notch_depth: number;
   showDetailedVerifications?: boolean;
   fixing_position?: number;
+
+  // Steel fixing fields
+  frame_fixing_type?: string;
+  steel_section_type?: string;
+  use_custom_steel_section?: boolean;
+  steel_section_size?: string;
+  custom_steel_height?: number;
+  steel_bolt_size?: string;
+
+  // Additional fields from frontend
+  use_custom_dim_d?: boolean;
+  dim_d?: number;
+  enable_fixing_optimization?: boolean;
+
+  // Facade parameters
+  facade_thickness?: number;
+  material_type?: string;
+  load_position?: number;
+  front_offset?: number;
+  isolation_shim_thickness?: number;
 }
 
 export interface ValidationRules {

@@ -9,7 +9,8 @@ export type FrameFixingType =
   | 'concrete-post-fix'
   | 'concrete-all'
   | 'steel-ibeam'
-  | 'steel-rhs-shs';
+  | 'steel-rhs'
+  | 'steel-shs';
 
 // Steel section types
 export type SteelSectionType = 'I-BEAM' | 'RHS' | 'SHS';

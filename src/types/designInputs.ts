@@ -77,8 +77,11 @@ export interface DesignInputs {
     /** Steel section specification (only for steel fixing types) */
     steel_section?: SteelSection;
 
-    /** Steel bolt size (only for steel fixing types) */
-    steel_bolt_size?: SteelBoltSize;
+    /** Steel bolt size (only for steel fixing types) - can be specific size or 'all' to test all sizes */
+    steel_bolt_size?: SteelBoltSize | 'all';
+
+    /** Steel fixing method (only for steel fixing types) - 'both' tests both methods for I-Beam */
+    steel_fixing_method?: 'SET_SCREW' | 'BLIND_BOLT' | 'both';
 }
 
 export const DesignInputsSchema = z.object({

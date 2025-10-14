@@ -271,6 +271,114 @@ export function validateAngleExtensionLimits(
 }
 
 /**
+ * Calculates the required fixing position to achieve minimum bracket height with an exclusion zone
+ *
+ * When an exclusion zone prevents achieving the minimum bracket height, this function calculates
+ * how high the fixing position needs to be moved to create enough space for a valid bracket.
+ *
+ * @param params Calculation parameters
+ * @returns Required fixing position or null if impossible
+ */
+export function calculateRequiredFixingPositionForExclusionZone(params: {
+  support_level: number;
+  slab_or_steel_thickness: number;
+  max_allowable_bracket_extension: number;
+  bracket_type: BracketType;
+  min_fixing_position: number; // Minimum allowed (e.g., 15mm for steel M16, 75mm for concrete)
+  max_fixing_position: number; // Maximum allowed (e.g., 115mm for 127mm steel)
+}): {
+  required_fixing_position: number | null;
+  achievable: boolean;
+  reason?: string;
+} {
+  const {
+    support_level,
+    slab_or_steel_thickness,
+    max_allowable_bracket_extension,
+    bracket_type,
+    min_fixing_position,
+    max_fixing_position
+  } = params;
+
+  const STANDARD_BRACKET_MIN_HEIGHT = 150;
+  const INVERTED_BRACKET_MIN_HEIGHT = 175;
+  const Y_CONSTANT = 40; // Distance from bracket top to fixing
+
+  const minimum_required_height = bracket_type === 'Standard'
+    ? STANDARD_BRACKET_MIN_HEIGHT
+    : INVERTED_BRACKET_MIN_HEIGHT;
+
+  if (bracket_type === 'Standard') {
+    // For standard brackets:
+    // bracket_height = |support_level| - fixing_position + Y
+    // With exclusion zone:
+    // bracket_bottom_position = fixing_position + bracket_height - Y
+    // Constraint: bracket_bottom_position <= |max_allowable_bracket_extension|
+    //
+    // So: fixing_position + bracket_height - Y <= |max_allowable_bracket_extension|
+    // Rearrange: fixing_position <= |max_allowable_bracket_extension| - bracket_height + Y
+    //
+    // But we need bracket_height >= minimum_required_height
+    // So: fixing_position <= |max_allowable_bracket_extension| - minimum_required_height + Y
+
+    const max_allowed_fixing_for_min_height = Math.abs(max_allowable_bracket_extension) - minimum_required_height + Y_CONSTANT;
+
+    // The required fixing position is the minimum valid position that achieves the bracket height
+    // We want: |support_level| - fixing_position + Y >= minimum_required_height
+    // Rearrange: fixing_position <= |support_level| + Y - minimum_required_height
+
+    const max_fixing_for_bracket_height = Math.abs(support_level) + Y_CONSTANT - minimum_required_height;
+
+    // Take the more restrictive constraint
+    const required_fixing_position = Math.min(max_allowed_fixing_for_min_height, max_fixing_for_bracket_height);
+
+    console.log(`🔧 FIXING POSITION CALCULATION for exclusion zone:`, {
+      support_level,
+      exclusion_zone: max_allowable_bracket_extension,
+      minimum_required_height,
+      max_allowed_fixing_for_min_height,
+      max_fixing_for_bracket_height,
+      required_fixing_position,
+      min_fixing_position,
+      max_fixing_position
+    });
+
+    // Check if achievable within valid range
+    if (required_fixing_position < min_fixing_position) {
+      return {
+        required_fixing_position: null,
+        achievable: false,
+        reason: `Required fixing position (${required_fixing_position.toFixed(1)}mm) is below minimum allowed (${min_fixing_position}mm). Exclusion zone too restrictive.`
+      };
+    }
+
+    if (required_fixing_position > max_fixing_position) {
+      return {
+        required_fixing_position: null,
+        achievable: false,
+        reason: `Required fixing position (${required_fixing_position.toFixed(1)}mm) exceeds maximum allowed (${max_fixing_position}mm). Increase slab/steel thickness or adjust support level.`
+      };
+    }
+
+    // Round to nearest 5mm (standard increment)
+    const rounded_fixing_position = Math.floor(required_fixing_position / 5) * 5;
+
+    return {
+      required_fixing_position: Math.max(min_fixing_position, rounded_fixing_position),
+      achievable: true
+    };
+  } else {
+    // Inverted brackets - more complex due to Dim D variations
+    // For now, return not achievable and rely on angle extension
+    return {
+      required_fixing_position: null,
+      achievable: false,
+      reason: 'Inverted brackets use angle extension for exclusion zone conflicts'
+    };
+  }
+}
+
+/**
  * Validates if a fixing position is compatible with exclusion zone and minimum bracket height requirements
  *
  * This function checks if applying an exclusion zone constraint would reduce the bracket below

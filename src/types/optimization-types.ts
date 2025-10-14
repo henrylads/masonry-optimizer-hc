@@ -21,6 +21,8 @@ export interface AlternativeDesign {
       horizontal_leg?: number;
       channel_type?: string;
       fixing_position?: number; // Distance from top of slab to fixing point (mm)
+      steel_bolt_size?: string; // Steel bolt size (M10, M12, M16) for steel fixings
+      steel_fixing_method?: 'SET_SCREW' | 'BLIND_BOLT'; // Steel fixing method for I-Beam
     };
     calculated: {
       bracket_height: number;
@@ -100,6 +102,8 @@ export type OptimisationResult = {
     angle_orientation?: 'Standard' | 'Inverted' // Add angle orientation to genetic
     fixing_position?: number // Distance from top of slab to fixing point (mm)
     dim_d?: number // Distance from bracket bottom to fixing for inverted brackets (130-450mm)
+    steel_bolt_size?: string // Steel bolt size (M10, M12, M16) for steel fixings
+    steel_fixing_method?: 'SET_SCREW' | 'BLIND_BOLT' // Steel fixing method for I-Beam
   }
   calculated: {
     bracket_height?: number // mm

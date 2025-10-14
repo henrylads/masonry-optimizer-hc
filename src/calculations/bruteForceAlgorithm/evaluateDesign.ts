@@ -206,13 +206,16 @@ export function evaluateBruteForceDesign(
 
     if (isSteelFrame && designInputs.steel_section && design.genetic.steel_bolt_size) {
         // STEEL FIXING VERIFICATION PATH
-        console.log(`🔩 Evaluating steel fixing: ${designInputs.steel_section.sectionType} ${design.genetic.steel_bolt_size}`);
+        console.log(`🔩 Evaluating steel fixing: ${designInputs.steel_section.sectionType} ${design.genetic.steel_bolt_size}-${design.genetic.steel_fixing_method || 'UNDEFINED'}`);
 
-        // Get steel fixing capacity
+        // Get steel fixing capacity using the fixing method from genetics
         const steelCapacity = getSteelFixingCapacity(
             designInputs.steel_section.sectionType,
-            design.genetic.steel_bolt_size as SteelBoltSize
+            design.genetic.steel_bolt_size as SteelBoltSize,
+            design.genetic.steel_fixing_method // Use fixing method from combination
         );
+
+        console.log(`🔩 Retrieved capacity for ${steelCapacity.fixingMethod}: Tension=${steelCapacity.tensileCapacity}kN, Shear=${steelCapacity.shearCapacity}kN`);
 
         // Calculate forces on the fixing
         // For steel fixings, we need the shear and tension forces at the fixing point

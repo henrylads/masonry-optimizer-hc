@@ -37,7 +37,8 @@ export async function POST(request: Request) {
       steel_section_size: data.steel_section_size,
       use_custom_steel_section: data.use_custom_steel_section,
       custom_steel_height: data.custom_steel_height,
-      steel_bolt_size: data.steel_bolt_size
+      steel_bolt_size: data.steel_bolt_size,
+      steel_fixing_method: data.steel_fixing_method
     });
     
     // Calculate characteristic load if not provided
@@ -295,7 +296,8 @@ export async function POST(request: Request) {
         // Steel fixing parameters
         frame_fixing_type: data.frame_fixing_type,
         steel_section: steelSection,
-        steel_bolt_size: data.steel_bolt_size
+        steel_bolt_size: data.steel_bolt_size,
+        steel_fixing_method: data.steel_fixing_method
       }
     };
 
@@ -333,6 +335,30 @@ export async function POST(request: Request) {
     } else if (slabThickness > 250 && fixingOptimizationEnabled) {
       console.log('API route: Thick slab detected with fixing optimization enabled - no recommendation needed');
     }
+
+    // Debug: Log alternatives being returned
+    console.log('🔍 API ROUTE: Returning alternatives:', result.result.alternatives?.map(alt => ({
+      bolt: alt.design.genetic.steel_bolt_size,
+      method: alt.design.genetic.steel_fixing_method,
+      weight: alt.totalWeight
+    })));
+
+    // DEEP DEBUG: Group alternatives by steel bolt + fixing method
+    const groupedByBolt: { [key: string]: any } = {};
+    result.result.alternatives?.forEach(alt => {
+      if (alt.design.genetic.steel_bolt_size) {
+        const key = `${alt.design.genetic.steel_bolt_size}-${alt.design.genetic.steel_fixing_method || 'UNKNOWN'}`;
+        if (!groupedByBolt[key] || alt.totalWeight < groupedByBolt[key].weight) {
+          groupedByBolt[key] = {
+            weight: alt.totalWeight,
+            index: result.result.alternatives?.indexOf(alt)
+          };
+        }
+      }
+    });
+    console.log('🔍 API ROUTE: Grouped steel bolt options:', Object.keys(groupedByBolt).sort());
+    console.log('🔍 API ROUTE: Has BLIND_BOLT?', Object.keys(groupedByBolt).some(k => k.includes('BLIND_BOLT')));
+    console.log('🔍 API ROUTE: Has SET_SCREW?', Object.keys(groupedByBolt).some(k => k.includes('SET_SCREW')));
 
     return NextResponse.json(result);
   } catch (error) {
