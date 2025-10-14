@@ -461,7 +461,9 @@ export async function runBruteForce(
             g.bracket_type,
             g.angle_orientation,
             g.channel_type || 'CPRO38',
-            g.fixing_position || 75
+            g.fixing_position || 75,
+            g.steel_bolt_size || 'NONE',
+            g.steel_fixing_method || 'NONE'
         ].join('|');
 
         const uniqueFullMap = new Map<string, GeneticParameters>();
@@ -536,7 +538,10 @@ export async function runBruteForce(
     // Group by fixing option and move the best from each group to the front
     const fixingOptionGroups = new Map<string, typeof metaList>();
     metaList.forEach((item) => {
-        const fixingOpt = item.g.steel_bolt_size || item.g.channel_type || 'unknown';
+        // Include fixing method in the key to treat different methods as separate options
+        const fixingOpt = item.g.steel_bolt_size
+            ? `${item.g.steel_bolt_size}-${item.g.steel_fixing_method || 'UNKNOWN'}`
+            : item.g.channel_type || 'unknown';
         if (!fixingOptionGroups.has(fixingOpt)) {
             fixingOptionGroups.set(fixingOpt, []);
         }
@@ -544,6 +549,11 @@ export async function runBruteForce(
     });
 
     console.log(`Brute Force: Found ${fixingOptionGroups.size} fixing options: ${Array.from(fixingOptionGroups.keys()).join(', ')}`);
+    console.log(`🔍 DEBUG: Sample fixing methods from first 10 items:`, metaList.slice(0, 10).map(item => ({
+        bolt: item.g.steel_bolt_size,
+        method: item.g.steel_fixing_method,
+        key: item.g.steel_bolt_size ? `${item.g.steel_bolt_size}-${item.g.steel_fixing_method || 'UNKNOWN'}` : item.g.channel_type
+    })));
 
     // Take the first 500 (best bounds) from each fixing option and move them to front
     // This ensures that if the first combination from a fixing option fails validation,
@@ -606,16 +616,22 @@ export async function runBruteForce(
     const allSteelBolts = new Set<string>();
     const allChannelTypes = new Set<string>();
     for (const { g } of reorderedMetaList) {
-        if (g.steel_bolt_size) allSteelBolts.add(g.steel_bolt_size);
+        // CRITICAL: Track steel bolt + fixing method combination, not just bolt size
+        if (g.steel_bolt_size) {
+            const steelBoltKey = `${g.steel_bolt_size}-${g.steel_fixing_method || 'UNKNOWN'}`;
+            allSteelBolts.add(steelBoltKey);
+        }
         if (g.channel_type) allChannelTypes.add(g.channel_type);
     }
-    console.log(`Brute Force: Found ${allSteelBolts.size} steel bolt sizes: ${Array.from(allSteelBolts).join(', ')}`);
+    console.log(`Brute Force: Found ${allSteelBolts.size} steel bolt options: ${Array.from(allSteelBolts).join(', ')}`);
     console.log(`Brute Force: Found ${allChannelTypes.size} channel types: ${Array.from(allChannelTypes).join(', ')}`);
 
     // 2. Evaluate each structural combination in bound order with early pruning
     for (const { g: geneticParams, bound } of reorderedMetaList) {
-        // Identify fixing option for this combination
-        const fixingOption = geneticParams.steel_bolt_size || geneticParams.channel_type || 'unknown';
+        // Identify fixing option for this combination (include fixing method to treat different methods as separate options)
+        const fixingOption = geneticParams.steel_bolt_size
+            ? `${geneticParams.steel_bolt_size}-${geneticParams.steel_fixing_method || 'UNKNOWN'}`
+            : geneticParams.channel_type || 'unknown';
 
         // Check if ALL fixing options have at least one valid design
         const allSteelBoltsValid = Array.from(allSteelBolts).every(bolt => validSteelBolts.has(bolt));
@@ -733,9 +749,12 @@ export async function runBruteForce(
 
                 // Log successful steel bolt evaluation
                 if (geneticParams.steel_bolt_size) {
-                    console.log(`✅ STEEL BOLT ${geneticParams.steel_bolt_size} PASSED: Weight ${evaluationResult.totalWeight.toFixed(5)} kg/m`);
-                    // Mark this steel bolt size as having a valid design (allows pruning for this bolt size)
-                    validSteelBolts.add(geneticParams.steel_bolt_size);
+                    const fixingMethod = geneticParams.steel_fixing_method || 'UNKNOWN';
+                    console.log(`✅ STEEL BOLT ${geneticParams.steel_bolt_size}-${fixingMethod} PASSED: Weight ${evaluationResult.totalWeight.toFixed(5)} kg/m`);
+                    // Mark this steel bolt size + fixing method as having a valid design
+                    // CRITICAL: Must include fixing method to avoid premature pruning when testing both SET_SCREW and BLIND_BOLT
+                    const steelBoltKey = `${geneticParams.steel_bolt_size}-${fixingMethod}`;
+                    validSteelBolts.add(steelBoltKey);
                 }
                 if (geneticParams.channel_type) {
                     // Mark this channel type as having a valid design (allows pruning for this channel)
@@ -780,12 +799,15 @@ export async function runBruteForce(
                     }
                 }
 
-                // For steel: track by bolt size
+                // For steel: track by bolt size AND fixing method
                 if (evaluationResult.design.genetic.steel_bolt_size) {
                     const boltSize = evaluationResult.design.genetic.steel_bolt_size;
-                    const existing = bestBySteelBolt.get(boltSize);
+                    const fixingMethod = evaluationResult.design.genetic.steel_fixing_method || 'UNKNOWN';
+                    const key = `${boltSize}-${fixingMethod}`;
+                    const existing = bestBySteelBolt.get(key);
                     if (!existing || evaluationResult.totalWeight < existing.weight) {
-                        bestBySteelBolt.set(boltSize, { design: evaluationResult.design, weight: evaluationResult.totalWeight });
+                        console.log(`🔩 Setting bestBySteelBolt[${key}] = ${evaluationResult.totalWeight.toFixed(3)} kg/m`);
+                        bestBySteelBolt.set(key, { design: evaluationResult.design, weight: evaluationResult.totalWeight });
                     }
                 }
                 
@@ -817,7 +839,8 @@ export async function runBruteForce(
             } else {
                 // Log when steel bolt combinations fail
                 if (geneticParams.steel_bolt_size) {
-                    console.log(`❌ STEEL BOLT ${geneticParams.steel_bolt_size} FAILED validation at centres=${geneticParams.bracket_centres}mm, thickness=${geneticParams.bracket_thickness}mm`);
+                    const fixingMethod = geneticParams.steel_fixing_method || 'UNKNOWN';
+                    console.log(`❌ STEEL BOLT ${geneticParams.steel_bolt_size}-${fixingMethod} FAILED validation at centres=${geneticParams.bracket_centres}mm, thickness=${geneticParams.bracket_thickness}mm`);
                 }
             }
         } catch (error) {
@@ -983,7 +1006,7 @@ export async function runBruteForce(
     });
 
     // Ensure best-per-channel-family alternatives are included
-    const signature = (d: Design | { genetic: { bracket_centres: number; bracket_thickness: number; angle_thickness: number; bolt_diameter: number; bracket_type: string; angle_orientation: string; channel_type?: string; steel_bolt_size?: string } }) => [
+    const signature = (d: Design | { genetic: { bracket_centres: number; bracket_thickness: number; angle_thickness: number; bolt_diameter: number; bracket_type: string; angle_orientation: string; channel_type?: string; steel_bolt_size?: string; steel_fixing_method?: string } }) => [
         d.genetic.bracket_centres,
         d.genetic.bracket_thickness,
         d.genetic.angle_thickness,
@@ -991,11 +1014,31 @@ export async function runBruteForce(
         d.genetic.bracket_type,
         d.genetic.angle_orientation,
         d.genetic.channel_type || 'CPRO38',
-        d.genetic.steel_bolt_size || 'N/A'
+        d.genetic.steel_bolt_size || 'N/A',
+        d.genetic.steel_fixing_method || 'N/A'
     ].join('|');
 
     const selectedSig = signature(finalSelectedDesign);
     const existingSigs = new Set<string>(processedAlternatives.map(a => signature(a.design)));
+
+    // DEBUG: Log what signatures we're working with
+    console.log('🔍 SIGNATURE DEBUG:');
+    console.log('   selectedSig:', selectedSig);
+    console.log('   existingSigs count:', existingSigs.size);
+    console.log('   existingSigs (first 5):', Array.from(existingSigs).slice(0, 5));
+
+    // DEBUG: Log bestBySteelBolt Map contents
+    console.log('🔍 BEFORE FAMILY ALT PROCESSING: bestBySteelBolt Map:');
+    console.log('   Size:', bestBySteelBolt.size);
+    console.log('   Keys:', Array.from(bestBySteelBolt.keys()));
+    for (const [key, entry] of bestBySteelBolt.entries()) {
+        console.log(`   ${key}:`, {
+            bolt: entry.design.genetic.steel_bolt_size,
+            method: entry.design.genetic.steel_fixing_method,
+            weight: entry.weight,
+            sig: signature(entry.design)
+        });
+    }
 
     const familyAlternatives: AlternativeDesign[] = [];
 
@@ -1040,9 +1083,21 @@ export async function runBruteForce(
     }
 
     // Add best-per-steel-bolt alternatives
+    console.log('🔍 ADDING STEEL BOLT ALTERNATIVES TO FAMILY:');
     for (const entry of bestBySteelBolt.values()) {
         const sig = signature(entry.design);
-        if (sig === selectedSig || existingSigs.has(sig)) continue;
+        const boltKey = `${entry.design.genetic.steel_bolt_size}-${entry.design.genetic.steel_fixing_method}`;
+
+        if (sig === selectedSig) {
+            console.log(`   SKIPPED ${boltKey}: matches selected design signature`);
+            continue;
+        }
+        if (existingSigs.has(sig)) {
+            console.log(`   SKIPPED ${boltKey}: signature already in processedAlternatives`);
+            continue;
+        }
+
+        console.log(`   ADDED ${boltKey} to familyAlternatives`);
         const alt: AlternativeDesign = {
             design: entry.design,
             totalWeight: entry.weight,
@@ -1110,6 +1165,21 @@ export async function runBruteForce(
         alternatives: allAlternatives,
         alerts: alerts.length > 0 ? alerts : undefined
     };
+
+    // DEEP DEBUG: Log what we're returning
+    console.log('🔍 BRUTE FORCE RETURN: Alternatives being returned:', allAlternatives.length);
+    const groupedByBolt: { [key: string]: number } = {};
+    allAlternatives.forEach(alt => {
+        if (alt.design.genetic.steel_bolt_size) {
+            const key = `${alt.design.genetic.steel_bolt_size}-${alt.design.genetic.steel_fixing_method || 'UNKNOWN'}`;
+            groupedByBolt[key] = (groupedByBolt[key] || 0) + 1;
+        }
+    });
+    console.log('🔍 BRUTE FORCE RETURN: Grouped by bolt+method:', groupedByBolt);
+    console.log('🔍 BRUTE FORCE RETURN: bestBySteelBolt Map had', bestBySteelBolt.size, 'entries');
+    console.log('🔍 BRUTE FORCE RETURN: bestBySteelBolt keys:', Array.from(bestBySteelBolt.keys()));
+    console.log('🔍 BRUTE FORCE RETURN: Has BLIND_BOLT?', Object.keys(groupedByBolt).some(k => k.includes('BLIND_BOLT')));
+    console.log('🔍 BRUTE FORCE RETURN: Has SET_SCREW?', Object.keys(groupedByBolt).some(k => k.includes('SET_SCREW')));
 
     return {
         result: finalResult,

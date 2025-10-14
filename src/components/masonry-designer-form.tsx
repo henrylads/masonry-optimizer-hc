@@ -512,6 +512,7 @@ export default function MasonryDesignerForm({
           frame_fixing_type: values.frame_fixing_type,
           steel_section: steelSection, // Pass the constructed steel_section object
           steel_bolt_size: values.steel_bolt_size,
+          steel_fixing_method: values.steel_fixing_method, // CRITICAL: Pass the fixing method selection
           allowed_channel_types: (() => {
             const channelTypes: ChannelType[] = [];
 
