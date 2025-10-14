@@ -9,7 +9,8 @@ export const formSchema = z.object({
     'concrete-post-fix',
     'concrete-all',
     'steel-ibeam',
-    'steel-rhs-shs'
+    'steel-rhs',
+    'steel-shs'
   ]).default('concrete-all'),
 
   // Slab thickness - optional (required only for concrete types)
@@ -55,11 +56,11 @@ export const formSchema = z.object({
   use_custom_fixing_position: z.boolean().default(false),
   fixing_position: z.coerce
     .number()
-    .min(75, { message: "Fixing position must be at least 75mm from top of slab" })
-    .max(400, { message: "Fixing position must be at most 400mm from top of slab" })
+    .min(15, { message: "Fixing position must be at least 15mm" })
+    .max(400, { message: "Fixing position must be at most 400mm" })
     .default(75)
-    .refine((val) => (val - 75) % 5 === 0, {
-      message: "Fixing position must be in 5mm increments from 75mm (75, 80, 85, etc.)",
+    .refine((val) => val % 5 === 0, {
+      message: "Fixing position must be in 5mm increments (e.g., 15, 20, 25, etc.)",
     }),
   use_custom_dim_d: z.boolean().default(false),
   dim_d: z.coerce
@@ -115,7 +116,9 @@ export const formSchema = z.object({
     .min(20, { message: "Custom steel height must be at least 20mm" })
     .max(1000, { message: "Custom steel height must be at most 1000mm" })
     .optional(),
-  steel_bolt_size: z.enum(['M10', 'M12', 'M16']).optional(),
+  steel_bolt_size: z.enum(['all', 'M10', 'M12', 'M16']).optional(),
+  // Fixing method for steel sections (only applicable to I-Beam, RHS/SHS must use blind bolts)
+  steel_fixing_method: z.enum(['SET_SCREW', 'BLIND_BOLT', 'both']).default('SET_SCREW').optional(),
 }).refine((data) => {
   // Conditional validation for notch fields
   if (data.has_notch) {
@@ -177,6 +180,45 @@ export const formSchema = z.object({
 }, {
   message: "Bolt size is required for steel fixing types",
   path: ["steel_bolt_size"]
+}).refine((data) => {
+  // Dynamic fixing position validation based on frame type
+  if (data.use_custom_fixing_position) {
+    const frameType = data.frame_fixing_type;
+
+    // Steel fixing constraints (M16 bolt edge distance)
+    if (frameType?.startsWith('steel')) {
+      const M16_EDGE_DISTANCE_PER_SIDE = 21.6 / 2; // 10.8mm per side
+
+      // Get effective steel section height
+      let steelHeight = 127; // default
+      if (data.use_custom_steel_section && data.custom_steel_height) {
+        steelHeight = data.custom_steel_height;
+      } else if (data.steel_section_size) {
+        steelHeight = parseInt(data.steel_section_size.split('x')[0]) || 127;
+      }
+
+      const min = Math.ceil(M16_EDGE_DISTANCE_PER_SIDE / 5) * 5; // 15mm
+      const max = Math.floor((steelHeight - M16_EDGE_DISTANCE_PER_SIDE) / 5) * 5;
+
+      return data.fixing_position >= min && data.fixing_position <= max;
+    }
+
+    // Concrete fixing constraints
+    if (frameType?.startsWith('concrete')) {
+      const slabThickness = data.slab_thickness || 225;
+      const TOP_CRITICAL_EDGE = 75;
+      const BOTTOM_BUFFER = 50;
+
+      const min = TOP_CRITICAL_EDGE;
+      const max = Math.max(slabThickness - BOTTOM_BUFFER, min + 5);
+
+      return data.fixing_position >= min && data.fixing_position <= max;
+    }
+  }
+  return true;
+}, {
+  message: "Fixing position is outside valid range for selected frame type and dimensions",
+  path: ["fixing_position"]
 })
 
 export type FormDataType = z.infer<typeof formSchema> 

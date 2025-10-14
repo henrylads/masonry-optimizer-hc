@@ -10,15 +10,16 @@ import type { VerificationResults } from '../verificationChecks';
 import type { SteelWeightResults } from '../steelWeight';
 import type { AngleLayoutResult } from '../angleLayout';
 import type { BracketType, AngleOrientation, AngleExtensionResult } from '@/types/bracketAngleTypes';
-import { 
+import {
     calculateRiseToBolts,
-    BRACKET_ANGLE_CONSTANTS 
+    BRACKET_ANGLE_CONSTANTS
 } from '../bracketAngleSelection';
-import { 
-    calculateInvertedBracketHeight, 
-    calculateStandardBracketHeight 
+import {
+    calculateInvertedBracketHeight,
+    calculateStandardBracketHeight
 } from '../bracketCalculations';
 import { calculateSystemWeight } from '../steelWeight';
+import { calculateRequiredFixingPositionForExclusionZone } from '../angleExtensionCalculations';
 
 // Local type definitions for brute force algorithm
 export type BracketCentres = 200 | 250 | 300 | 350 | 400 | 450 | 500;
@@ -38,6 +39,8 @@ export interface GeneticParameters {
   channel_type?: string;
   fixing_position?: number; // Distance from top of slab to fixing point (mm)
   dim_d?: number; // Distance from bracket bottom to fixing for inverted brackets (130-450mm)
+  steel_bolt_size?: string; // Steel bolt size (M10, M12, M16) for steel fixings
+  steel_fixing_method?: 'SET_SCREW' | 'BLIND_BOLT'; // Fixing method for steel sections
 }
 
 export interface CalculatedParameters {
@@ -92,6 +95,8 @@ export interface CalculatedParameters {
   material_type?: string; // Material type from design inputs
   angle_extension_result?: AngleExtensionResult; // Angle extension calculation result (if applied)
   effective_vertical_leg?: number; // Effective vertical leg accounting for extension
+  fixing_position_auto_adjusted?: boolean; // Flag indicating fixing position was auto-adjusted for exclusion zone
+  original_fixing_position?: number; // Original fixing position before auto-adjustment
 }
 
 export interface Design {
@@ -515,6 +520,56 @@ export async function runBruteForce(
     metaList.sort((a, b) => a.bound - b.bound);
     console.log(`Brute Force: Sorted structural combos by optimistic weight bound`);
 
+    // DEBUG: Log bounds for our specific combinations
+    const m10_375_4_90 = metaList.find(m =>
+        m.g.steel_bolt_size === 'M10' && m.g.bracket_centres === 375 && m.g.angle_thickness === 4 && m.g.fixing_position === 90
+    );
+    const m12_375_4_90 = metaList.find(m =>
+        m.g.steel_bolt_size === 'M12' && m.g.bracket_centres === 375 && m.g.angle_thickness === 4 && m.g.fixing_position === 90
+    );
+    if (m10_375_4_90) console.log(`🎯 M10 375mm/4mm/90mm bound: ${m10_375_4_90.bound.toFixed(5)} kg/m, position: ${metaList.indexOf(m10_375_4_90) + 1}/${metaList.length}`);
+    if (m12_375_4_90) console.log(`🎯 M12 375mm/4mm/90mm bound: ${m12_375_4_90.bound.toFixed(5)} kg/m, position: ${metaList.indexOf(m12_375_4_90) + 1}/${metaList.length}`);
+
+    console.log('🎯🎯🎯 STRATIFIED SAMPLING CODE EXECUTING NOW 🎯🎯🎯');
+
+    // Stratified sampling: ensure at least one combo from each fixing option is tested early
+    // Group by fixing option and move the best from each group to the front
+    const fixingOptionGroups = new Map<string, typeof metaList>();
+    metaList.forEach((item) => {
+        const fixingOpt = item.g.steel_bolt_size || item.g.channel_type || 'unknown';
+        if (!fixingOptionGroups.has(fixingOpt)) {
+            fixingOptionGroups.set(fixingOpt, []);
+        }
+        fixingOptionGroups.get(fixingOpt)!.push(item);
+    });
+
+    console.log(`Brute Force: Found ${fixingOptionGroups.size} fixing options: ${Array.from(fixingOptionGroups.keys()).join(', ')}`);
+
+    // Take the first 500 (best bounds) from each fixing option and move them to front
+    // This ensures that if the first combination from a fixing option fails validation,
+    // we still evaluate many more combinations from that option before pruning
+    const COMBINATIONS_PER_FIXING_OPTION = 500;
+    const priorityItems: typeof metaList = [];
+
+    for (const [fixingOpt, items] of fixingOptionGroups) {
+        // Take up to 100 best combinations for this fixing option
+        const numToTake = Math.min(COMBINATIONS_PER_FIXING_OPTION, items.length);
+        priorityItems.push(...items.slice(0, numToTake));
+    }
+
+    // Remove priority items from main list and prepend them
+    const prioritySignatures = new Set(priorityItems.map(item =>
+        `${item.g.bracket_centres}-${item.g.bracket_thickness}-${item.g.angle_thickness}-${item.g.steel_bolt_size || item.g.channel_type}-${item.g.fixing_position}`
+    ));
+
+    const remainingItems = metaList.filter(item => {
+        const sig = `${item.g.bracket_centres}-${item.g.bracket_thickness}-${item.g.angle_thickness}-${item.g.steel_bolt_size || item.g.channel_type}-${item.g.fixing_position}`;
+        return !prioritySignatures.has(sig);
+    });
+
+    const reorderedMetaList = [...priorityItems, ...remainingItems];
+    console.log(`Brute Force: Prioritized ${priorityItems.length} combinations (${COMBINATIONS_PER_FIXING_OPTION} per fixing option) to test first`);
+
     let bestValidDesign: Design | null = null;
     let minValidWeight = Infinity;
     
@@ -540,13 +595,43 @@ export async function runBruteForce(
     // Track best design per channel family
     const bestByChannel = new Map<string, { design: Design; weight: number }>();
 
+    // Track best design per steel bolt size (for steel frame fixings)
+    const bestBySteelBolt = new Map<string, { design: Design; weight: number }>();
+
+    // Track which fixing options have produced at least one VALID design (to prevent premature pruning)
+    const validChannelTypes = new Set<string>();
+    const validSteelBolts = new Set<string>();
+
+    // Track which fixing options exist in the input (to know when we've covered all options)
+    const allSteelBolts = new Set<string>();
+    const allChannelTypes = new Set<string>();
+    for (const { g } of reorderedMetaList) {
+        if (g.steel_bolt_size) allSteelBolts.add(g.steel_bolt_size);
+        if (g.channel_type) allChannelTypes.add(g.channel_type);
+    }
+    console.log(`Brute Force: Found ${allSteelBolts.size} steel bolt sizes: ${Array.from(allSteelBolts).join(', ')}`);
+    console.log(`Brute Force: Found ${allChannelTypes.size} channel types: ${Array.from(allChannelTypes).join(', ')}`);
+
     // 2. Evaluate each structural combination in bound order with early pruning
-    for (const { g: geneticParams, bound } of metaList) {
+    for (const { g: geneticParams, bound } of reorderedMetaList) {
+        // Identify fixing option for this combination
+        const fixingOption = geneticParams.steel_bolt_size || geneticParams.channel_type || 'unknown';
+
+        // Check if ALL fixing options have at least one valid design
+        const allSteelBoltsValid = Array.from(allSteelBolts).every(bolt => validSteelBolts.has(bolt));
+        const allChannelTypesValid = allChannelTypes.size === 0 || Array.from(allChannelTypes).every(ch => validChannelTypes.has(ch));
+        const allFixingOptionsValid = allSteelBoltsValid && allChannelTypesValid;
+
         // Branch-and-bound prune: if bound cannot beat current best, stop
-        if (bestValidDesign && bound >= minValidWeight) {
+        // BUT: keep evaluating until ALL fixing options have produced at least one valid design
+        if (bestValidDesign && bound >= minValidWeight && allFixingOptionsValid) {
             console.log(`Brute Force: Pruning remaining ${totalCombinations - checkedCombinations} combos (bound ${bound.toFixed(3)} ≥ best ${minValidWeight.toFixed(3)})`);
+            console.log(`  Current fixing option: ${fixingOption}`);
+            console.log(`  Valid steel bolts so far: ${Array.from(validSteelBolts).join(', ') || 'none'}`);
+            console.log(`  Valid channel types so far: ${Array.from(validChannelTypes).join(', ') || 'none'}`);
             break;
         }
+
         // Track angle orientation types
         if (geneticParams.angle_orientation === 'Standard') {
             standardAngleCount++;
@@ -578,7 +663,65 @@ export async function runBruteForce(
             const fixingPosition = geneticParams.fixing_position ?? 75;
             console.log(`🔧 Using fixing_position=${fixingPosition}mm from combination`);
 
-            const { evaluationResult } = evalAt(fixingPosition);
+            let { evaluationResult } = evalAt(fixingPosition);
+
+            // Auto-adjust fixing position if exclusion zone conflicts with minimum bracket height
+            if (!evaluationResult.isValid &&
+                designInputs.enable_angle_extension &&
+                designInputs.max_allowable_bracket_extension !== null &&
+                geneticParams.bracket_type === 'Standard') {
+
+                console.log(`⚠️  Design failed with fixing@${fixingPosition}mm. Checking if exclusion zone adjustment needed...`);
+
+                // Determine fixing position constraints based on frame type
+                const isSteelFrame = designInputs.frame_fixing_type?.startsWith('steel');
+                let min_fixing_position = 75; // Default for concrete
+                let max_fixing_position = designInputs.slab_thickness - 50; // Default for concrete
+
+                if (isSteelFrame && designInputs.steel_section) {
+                    // For steel, use M16 edge distance constraints
+                    const M16_EDGE_DISTANCE_PER_SIDE = 21.6 / 2; // 10.8mm
+                    const steelHeight = designInputs.steel_section.effectiveHeight;
+                    min_fixing_position = Math.ceil(M16_EDGE_DISTANCE_PER_SIDE / 5) * 5; // 15mm
+                    max_fixing_position = Math.floor((steelHeight - M16_EDGE_DISTANCE_PER_SIDE) / 5) * 5;
+                }
+
+                // Calculate required fixing position for exclusion zone
+                const adjustmentResult = calculateRequiredFixingPositionForExclusionZone({
+                    support_level: designInputs.support_level,
+                    slab_or_steel_thickness: isSteelFrame ?
+                        (designInputs.steel_section?.effectiveHeight ?? designInputs.slab_thickness) :
+                        designInputs.slab_thickness,
+                    max_allowable_bracket_extension: designInputs.max_allowable_bracket_extension,
+                    bracket_type: geneticParams.bracket_type,
+                    min_fixing_position,
+                    max_fixing_position
+                });
+
+                if (adjustmentResult.achievable && adjustmentResult.required_fixing_position !== null) {
+                    const adjustedFixing = adjustmentResult.required_fixing_position;
+                    console.log(`🔧 EXCLUSION ZONE AUTO-ADJUSTMENT: Moving fixing from ${fixingPosition}mm to ${adjustedFixing}mm to achieve 150mm minimum bracket height`);
+
+                    // Try with adjusted fixing position
+                    const { evaluationResult: adjustedResult } = evalAt(adjustedFixing);
+
+                    if (adjustedResult.isValid) {
+                        console.log(`✅ ADJUSTED DESIGN VALID with fixing@${adjustedFixing}mm`);
+                        // Use the adjusted result instead
+                        evaluationResult = adjustedResult;
+
+                        // Flag that this design used auto-adjusted fixing
+                        if (evaluationResult.design.calculated) {
+                            evaluationResult.design.calculated.fixing_position_auto_adjusted = true;
+                            evaluationResult.design.calculated.original_fixing_position = fixingPosition;
+                        }
+                    } else {
+                        console.log(`❌ Adjusted design still failed with fixing@${adjustedFixing}mm`);
+                    }
+                } else {
+                    console.log(`❌ Cannot adjust fixing position: ${adjustmentResult.reason}`);
+                }
+            }
 
             if (evaluationResult.isValid) {
                 // Track passing designs by angle type
@@ -587,12 +730,23 @@ export async function runBruteForce(
                 } else {
                     invertedAnglePassCount++;
                 }
-                
+
+                // Log successful steel bolt evaluation
+                if (geneticParams.steel_bolt_size) {
+                    console.log(`✅ STEEL BOLT ${geneticParams.steel_bolt_size} PASSED: Weight ${evaluationResult.totalWeight.toFixed(5)} kg/m`);
+                    // Mark this steel bolt size as having a valid design (allows pruning for this bolt size)
+                    validSteelBolts.add(geneticParams.steel_bolt_size);
+                }
+                if (geneticParams.channel_type) {
+                    // Mark this channel type as having a valid design (allows pruning for this channel)
+                    validChannelTypes.add(geneticParams.channel_type);
+                }
+
                 // Track if this is a standard angle design (both bracket and angle are standard)
-                const isStandardAngleDesign = 
-                    evaluationResult.design.genetic.bracket_type === 'Standard' && 
+                const isStandardAngleDesign =
+                    evaluationResult.design.genetic.bracket_type === 'Standard' &&
                     evaluationResult.design.genetic.angle_orientation === 'Standard';
-                
+
                 // Update best design if current is lighter than the current best
                 if (evaluationResult.totalWeight < minValidWeight) {
                     minValidWeight = evaluationResult.totalWeight;
@@ -616,11 +770,23 @@ export async function runBruteForce(
                     console.log(`Brute Force: New best standard angle weight found: ${minStandardAngleWeight.toFixed(5)} kg/m${fixingInfo}`);
                 }
 
-                // Track best design per channel type
-                const ct = evaluationResult.design.genetic.channel_type || 'CPRO38';
-                const existing = bestByChannel.get(ct);
-                if (!existing || evaluationResult.totalWeight < existing.weight) {
-                    bestByChannel.set(ct, { design: evaluationResult.design, weight: evaluationResult.totalWeight });
+                // Track best design per fixing option
+                // For concrete: track by channel type (includes CPRO and R-HPTIII products)
+                if (evaluationResult.design.genetic.channel_type) {
+                    const ct = evaluationResult.design.genetic.channel_type;
+                    const existing = bestByChannel.get(ct);
+                    if (!existing || evaluationResult.totalWeight < existing.weight) {
+                        bestByChannel.set(ct, { design: evaluationResult.design, weight: evaluationResult.totalWeight });
+                    }
+                }
+
+                // For steel: track by bolt size
+                if (evaluationResult.design.genetic.steel_bolt_size) {
+                    const boltSize = evaluationResult.design.genetic.steel_bolt_size;
+                    const existing = bestBySteelBolt.get(boltSize);
+                    if (!existing || evaluationResult.totalWeight < existing.weight) {
+                        bestBySteelBolt.set(boltSize, { design: evaluationResult.design, weight: evaluationResult.totalWeight });
+                    }
                 }
                 
                 // Track this design in top N alternatives
@@ -648,6 +814,11 @@ export async function runBruteForce(
                 if (topDesigns.length > TOP_N_ALTERNATIVES) {
                     topDesigns.pop();
                 }
+            } else {
+                // Log when steel bolt combinations fail
+                if (geneticParams.steel_bolt_size) {
+                    console.log(`❌ STEEL BOLT ${geneticParams.steel_bolt_size} FAILED validation at centres=${geneticParams.bracket_centres}mm, thickness=${geneticParams.bracket_thickness}mm`);
+                }
             }
         } catch (error) {
             // Handle errors during calculation/evaluation for a specific combination
@@ -665,6 +836,10 @@ export async function runBruteForce(
         }
 
         checkedCombinations++;
+
+        // Note: We now only mark fixing options as validated when they produce a VALID design
+        // (see lines 728-733). This prevents premature pruning when a fixing option's first
+        // combinations fail but later ones might succeed.
 
         // Report progress periodically
         if (config.onProgress && (checkedCombinations % reportInterval === 0 || checkedCombinations === totalCombinations)) {
@@ -729,6 +904,8 @@ export async function runBruteForce(
     console.log(`Brute Force: Finished. Selected Weight: ${selectedWeight.toFixed(5)} kg/m`);
     console.log('Brute Force: Selected Design:', JSON.stringify(finalSelectedDesign, null, 2));
     console.log(`Brute Force: Found ${topDesigns.length} valid alternative designs`);
+    console.log(`Brute Force: Tracked ${bestByChannel.size} channel type variants`);
+    console.log(`Brute Force: Tracked ${bestBySteelBolt.size} steel bolt size variants`);
     if (alerts.length > 0) {
         console.log(`Brute Force: Generated ${alerts.length} alert(s)`);
     }
@@ -806,20 +983,23 @@ export async function runBruteForce(
     });
 
     // Ensure best-per-channel-family alternatives are included
-    const signature = (d: Design | { genetic: { bracket_centres: number; bracket_thickness: number; angle_thickness: number; bolt_diameter: number; bracket_type: string; angle_orientation: string; channel_type?: string } }) => [
+    const signature = (d: Design | { genetic: { bracket_centres: number; bracket_thickness: number; angle_thickness: number; bolt_diameter: number; bracket_type: string; angle_orientation: string; channel_type?: string; steel_bolt_size?: string } }) => [
         d.genetic.bracket_centres,
         d.genetic.bracket_thickness,
         d.genetic.angle_thickness,
         d.genetic.bolt_diameter,
         d.genetic.bracket_type,
         d.genetic.angle_orientation,
-        d.genetic.channel_type || 'CPRO38'
+        d.genetic.channel_type || 'CPRO38',
+        d.genetic.steel_bolt_size || 'N/A'
     ].join('|');
 
     const selectedSig = signature(finalSelectedDesign);
     const existingSigs = new Set<string>(processedAlternatives.map(a => signature(a.design)));
 
     const familyAlternatives: AlternativeDesign[] = [];
+
+    // Add best-per-channel alternatives
     for (const entry of bestByChannel.values()) {
         const sig = signature(entry.design);
         if (sig === selectedSig || existingSigs.has(sig)) continue;
@@ -859,9 +1039,62 @@ export async function runBruteForce(
         familyAlternatives.push(alt);
     }
 
-    const allAlternatives = [...processedAlternatives, ...familyAlternatives]
-        .sort((a, b) => a.totalWeight - b.totalWeight)
-        .slice(0, TOP_N_ALTERNATIVES);
+    // Add best-per-steel-bolt alternatives
+    for (const entry of bestBySteelBolt.values()) {
+        const sig = signature(entry.design);
+        if (sig === selectedSig || existingSigs.has(sig)) continue;
+        const alt: AlternativeDesign = {
+            design: entry.design,
+            totalWeight: entry.weight,
+            weightDifferencePercent: ((entry.weight - selectedWeight) / selectedWeight) * 100,
+            keyDifferences: (() => {
+                const diffs: string[] = [];
+                if (entry.design.genetic.steel_bolt_size !== finalSelectedDesign.genetic.steel_bolt_size) {
+                    diffs.push(`${entry.design.genetic.steel_bolt_size} bolts (vs ${finalSelectedDesign.genetic.steel_bolt_size || 'N/A'})`);
+                }
+                if (entry.design.genetic.bracket_type !== finalSelectedDesign.genetic.bracket_type) {
+                    diffs.push(`${entry.design.genetic.bracket_type} bracket (vs ${finalSelectedDesign.genetic.bracket_type})`);
+                }
+                if (entry.design.genetic.angle_orientation !== finalSelectedDesign.genetic.angle_orientation) {
+                    diffs.push(`${entry.design.genetic.angle_orientation} angle (vs ${finalSelectedDesign.genetic.angle_orientation})`);
+                }
+                return diffs;
+            })(),
+            verificationMargins: {
+                momentMargin: 0,
+                shearMargin: 0,
+                deflectionMargin: 0,
+                fixingMargin: 0
+            }
+        };
+        familyAlternatives.push(alt);
+    }
+
+    // Combine alternatives, ensuring all fixing options (familyAlternatives) are included
+    // even if they exceed TOP_N_ALTERNATIVES limit
+    const combinedAlternatives = [...processedAlternatives, ...familyAlternatives];
+
+    // Sort by weight
+    const sortedAlternatives = combinedAlternatives.sort((a, b) => a.totalWeight - b.totalWeight);
+
+    // Always include all familyAlternatives (different fixing options),
+    // then fill remaining slots with processedAlternatives up to TOP_N limit
+    const allAlternatives = [];
+    const familySignatures = new Set(familyAlternatives.map(a => signature(a.design)));
+
+    // First, add all family alternatives (different fixing options - must show all)
+    allAlternatives.push(...familyAlternatives);
+
+    // Then add other alternatives up to the limit
+    for (const alt of sortedAlternatives) {
+        const sig = signature(alt.design);
+        if (!familySignatures.has(sig) && allAlternatives.length < TOP_N_ALTERNATIVES) {
+            allAlternatives.push(alt);
+        }
+    }
+
+    // Sort final list by weight
+    allAlternatives.sort((a, b) => a.totalWeight - b.totalWeight);
 
     // Check if any alternatives use R-HPTIII products and add a general alert
     const rhptiiiAlternatives = allAlternatives.filter(alt =>

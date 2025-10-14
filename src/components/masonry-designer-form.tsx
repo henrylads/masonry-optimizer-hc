@@ -172,6 +172,71 @@ export default function MasonryDesignerForm({
     },
   })
 
+  // Calculate dynamic fixing position constraints based on frame type
+  const fixingPositionConstraints = useMemo(() => {
+    const frameType = form.watch('frame_fixing_type');
+    const slabThickness = form.watch('slab_thickness');
+    const steelSectionSize = form.watch('steel_section_size');
+    const useCustomSteel = form.watch('use_custom_steel_section');
+    const customSteelHeight = form.watch('custom_steel_height');
+
+    // Steel fixing constraints (based on M16 bolt edge distance)
+    if (frameType?.startsWith('steel')) {
+      const M16_EDGE_DISTANCE_PER_SIDE = 21.6 / 2; // 10.8mm per side
+
+      // Get effective steel section height
+      let steelHeight = 127; // default
+      if (useCustomSteel && customSteelHeight) {
+        steelHeight = customSteelHeight;
+      } else if (steelSectionSize) {
+        steelHeight = parseInt(steelSectionSize.split('x')[0]) || 127;
+      }
+
+      const min = Math.ceil(M16_EDGE_DISTANCE_PER_SIDE / 5) * 5; // Round up to nearest 5mm (15mm)
+      const max = Math.floor((steelHeight - M16_EDGE_DISTANCE_PER_SIDE) / 5) * 5; // Round down to nearest 5mm
+
+      return {
+        min,
+        max,
+        default: Math.min(75, max), // Use 75 or max, whichever is smaller
+        description: `Based on M16 bolt edge distance and ${steelHeight}mm section height`,
+        unit: 'mm from top of steel section'
+      };
+    }
+
+    // Concrete fixing constraints (based on slab thickness and edge distances)
+    if (frameType?.startsWith('concrete')) {
+      const TOP_CRITICAL_EDGE = 75; // Typical minimum for concrete
+      const BOTTOM_BUFFER = 50; // Buffer from bottom of slab
+
+      const min = TOP_CRITICAL_EDGE;
+      const max = Math.max(slabThickness - BOTTOM_BUFFER, min + 5);
+
+      return {
+        min,
+        max,
+        default: TOP_CRITICAL_EDGE,
+        description: `Based on ${slabThickness}mm slab thickness and edge distances`,
+        unit: 'mm from top of slab'
+      };
+    }
+
+    // Fallback
+    return {
+      min: 15,
+      max: 400,
+      default: 75,
+      description: 'Default range',
+      unit: 'mm'
+    };
+  }, [
+    form.watch('frame_fixing_type'),
+    form.watch('slab_thickness'),
+    form.watch('steel_section_size'),
+    form.watch('use_custom_steel_section'),
+    form.watch('custom_steel_height')
+  ]);
+
   // Check for characteristic_load from density calculator on mount
   React.useEffect(() => {
     const storedLoad = localStorage.getItem('characteristic_load');
@@ -219,6 +284,24 @@ export default function MasonryDesignerForm({
     });
     return () => subscription.unsubscribe();
   }, [form]);
+
+  // Validate and adjust fixing_position when constraints change
+  React.useEffect(() => {
+    const currentFixingPosition = form.getValues('fixing_position');
+    const useCustom = form.getValues('use_custom_fixing_position');
+
+    // Only adjust if using custom position
+    if (useCustom && currentFixingPosition) {
+      if (currentFixingPosition < fixingPositionConstraints.min) {
+        form.setValue('fixing_position', fixingPositionConstraints.min);
+      } else if (currentFixingPosition > fixingPositionConstraints.max) {
+        form.setValue('fixing_position', fixingPositionConstraints.max);
+      }
+    } else if (!useCustom) {
+      // Reset to default when not using custom
+      form.setValue('fixing_position', fixingPositionConstraints.default);
+    }
+  }, [fixingPositionConstraints, form]);
 
   // Sync frame_fixing_type with fixing_type and steel_section_type fields
   React.useEffect(() => {
@@ -683,86 +766,6 @@ export default function MasonryDesignerForm({
                           </div>
                         </div>
 
-                        {/* Concrete Product Selection - for all concrete types */}
-                        {form.watch('frame_fixing_type')?.startsWith('concrete') && (
-                          <div className="col-span-full">
-                            <div className="rounded-lg border p-6">
-                              <div className="flex items-center gap-2 mb-4">
-                                <div className="p-2 rounded-lg bg-primary/10">
-                                  <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                                  </svg>
-                                </div>
-                                <div>
-                                  <h3 className="text-lg font-semibold">Product Selection</h3>
-                                  <p className="text-sm text-muted-foreground">Select which products to consider</p>
-                                </div>
-                              </div>
-
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {/* Channel Fix Type - show for cast-in and all */}
-                                {(form.watch('frame_fixing_type') === 'concrete-cast-in' || form.watch('frame_fixing_type') === 'concrete-all') && (
-                                  <FormField
-                                    control={form.control}
-                                    name="channel_product"
-                                    render={({ field }) => (
-                                      <FormItem>
-                                        <FormLabel>Channel Fix Type</FormLabel>
-                                        <FormControl>
-                                          <Select
-                                            value={field.value}
-                                            onValueChange={field.onChange}
-                                          >
-                                            <SelectTrigger>
-                                              <SelectValue placeholder="Select channel type" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                              <SelectItem value="all">All Channels</SelectItem>
-                                              <SelectItem value="CPRO38">CPRO38</SelectItem>
-                                              <SelectItem value="CPRO50">CPRO50</SelectItem>
-                                              <SelectItem value="CPRO52">CPRO52</SelectItem>
-                                            </SelectContent>
-                                          </Select>
-                                        </FormControl>
-                                        <FormMessage />
-                                      </FormItem>
-                                    )}
-                                  />
-                                )}
-
-                                {/* Post Fix Type - show for post-fix and all */}
-                                {(form.watch('frame_fixing_type') === 'concrete-post-fix' || form.watch('frame_fixing_type') === 'concrete-all') && (
-                                  <FormField
-                                    control={form.control}
-                                    name="postfix_product"
-                                    render={({ field }) => (
-                                      <FormItem>
-                                        <FormLabel>Post Fix Type</FormLabel>
-                                        <FormControl>
-                                          <Select
-                                            value={field.value}
-                                            onValueChange={field.onChange}
-                                          >
-                                            <SelectTrigger>
-                                              <SelectValue placeholder="Select post type" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                              <SelectItem value="all">All Post-Fix</SelectItem>
-                                              <SelectItem value="R-HPTIII-70">R-HPTIII-70</SelectItem>
-                                              <SelectItem value="R-HPTIII-90">R-HPTIII-90</SelectItem>
-                                            </SelectContent>
-                                          </Select>
-                                        </FormControl>
-                                        <FormMessage />
-                                      </FormItem>
-                                    )}
-                                  />
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        )}
-
                         {/* Steel Section Configuration (only for steel fixing types) */}
                         {form.watch('frame_fixing_type')?.startsWith('steel') && (
                           <div className="col-span-full">
@@ -870,6 +873,35 @@ export default function MasonryDesignerForm({
                                     </FormItem>
                                   )}
                                 />
+
+                                {/* Fixing Method Selection - Only for I-Beam */}
+                                {form.watch('frame_fixing_type') === 'steel-ibeam' && (
+                                  <FormField
+                                    control={form.control}
+                                    name="steel_fixing_method"
+                                    render={({ field }) => (
+                                      <FormItem>
+                                        <FormLabel>Fixing Method (I-Beam)</FormLabel>
+                                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                          <FormControl>
+                                            <SelectTrigger>
+                                              <SelectValue placeholder="Select fixing method" />
+                                            </SelectTrigger>
+                                          </FormControl>
+                                          <SelectContent>
+                                            <SelectItem value="SET_SCREW">Set Screws Only</SelectItem>
+                                            <SelectItem value="BLIND_BOLT">Blind Bolts Only</SelectItem>
+                                            <SelectItem value="both">Test Both (Optimize)</SelectItem>
+                                          </SelectContent>
+                                        </Select>
+                                        <FormDescription className="text-xs">
+                                          I-Beam can use set screws or blind bolts. RHS/SHS must use blind bolts.
+                                        </FormDescription>
+                                        <FormMessage />
+                                      </FormItem>
+                                    )}
+                                  />
+                                )}
                               </div>
 
                               {/* Custom Section Toggle */}
@@ -928,6 +960,292 @@ export default function MasonryDesignerForm({
                                 <div className="text-xs text-blue-600 mt-2">
                                   ℹ️ This height replaces slab thickness for steel frame calculations
                                 </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Fixing Customization - for concrete and steel fixings */}
+                        {(form.watch('frame_fixing_type')?.startsWith('concrete') || form.watch('frame_fixing_type')?.startsWith('steel')) && (
+                          <div className="col-span-full">
+                            <div className="rounded-lg border p-6">
+                              <div className="flex items-center gap-2 mb-4">
+                                <div className="p-2 rounded-lg bg-primary/10">
+                                  <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                  </svg>
+                                </div>
+                                <div>
+                                  <h3 className="text-lg font-semibold">Fixing Customization</h3>
+                                  <p className="text-sm text-muted-foreground">Customize fixing position and dimensions</p>
+                                </div>
+                              </div>
+
+                              {/* Fixing Position Configuration */}
+                              <div className="mt-4">
+                                <div className="rounded-lg border p-4">
+                                  <div className="space-y-3">
+                                    <Label className="text-sm font-medium">Fixing Position</Label>
+                                    <ToggleGroup
+                                      type="single"
+                                      value={form.watch("use_custom_fixing_position") ? "custom" : "default"}
+                                      onValueChange={(value) => {
+                                        if (value) {
+                                          const useCustom = value === "custom";
+                                          form.setValue("use_custom_fixing_position", useCustom);
+                                          if (!useCustom) {
+                                            form.setValue("fixing_position", fixingPositionConstraints.default);
+                                          } else {
+                                            // When switching to custom, set a reasonable default if current value is the default
+                                            const currentFixingPosition = form.getValues("fixing_position");
+                                            if (currentFixingPosition === fixingPositionConstraints.default) {
+                                              form.setValue("fixing_position", Math.min(100, fixingPositionConstraints.max));
+                                            }
+                                          }
+                                        }
+                                      }}
+                                      className="justify-start gap-2 mb-3"
+                                      variant="outline"
+                                      size="sm"
+                                    >
+                                      <ToggleGroupItem
+                                        value="default"
+                                        aria-label="Find Optimal Position"
+                                        className={cn(
+                                          "min-w-[120px] text-xs",
+                                          !form.watch("use_custom_fixing_position") && "bg-[rgb(194,242,14)] text-black hover:brightness-95"
+                                        )}
+                                      >
+                                        Find Optimal Position
+                                      </ToggleGroupItem>
+                                      <ToggleGroupItem
+                                        value="custom"
+                                        aria-label="Custom Position"
+                                        className={cn(
+                                          "min-w-[120px] text-xs",
+                                          form.watch("use_custom_fixing_position") && "bg-[rgb(194,242,14)] text-black hover:brightness-95"
+                                        )}
+                                      >
+                                        Custom Position
+                                      </ToggleGroupItem>
+                                    </ToggleGroup>
+
+                                    {/* Conditional Custom Input */}
+                                    {form.watch("use_custom_fixing_position") ? (
+                                      <FormField
+                                        control={form.control}
+                                        name="fixing_position"
+                                        render={({ field }) => (
+                                          <FormItem>
+                                            <FormLabel className="text-sm">Custom Fixing Position (mm)</FormLabel>
+                                            <FormControl>
+                                              <Input
+                                                type="number"
+                                                step="5"
+                                                min={fixingPositionConstraints.min}
+                                                max={fixingPositionConstraints.max}
+                                                placeholder="e.g. 100"
+                                                value={field.value}
+                                                onChange={(e) => {
+                                                  const inputValue = e.target.value;
+                                                  if (inputValue === '') {
+                                                    field.onChange(fixingPositionConstraints.min); // Set to minimum valid value when empty
+                                                  } else {
+                                                    const value = Number(inputValue);
+                                                    if (!isNaN(value) && value >= fixingPositionConstraints.min) {
+                                                      field.onChange(value);
+                                                    }
+                                                  }
+                                                }}
+                                                disabled={inputMode === 'chat' && isLoading}
+                                                className="text-sm"
+                                              />
+                                            </FormControl>
+                                            <FormDescription className="text-xs">
+                                              {fixingPositionConstraints.description} ({fixingPositionConstraints.min}-{fixingPositionConstraints.max}mm)
+                                            </FormDescription>
+                                            <FormMessage />
+                                          </FormItem>
+                                        )}
+                                      />
+                                    ) : (
+                                      <div className="flex items-center justify-between py-2 px-3 bg-blue-50 rounded">
+                                        <span className="text-sm text-gray-600">Finding optimal fixing position</span>
+                                        <span className="text-sm font-semibold text-blue-700">Auto-optimizing</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+
+                                {/* Dim D Section - Only for inverted brackets */}
+                                <div className="rounded-lg border p-4">
+                                  <div className="space-y-3">
+                                    <Label className="text-sm font-medium flex items-center gap-1">
+                                      Dim D (Inverted Brackets Only)
+                                      <span className="text-xs text-blue-600 cursor-help" title="Distance from bracket bottom to fixing point for inverted brackets">ⓘ</span>
+                                    </Label>
+
+                                    <div className="flex items-center space-x-2">
+                                      <FormField
+                                        control={form.control}
+                                        name="use_custom_dim_d"
+                                        render={({ field }) => (
+                                          <FormItem className="flex flex-row items-center space-x-3 space-y-0">
+                                            <FormControl>
+                                              <Switch
+                                                checked={field.value}
+                                                onCheckedChange={(checked) => {
+                                                  field.onChange(checked);
+                                                  if (!checked) {
+                                                    form.setValue("dim_d", 130);
+                                                  } else {
+                                                    const currentDimD = form.getValues("dim_d");
+                                                    if (currentDimD === 130) {
+                                                      form.setValue("dim_d", 200);
+                                                    }
+                                                  }
+                                                }}
+                                                disabled={inputMode === 'chat' && isLoading}
+                                              />
+                                            </FormControl>
+                                            <div className="space-y-1 leading-none">
+                                              <FormLabel>Custom Dim D</FormLabel>
+                                              <FormDescription>
+                                                Override auto-optimized Dim D value
+                                              </FormDescription>
+                                            </div>
+                                          </FormItem>
+                                        )}
+                                      />
+                                    </div>
+
+                                    {/* Conditional Custom Input */}
+                                    {form.watch("use_custom_dim_d") ? (
+                                      <FormField
+                                        control={form.control}
+                                        name="dim_d"
+                                        render={({ field }) => (
+                                          <FormItem>
+                                            <FormLabel className="text-sm">Custom Dim D (mm)</FormLabel>
+                                            <FormControl>
+                                              <Input
+                                                type="number"
+                                                min="130"
+                                                max="450"
+                                                step="5"
+                                                placeholder="130"
+                                                value={field.value || ''}
+                                                onChange={(e) => {
+                                                  const inputValue = e.target.value;
+                                                  if (inputValue === '') {
+                                                    field.onChange(130); // Set to minimum valid value when empty
+                                                  } else {
+                                                    const value = Number(inputValue);
+                                                    if (!isNaN(value) && value >= 130) {
+                                                      field.onChange(value);
+                                                    }
+                                                  }
+                                                }}
+                                                disabled={inputMode === 'chat' && isLoading}
+                                                className="text-sm"
+                                              />
+                                            </FormControl>
+                                            <FormDescription className="text-xs">
+                                              Distance from bracket bottom to fixing point (130-450mm, in 5mm increments)
+                                            </FormDescription>
+                                            <FormMessage />
+                                          </FormItem>
+                                        )}
+                                      />
+                                    ) : (
+                                      <div className="flex items-center justify-between py-2 px-3 bg-blue-50 rounded">
+                                        <span className="text-sm text-gray-600">Auto-optimizing Dim D values</span>
+                                        <span className="text-sm font-semibold text-blue-700">130-450mm range</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Concrete Product Selection - for all concrete types */}
+                        {form.watch('frame_fixing_type')?.startsWith('concrete') && (
+                          <div className="col-span-full">
+                            <div className="rounded-lg border p-6">
+                              <div className="flex items-center gap-2 mb-4">
+                                <div className="p-2 rounded-lg bg-primary/10">
+                                  <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                                  </svg>
+                                </div>
+                                <div>
+                                  <h3 className="text-lg font-semibold">Product Selection</h3>
+                                  <p className="text-sm text-muted-foreground">Select which products to consider</p>
+                                </div>
+                              </div>
+
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {/* Channel Fix Type - show for cast-in and all */}
+                                {(form.watch('frame_fixing_type') === 'concrete-cast-in' || form.watch('frame_fixing_type') === 'concrete-all') && (
+                                  <FormField
+                                    control={form.control}
+                                    name="channel_product"
+                                    render={({ field }) => (
+                                      <FormItem>
+                                        <FormLabel>Channel Fix Type</FormLabel>
+                                        <FormControl>
+                                          <Select
+                                            value={field.value}
+                                            onValueChange={field.onChange}
+                                          >
+                                            <SelectTrigger>
+                                              <SelectValue placeholder="Select channel type" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                              <SelectItem value="all">All Channels</SelectItem>
+                                              <SelectItem value="CPRO38">CPRO38</SelectItem>
+                                              <SelectItem value="CPRO50">CPRO50</SelectItem>
+                                              <SelectItem value="CPRO52">CPRO52</SelectItem>
+                                            </SelectContent>
+                                          </Select>
+                                        </FormControl>
+                                        <FormMessage />
+                                      </FormItem>
+                                    )}
+                                  />
+                                )}
+
+                                {/* Post Fix Type - show for post-fix and all */}
+                                {(form.watch('frame_fixing_type') === 'concrete-post-fix' || form.watch('frame_fixing_type') === 'concrete-all') && (
+                                  <FormField
+                                    control={form.control}
+                                    name="postfix_product"
+                                    render={({ field }) => (
+                                      <FormItem>
+                                        <FormLabel>Post Fix Type</FormLabel>
+                                        <FormControl>
+                                          <Select
+                                            value={field.value}
+                                            onValueChange={field.onChange}
+                                          >
+                                            <SelectTrigger>
+                                              <SelectValue placeholder="Select post type" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                              <SelectItem value="all">All Post-Fix</SelectItem>
+                                              <SelectItem value="R-HPTIII-70">R-HPTIII-70</SelectItem>
+                                              <SelectItem value="R-HPTIII-90">R-HPTIII-90</SelectItem>
+                                            </SelectContent>
+                                          </Select>
+                                        </FormControl>
+                                        <FormMessage />
+                                      </FormItem>
+                                    )}
+                                  />
+                                )}
                               </div>
                             </div>
                           </div>
@@ -1336,212 +1654,6 @@ export default function MasonryDesignerForm({
                             </div>
                           </div>
                         </div>
-
-                        {/* Fixing Customization - for all concrete types */}
-                        {form.watch('frame_fixing_type')?.startsWith('concrete') && (
-                          <div className="col-span-full">
-                            <div className="rounded-lg border p-6">
-                              <div className="flex items-center gap-2 mb-4">
-                                <div className="p-2 rounded-lg bg-primary/10">
-                                  <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                  </svg>
-                                </div>
-                                <div>
-                                  <h3 className="text-lg font-semibold">Fixing Customization</h3>
-                                  <p className="text-sm text-muted-foreground">Customize fixing position and dimensions</p>
-                                </div>
-                              </div>
-
-                              {/* Fixing Position Configuration */}
-                              <div className="mt-4">
-                                <div className="rounded-lg border p-4">
-                                  <div className="space-y-3">
-                                    <Label className="text-sm font-medium">Fixing Position</Label>
-                                    <ToggleGroup
-                                      type="single"
-                                      value={form.watch("use_custom_fixing_position") ? "custom" : "default"}
-                                      onValueChange={(value) => {
-                                        if (value) {
-                                          const useCustom = value === "custom";
-                                          form.setValue("use_custom_fixing_position", useCustom);
-                                          if (!useCustom) {
-                                            form.setValue("fixing_position", 75);
-                                          } else {
-                                            // When switching to custom, set a reasonable default if current value is the default
-                                            const currentFixingPosition = form.getValues("fixing_position");
-                                            if (currentFixingPosition === 75) {
-                                              form.setValue("fixing_position", 100);
-                                            }
-                                          }
-                                        }
-                                      }}
-                                      className="justify-start gap-2 mb-3"
-                                      variant="outline"
-                                      size="sm"
-                                    >
-                                      <ToggleGroupItem
-                                        value="default"
-                                        aria-label="Find Optimal Position"
-                                        className={cn(
-                                          "min-w-[120px] text-xs",
-                                          !form.watch("use_custom_fixing_position") && "bg-[rgb(194,242,14)] text-black hover:brightness-95"
-                                        )}
-                                      >
-                                        Find Optimal Position
-                                      </ToggleGroupItem>
-                                      <ToggleGroupItem
-                                        value="custom"
-                                        aria-label="Custom Position"
-                                        className={cn(
-                                          "min-w-[120px] text-xs",
-                                          form.watch("use_custom_fixing_position") && "bg-[rgb(194,242,14)] text-black hover:brightness-95"
-                                        )}
-                                      >
-                                        Custom Position
-                                      </ToggleGroupItem>
-                                    </ToggleGroup>
-
-                                    {/* Conditional Custom Input */}
-                                    {form.watch("use_custom_fixing_position") ? (
-                                      <FormField
-                                        control={form.control}
-                                        name="fixing_position"
-                                        render={({ field }) => (
-                                          <FormItem>
-                                            <FormLabel className="text-sm">Custom Fixing Position (mm)</FormLabel>
-                                            <FormControl>
-                                              <Input
-                                                type="number"
-                                                step="5"
-                                                min="75"
-                                                max="400"
-                                                placeholder="e.g. 100"
-                                                value={field.value}
-                                                onChange={(e) => {
-                                                  const inputValue = e.target.value;
-                                                  if (inputValue === '') {
-                                                    field.onChange(75); // Set to minimum valid value when empty
-                                                  } else {
-                                                    const value = Number(inputValue);
-                                                    if (!isNaN(value) && value >= 75) {
-                                                      field.onChange(value);
-                                                    }
-                                                  }
-                                                }}
-                                                disabled={inputMode === 'chat' && isLoading}
-                                                className="text-sm"
-                                              />
-                                            </FormControl>
-                                            <FormDescription className="text-xs">
-                                              Distance from top of slab to fixing point (75-400mm, in 5mm increments)
-                                            </FormDescription>
-                                            <FormMessage />
-                                          </FormItem>
-                                        )}
-                                      />
-                                    ) : (
-                                      <div className="flex items-center justify-between py-2 px-3 bg-blue-50 rounded">
-                                        <span className="text-sm text-gray-600">Finding optimal fixing position</span>
-                                        <span className="text-sm font-semibold text-blue-700">Auto-optimizing</span>
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-
-                                {/* Dim D Section - Only for inverted brackets */}
-                                <div className="rounded-lg border p-4">
-                                  <div className="space-y-3">
-                                    <Label className="text-sm font-medium flex items-center gap-1">
-                                      Dim D (Inverted Brackets Only)
-                                      <span className="text-xs text-blue-600 cursor-help" title="Distance from bracket bottom to fixing point for inverted brackets">ⓘ</span>
-                                    </Label>
-
-                                    <div className="flex items-center space-x-2">
-                                      <FormField
-                                        control={form.control}
-                                        name="use_custom_dim_d"
-                                        render={({ field }) => (
-                                          <FormItem className="flex flex-row items-center space-x-3 space-y-0">
-                                            <FormControl>
-                                              <Switch
-                                                checked={field.value}
-                                                onCheckedChange={(checked) => {
-                                                  field.onChange(checked);
-                                                  if (!checked) {
-                                                    form.setValue("dim_d", 130);
-                                                  } else {
-                                                    const currentDimD = form.getValues("dim_d");
-                                                    if (currentDimD === 130) {
-                                                      form.setValue("dim_d", 200);
-                                                    }
-                                                  }
-                                                }}
-                                                disabled={inputMode === 'chat' && isLoading}
-                                              />
-                                            </FormControl>
-                                            <div className="space-y-1 leading-none">
-                                              <FormLabel>Custom Dim D</FormLabel>
-                                              <FormDescription>
-                                                Override auto-optimized Dim D value
-                                              </FormDescription>
-                                            </div>
-                                          </FormItem>
-                                        )}
-                                      />
-                                    </div>
-
-                                    {/* Conditional Custom Input */}
-                                    {form.watch("use_custom_dim_d") ? (
-                                      <FormField
-                                        control={form.control}
-                                        name="dim_d"
-                                        render={({ field }) => (
-                                          <FormItem>
-                                            <FormLabel className="text-sm">Custom Dim D (mm)</FormLabel>
-                                            <FormControl>
-                                              <Input
-                                                type="number"
-                                                min="130"
-                                                max="450"
-                                                step="5"
-                                                placeholder="130"
-                                                value={field.value || ''}
-                                                onChange={(e) => {
-                                                  const inputValue = e.target.value;
-                                                  if (inputValue === '') {
-                                                    field.onChange(130); // Set to minimum valid value when empty
-                                                  } else {
-                                                    const value = Number(inputValue);
-                                                    if (!isNaN(value) && value >= 130) {
-                                                      field.onChange(value);
-                                                    }
-                                                  }
-                                                }}
-                                                disabled={inputMode === 'chat' && isLoading}
-                                                className="text-sm"
-                                              />
-                                            </FormControl>
-                                            <FormDescription className="text-xs">
-                                              Distance from bracket bottom to fixing point (130-450mm, in 5mm increments)
-                                            </FormDescription>
-                                            <FormMessage />
-                                          </FormItem>
-                                        )}
-                                      />
-                                    ) : (
-                                      <div className="flex items-center justify-between py-2 px-3 bg-blue-50 rounded">
-                                        <span className="text-sm text-gray-600">Auto-optimizing Dim D values</span>
-                                        <span className="text-sm font-semibold text-blue-700">130-450mm range</span>
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        )}
 
                         {/* Advanced Options Section */}
                         <div className="col-span-full">

@@ -5,7 +5,7 @@ import { Check, X, AlertTriangle, TrendingUp, Zap, Target, Scale, Leaf, Ruler, S
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ShapeDiverCard, ShapeDiverOutputs } from './shapediver'
 import { Button } from "@/components/ui/button"
-import type { OptimisationResult, GenerationSummary } from '@/types/optimization-types'
+import type { OptimisationResult, GenerationSummary, AlternativeDesign } from '@/types/optimization-types'
 import { calculateBracketPositioning } from '@/calculations/angleLayout';
 import {
   Table,
@@ -44,6 +44,44 @@ interface ResultsDisplayProps {
   history: GenerationSummary[]
   designInputs?: FormDataType // Optional for backward compatibility
 }
+
+// Helper to group alternatives by fixing option for comparison
+const groupAlternativesByFixingOption = (alternatives: AlternativeDesign[]) => {
+  const steelBolts: { [key: string]: AlternativeDesign } = {};
+  const concreteChannels: { [key: string]: AlternativeDesign } = {};
+
+  console.log('🔍 groupAlternativesByFixingOption received:', {
+    count: alternatives.length,
+    firstDesign: alternatives[0]?.design?.genetic
+  });
+
+  alternatives.forEach(alt => {
+    // Group steel bolt sizes
+    if (alt.design.genetic.steel_bolt_size) {
+      const boltSize = alt.design.genetic.steel_bolt_size;
+      console.log(`✅ Found steel bolt: ${boltSize}`);
+      if (!steelBolts[boltSize] || alt.totalWeight < steelBolts[boltSize].totalWeight) {
+        steelBolts[boltSize] = alt;
+      }
+    }
+
+    // Group concrete channels (including R-HPTIII)
+    if (alt.design.genetic.channel_type) {
+      const channelType = alt.design.genetic.channel_type;
+      console.log(`✅ Found channel: ${channelType}`);
+      if (!concreteChannels[channelType] || alt.totalWeight < concreteChannels[channelType].totalWeight) {
+        concreteChannels[channelType] = alt;
+      }
+    }
+  });
+
+  console.log('🔍 Grouped results:', {
+    steelBolts: Object.keys(steelBolts),
+    concreteChannels: Object.keys(concreteChannels)
+  });
+
+  return { steelBolts, concreteChannels };
+};
 
 export function ResultsDisplay({ result, history, designInputs }: ResultsDisplayProps) {
   // Add a reference to track if we've logged success
@@ -1329,6 +1367,282 @@ export function ResultsDisplay({ result, history, designInputs }: ResultsDisplay
     </Card>
       )}
 
+      {/* Fixing Options Comparison - Show best design per fixing option */}
+      {(() => {
+        console.log('🔍 Panel entry check:', {
+          hasResult: !!result,
+          hasAlternatives: !!result?.alternatives,
+          alternativesLength: result?.alternatives?.length,
+          hasGenetic: !!result?.genetic,
+          hasCalculated: !!result?.calculated,
+          steelBoltSize: result?.genetic?.steel_bolt_size,
+          channelType: result?.genetic?.channel_type
+        });
+
+        if (!result?.alternatives || result.alternatives.length === 0) {
+          console.log('❌ No alternatives, skipping panel');
+          return null;
+        }
+
+        // Include the optimal design in the comparison
+        const optimalDesign: AlternativeDesign = {
+          design: { genetic: result.genetic, calculated: result.calculated },
+          totalWeight: result.calculated?.weights?.totalWeight || 0,
+          weightDifferencePercent: 0,
+          keyDifferences: []
+        };
+
+        const allDesigns = [optimalDesign, ...result.alternatives];
+        const { steelBolts, concreteChannels } = groupAlternativesByFixingOption(allDesigns);
+
+        const hasSteelOptions = Object.keys(steelBolts).length > 0;
+        const hasConcreteOptions = Object.keys(concreteChannels).length > 0;
+
+        // Only show if we have any fixing options tracked
+        if (!hasSteelOptions && !hasConcreteOptions) {
+          console.log('❌ No fixing options tracked, skipping panel');
+          return null;
+        }
+
+        // Debug logging
+        console.log('🔍 Fixing Options Panel Check:', {
+          hasSteelOptions,
+          hasConcreteOptions,
+          steelBoltCount: Object.keys(steelBolts).length,
+          concreteChannelCount: Object.keys(concreteChannels).length,
+          steelBolts: Object.keys(steelBolts),
+          concreteChannels: Object.keys(concreteChannels)
+        });
+
+        return (
+          <Card className="border-2 border-teal-200 bg-teal-50/30">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-lg bg-teal-500/10">
+                  <svg className="w-5 h-5 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                  </svg>
+                </div>
+                <div>
+                  <CardTitle className="text-teal-900">Fixing Options Comparison</CardTitle>
+                  <p className="text-sm text-teal-700 mt-1">
+                    {Object.keys(steelBolts).length > 1 || Object.keys(concreteChannels).length > 1
+                      ? 'Compare best designs across different fixing options'
+                      : 'Selected fixing option (other options eliminated by optimization)'}
+                  </p>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Steel Bolt Options */}
+              {hasSteelOptions && (
+                <div>
+                  <h4 className="font-semibold text-teal-900 mb-3 flex items-center gap-2">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                    </svg>
+                    Steel Bolt Options
+                  </h4>
+                  {Object.keys(steelBolts).length === 1 && (
+                    <p className="text-sm text-gray-600 mb-3 italic">
+                      Optimization found only {Object.keys(steelBolts)[0]} produces valid designs. Other bolt sizes were eliminated as heavier or invalid.
+                    </p>
+                  )}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {(['M10', 'M12', 'M16'] as const).map(boltSize => {
+                      const design = steelBolts[boltSize];
+
+                      if (!design) {
+                        return (
+                          <div key={boltSize} className="p-4 rounded-lg border-2 border-gray-200 bg-gray-50 opacity-60">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="font-bold text-lg text-gray-500">{boltSize}</span>
+                              <span className="text-xs font-semibold px-2 py-1 bg-gray-400 text-white rounded">N/A</span>
+                            </div>
+                            <div className="text-sm text-gray-500">
+                              <p className="italic">No valid designs found with this bolt size</p>
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      const isOptimal = design.weightDifferencePercent === 0;
+
+                      // Find the index of this design in the alternatives array
+                      const designIndex = isOptimal ? 0 : result.alternatives.findIndex(alt =>
+                        alt.design.genetic.steel_bolt_size === boltSize
+                      ) + 1;
+
+                      // Check if this design is currently displayed
+                      const isCurrentlyViewed = selectedDesignIndex === designIndex;
+
+                      const handleClick = () => {
+                        setSelectedDesignIndex(designIndex);
+                        // Scroll to top of results to show the updated design
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      };
+
+                      return (
+                        <button
+                          key={boltSize}
+                          onClick={handleClick}
+                          className={`p-4 rounded-lg border-2 transition-all text-left w-full ${
+                            isCurrentlyViewed
+                              ? 'border-blue-500 bg-blue-100 ring-2 ring-blue-300'
+                              : isOptimal
+                                ? 'border-green-300 bg-green-50 hover:bg-green-100'
+                                : 'border-teal-200 bg-white hover:bg-teal-50'
+                          } cursor-pointer`}
+                        >
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="font-bold text-lg text-teal-900">{boltSize}</span>
+                            <div className="flex gap-1">
+                              {isCurrentlyViewed && (
+                                <span className="text-xs font-semibold px-2 py-1 bg-blue-500 text-white rounded">VIEWING</span>
+                              )}
+                              {isOptimal && (
+                                <span className="text-xs font-semibold px-2 py-1 bg-green-500 text-white rounded">OPTIMAL</span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="space-y-1 text-sm">
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">Weight:</span>
+                              <span className="font-semibold">{design.totalWeight.toFixed(3)} kg/m</span>
+                            </div>
+                            {!isOptimal && (
+                              <div className="flex justify-between">
+                                <span className="text-gray-600">vs Optimal:</span>
+                                <span className="text-amber-600 font-semibold">+{design.weightDifferencePercent.toFixed(1)}%</span>
+                              </div>
+                            )}
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">Bracket:</span>
+                              <span className="text-xs">{design.design.genetic.bracket_type}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">Centres:</span>
+                              <span className="text-xs">{design.design.genetic.bracket_centres}mm</span>
+                            </div>
+                          </div>
+                          <div className="mt-2 pt-2 border-t border-gray-200">
+                            <span className="text-xs text-blue-600 font-medium">Click to view →</span>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Concrete Channel Options */}
+              {hasConcreteOptions && (
+                <div>
+                  <h4 className="font-semibold text-teal-900 mb-3 flex items-center gap-2">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4" />
+                    </svg>
+                    Concrete Channel Options
+                  </h4>
+                  {Object.keys(concreteChannels).length === 1 && (
+                    <p className="text-sm text-gray-600 mb-3 italic">
+                      Optimization found only {Object.keys(concreteChannels)[0]} produces valid designs. Other channel types were eliminated as heavier or invalid.
+                    </p>
+                  )}
+                  <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                    {(['CPRO38', 'CPRO50', 'CPRO52', 'R-HPTIII-70', 'R-HPTIII-90'] as const).map(channelType => {
+                      const design = concreteChannels[channelType];
+
+                      if (!design) {
+                        return (
+                          <div key={channelType} className="p-4 rounded-lg border-2 border-gray-200 bg-gray-50 opacity-60">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="font-bold text-sm text-gray-500">{channelType}</span>
+                              <span className="text-xs font-semibold px-2 py-1 bg-gray-400 text-white rounded">N/A</span>
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              <p className="italic">No valid designs</p>
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      const isOptimal = design.weightDifferencePercent === 0;
+                      const isRHPTIII = channelType.startsWith('R-HPTIII');
+
+                      // Find the index of this design in the alternatives array
+                      const designIndex = isOptimal ? 0 : result.alternatives.findIndex(alt =>
+                        alt.design.genetic.channel_type === channelType
+                      ) + 1;
+
+                      // Check if this design is currently displayed
+                      const isCurrentlyViewed = selectedDesignIndex === designIndex;
+
+                      const handleClick = () => {
+                        setSelectedDesignIndex(designIndex);
+                        // Scroll to top of results to show the updated design
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      };
+
+                      return (
+                        <button
+                          key={channelType}
+                          onClick={handleClick}
+                          className={`p-4 rounded-lg border-2 transition-all text-left w-full ${
+                            isCurrentlyViewed
+                              ? 'border-blue-500 bg-blue-100 ring-2 ring-blue-300'
+                              : isOptimal
+                                ? 'border-green-300 bg-green-50 hover:bg-green-100'
+                                : isRHPTIII
+                                  ? 'border-orange-200 bg-orange-50 hover:bg-orange-100'
+                                  : 'border-teal-200 bg-white hover:bg-teal-50'
+                          } cursor-pointer`}
+                        >
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="font-bold text-sm text-teal-900">{channelType}</span>
+                            <div className="flex gap-1">
+                              {isCurrentlyViewed && (
+                                <span className="text-xs font-semibold px-2 py-1 bg-blue-500 text-white rounded">VIEWING</span>
+                              )}
+                              {isOptimal && (
+                                <span className="text-xs font-semibold px-2 py-1 bg-green-500 text-white rounded">OPTIMAL</span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="space-y-1 text-xs">
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">Weight:</span>
+                              <span className="font-semibold">{design.totalWeight.toFixed(3)} kg/m</span>
+                            </div>
+                            {!isOptimal && (
+                              <div className="flex justify-between">
+                                <span className="text-gray-600">vs Optimal:</span>
+                                <span className="text-amber-600 font-semibold">+{design.weightDifferencePercent.toFixed(1)}%</span>
+                              </div>
+                            )}
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">Bracket:</span>
+                              <span>{design.design.genetic.bracket_type}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">Centres:</span>
+                              <span>{design.design.genetic.bracket_centres}mm</span>
+                            </div>
+                          </div>
+                          <div className="mt-2 pt-2 border-t border-gray-200">
+                            <span className="text-xs text-blue-600 font-medium">Click to view →</span>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        );
+      })()}
+
       {/* Design Selector */}
       {result?.alternatives && result.alternatives.length > 0 && (
         <Card className="border-2 border-blue-200 bg-blue-50/20">
@@ -1379,7 +1693,7 @@ export function ResultsDisplay({ result, history, designInputs }: ResultsDisplay
                       {/* Optimal (selected) design */}
                       <SelectItem
                         value="0"
-                        textValue={`Optimal · ${result.calculated?.weights?.totalWeight?.toFixed(1) ?? '—'} kg/m · ${result.genetic?.channel_type ?? ''}`}
+                        textValue={`Optimal · ${result.calculated?.weights?.totalWeight?.toFixed(1) ?? '—'} kg/m · ${result.genetic?.steel_bolt_size || result.genetic?.channel_type || ''}`}
                       >
                         <div className="grid w-full items-center gap-3 grid-cols-[140px_150px_90px_160px_100px_70px]">
                           <div>
@@ -1390,7 +1704,11 @@ export function ResultsDisplay({ result, history, designInputs }: ResultsDisplay
                             <span className="text-gray-400 ml-1">(+0.0%)</span>
                           </div>
                           <div>
-                            <span className="px-2 py-0.5 rounded bg-gray-100 text-gray-700 text-xs">{result.genetic?.channel_type ?? '—'}</span>
+                            {result.genetic?.steel_bolt_size ? (
+                              <span className="px-2 py-0.5 rounded bg-blue-100 text-blue-700 text-xs">{result.genetic.steel_bolt_size}</span>
+                            ) : (
+                              <span className="px-2 py-0.5 rounded bg-gray-100 text-gray-700 text-xs">{result.genetic?.channel_type ?? '—'}</span>
+                            )}
                           </div>
                           <div className="text-sm text-gray-700">
                             {(result.genetic?.bracket_type ?? '—') + ' / ' + (result.genetic?.angle_orientation ?? '—')}
@@ -1405,7 +1723,7 @@ export function ResultsDisplay({ result, history, designInputs }: ResultsDisplay
                         <SelectItem
                           key={index + 1}
                           value={(index + 1).toString()}
-                          textValue={`Alternative ${index + 1} · ${alt.totalWeight.toFixed(1)} kg/m · ${alt.design.genetic.channel_type ?? ''}`}
+                          textValue={`Alternative ${index + 1} · ${alt.totalWeight.toFixed(1)} kg/m · ${alt.design.genetic.steel_bolt_size || alt.design.genetic.channel_type || ''}`}
                         >
                           <div className="grid w-full items-center gap-3 grid-cols-[140px_150px_90px_160px_100px_70px]">
                             <div>
@@ -1416,7 +1734,11 @@ export function ResultsDisplay({ result, history, designInputs }: ResultsDisplay
                               <span className="text-green-600 ml-1">(+{alt.weightDifferencePercent.toFixed(1)}%)</span>
                             </div>
                             <div>
-                              <span className="px-2 py-0.5 rounded bg-gray-100 text-gray-700 text-xs">{alt.design.genetic.channel_type ?? '—'}</span>
+                              {alt.design.genetic.steel_bolt_size ? (
+                                <span className="px-2 py-0.5 rounded bg-blue-100 text-blue-700 text-xs">{alt.design.genetic.steel_bolt_size}</span>
+                              ) : (
+                                <span className="px-2 py-0.5 rounded bg-gray-100 text-gray-700 text-xs">{alt.design.genetic.channel_type ?? '—'}</span>
+                              )}
                             </div>
                             <div className="text-sm text-gray-700">{`${alt.design.genetic.bracket_type} / ${alt.design.genetic.angle_orientation}`}</div>
                             <div className="text-sm text-gray-700">{alt.design.genetic.bracket_centres} mm</div>
@@ -1846,10 +2168,24 @@ export function ResultsDisplay({ result, history, designInputs }: ResultsDisplay
                   <span className="text-sm text-gray-600">Notch height</span>
                   <span className="text-sm font-semibold font-mono">{displayedResult?.calculated?.detailed_verification_results?.droppingBelowSlabResults?.H_notch ?? "0"} mm</span>
                 </div>
-                <div className="flex justify-between items-center py-2 px-3 bg-gray-50 rounded">
-                  <span className="text-sm text-gray-600">Channel type</span>
-                  <span className="text-sm font-semibold">{displayedResult?.genetic?.channel_type || "Standard"}</span>
-                </div>
+                {/* Show Channel Type for concrete OR Steel Fixing info for steel */}
+                {displayedResult?.genetic?.steel_bolt_size ? (
+                  <>
+                    <div className="flex justify-between items-center py-2 px-3 bg-blue-50 rounded border border-blue-200">
+                      <span className="text-sm text-gray-600">Fixing type</span>
+                      <span className="text-sm font-semibold text-blue-700">Steel Fixing</span>
+                    </div>
+                    <div className="flex justify-between items-center py-2 px-3 bg-gray-50 rounded">
+                      <span className="text-sm text-gray-600">Bolt size</span>
+                      <span className="text-sm font-semibold font-mono">{displayedResult?.genetic?.steel_bolt_size || "—"}</span>
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex justify-between items-center py-2 px-3 bg-gray-50 rounded">
+                    <span className="text-sm text-gray-600">Channel type</span>
+                    <span className="text-sm font-semibold">{displayedResult?.genetic?.channel_type || "Standard"}</span>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -2250,19 +2586,50 @@ export function ResultsDisplay({ result, history, designInputs }: ResultsDisplay
                     
                     <div className="space-y-2">
                       <h3 className="text-lg font-semibold">Fixing Check</h3>
-                      <div className="grid grid-cols-2 gap-2 pl-4">
-                        <div className="font-medium">Applied Shear</div>
-                        <div>{result.calculated.detailed_verification_results.fixingResults?.appliedShear?.toFixed(9) || "N/A"} kN</div>
-                        
-                        <div className="font-medium">Applied Moment</div>
-                        <div>{result.calculated.detailed_verification_results.fixingResults?.appliedMoment?.toFixed(12) || "N/A"} kNm</div>
-                        
-                        <div className="font-medium">Tensile Force</div>
-                        <div>{result.calculated.detailed_verification_results.fixingResults?.tensileForce?.toFixed(9) || "N/A"} kN</div>
-                        
-                        <div className="font-medium">Compression Zone Length</div>
-                        <div>{result.calculated.detailed_verification_results.fixingResults?.tensileLoadResults?.compressionZoneLength?.toFixed(12) || "N/A"} mm</div>
-                      </div>
+                      {/* Check if steel fixing results are available */}
+                      {result.calculated.detailed_verification_results.fixingResults?.steelFixingResults ? (
+                        <div className="grid grid-cols-2 gap-2 pl-4">
+                          <div className="font-medium">Applied Shear (Fv,Ed)</div>
+                          <div>{result.calculated.detailed_verification_results.fixingResults.steelFixingResults.appliedShear?.toFixed(9) || "N/A"} kN</div>
+
+                          <div className="font-medium">Shear Capacity (Fv,Rd)</div>
+                          <div>{result.calculated.detailed_verification_results.fixingResults.steelFixingResults.shearCapacity?.toFixed(9) || "N/A"} kN</div>
+
+                          <div className="font-medium">Shear Utilization</div>
+                          <div>{((result.calculated.detailed_verification_results.fixingResults.steelFixingResults.shearUtilization || 0) * 100).toFixed(2)}%</div>
+
+                          <div className="font-medium">Applied Tension (Ft,Ed)</div>
+                          <div>{result.calculated.detailed_verification_results.fixingResults.steelFixingResults.appliedTension?.toFixed(9) || "N/A"} kN</div>
+
+                          <div className="font-medium">Tension Capacity (Ft,Rd)</div>
+                          <div>{result.calculated.detailed_verification_results.fixingResults.steelFixingResults.tensionCapacity?.toFixed(9) || "N/A"} kN</div>
+
+                          <div className="font-medium">Tension Utilization</div>
+                          <div>{((result.calculated.detailed_verification_results.fixingResults.steelFixingResults.tensionUtilization || 0) * 100).toFixed(2)}%</div>
+
+                          <div className="font-medium">Adjusted Tension Utilization</div>
+                          <div>{((result.calculated.detailed_verification_results.fixingResults.steelFixingResults.adjustedTensionUtilization || 0) * 100).toFixed(2)}%</div>
+
+                          <div className="font-medium">Combined Utilization (≤ 1.0)</div>
+                          <div className={`font-semibold ${(result.calculated.detailed_verification_results.fixingResults.steelFixingResults.combinedUtilization || 0) <= 1.0 ? 'text-green-600' : 'text-red-600'}`}>
+                            {result.calculated.detailed_verification_results.fixingResults.steelFixingResults.combinedUtilization?.toFixed(9) || "N/A"}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-2 gap-2 pl-4">
+                          <div className="font-medium">Applied Shear</div>
+                          <div>{result.calculated.detailed_verification_results.fixingResults?.appliedShear?.toFixed(9) || "N/A"} kN</div>
+
+                          <div className="font-medium">Applied Moment</div>
+                          <div>{result.calculated.detailed_verification_results.fixingResults?.appliedMoment?.toFixed(12) || "N/A"} kNm</div>
+
+                          <div className="font-medium">Tensile Force</div>
+                          <div>{result.calculated.detailed_verification_results.fixingResults?.tensileForce?.toFixed(9) || "N/A"} kN</div>
+
+                          <div className="font-medium">Compression Zone Length</div>
+                          <div>{result.calculated.detailed_verification_results.fixingResults?.tensileLoadResults?.compressionZoneLength?.toFixed(12) || "N/A"} mm</div>
+                        </div>
+                      )}
                     </div>
                     
                     <div className="space-y-2">

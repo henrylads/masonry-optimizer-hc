@@ -75,18 +75,36 @@ export const STEEL_FIXING_CAPACITIES: Record<string, SteelFixingCapacity> = {
 
 /**
  * Get steel fixing capacity based on section type and bolt size
- * I-Beam uses set screws, RHS/SHS use blind bolts
+ *
+ * Rules:
+ * - RHS/SHS: MUST use blind bolts (cannot access inside to tighten)
+ * - I-Beam: CAN use set screws OR blind bolts (both allowed, optimization chooses best)
  *
  * @param sectionType - Type of steel section
  * @param boltSize - Bolt size (M10, M12, M16)
+ * @param preferredMethod - Optional: force specific fixing method (for I-Beam testing both options)
  * @returns Steel fixing capacity specification
  */
 export function getSteelFixingCapacity(
   sectionType: SteelSectionType,
-  boltSize: SteelBoltSize
+  boltSize: SteelBoltSize,
+  preferredMethod?: 'SET_SCREW' | 'BLIND_BOLT'
 ): SteelFixingCapacity {
-  // I-Beam uses set screws, RHS/SHS use blind bolts
-  const fixingMethod = sectionType === 'I-BEAM' ? 'SET_SCREW' : 'BLIND_BOLT';
+  // RHS/SHS MUST use blind bolts (cannot access inside)
+  // I-Beam CAN use set screws OR blind bolts
+  let fixingMethod: 'SET_SCREW' | 'BLIND_BOLT';
+
+  if (sectionType === 'RHS' || sectionType === 'SHS') {
+    // RHS/SHS MUST use blind bolts
+    fixingMethod = 'BLIND_BOLT';
+  } else if (sectionType === 'I-BEAM') {
+    // I-Beam can use either - use preferred if specified, default to set screw
+    fixingMethod = preferredMethod || 'SET_SCREW';
+  } else {
+    // Default to blind bolt for unknown section types
+    fixingMethod = 'BLIND_BOLT';
+  }
+
   const key = `${fixingMethod}_${boltSize}`;
 
   const capacity = STEEL_FIXING_CAPACITIES[key];
