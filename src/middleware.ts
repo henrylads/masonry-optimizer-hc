@@ -2,8 +2,8 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
 export function middleware(request: NextRequest) {
-  // Temporary bypass for testing - remove this in production
-  const bypassAuth = process.env.BYPASS_AUTH === 'true' || true; // Force bypass for now
+  // Check if authentication should be bypassed (disabled by default for security)
+  const bypassAuth = process.env.BYPASS_AUTH === 'true';
 
   if (bypassAuth) {
     return NextResponse.next()
