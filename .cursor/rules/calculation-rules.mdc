@@ -1,0 +1,34 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+## Calculation Rules {#calculation-rules}
+
+Precision Requirements for Engineering Calculations
+
+1\. Floating-Point Precision:  
+\- All intermediate calculations must maintain full decimal precision  
+\- No rounding should occur until the final display of results  
+\- When working with very small numbers (\< 0.0001), use all available decimal places
+
+2\. Critical Variables:  
+\- Constants like 'a' in quadratic equations must be defined to at least 12 decimal places  
+\- Example: a \= 0.0000003968253968 (not 3.96825e-7)
+
+3\. Step-by-Step Verification:  
+\- Each intermediate calculation should be logged with at least 12 decimal places  
+\- For critical engineering values like forces, moments, and stresses, show values to at least 5 decimal places  
+\- For quadratic equations, explicitly show:  
+  \* Individual components (e.g., b², 4ac)  
+  \* Discriminant value (b²-4ac)  
+  \* Final result
+
+4\. Units and Conversions:  
+\- All unit conversions must maintain full precision  
+\- Document units at each calculation step
+
+5\. Validation Steps:  
+\- Include validation steps comparing intermediate values to known checkpoints  
+\- Flag any deviations larger than 0.00001 in engineering units
+

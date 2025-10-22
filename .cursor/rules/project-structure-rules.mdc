@@ -1,0 +1,38 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Project Structure Rules
+
+## Directory Structure
+All code must follow this structure:
+```
+masonry-optimizer/
+├── src/                # All source code
+│   ├── app/           # Next.js pages and API routes
+│   ├── types/         # TypeScript type definitions
+│   ├── data/          # Data management and lookups
+│   ├── calculations/  # Core calculation modules
+│   ├── components/    # React components
+│   └── utils/         # Utility functions
+├── docs/             # All documentation
+└── tests/            # Test files
+```
+
+## Key Rules
+
+1. **Source Code**
+   - All code MUST be in appropriate subdirectories of `src/`
+   - No source code outside `src/`
+   - No nested `src` directories
+
+2. **Types**
+   - All types MUST be in `src/types/`
+   - Each domain should have its own type file
+   - Export through `types/index.ts`
+
+3. **Genetic Algorithm**
+   - All genetic algorithm functions are within the src/app/calculations/geneticAlgorithm directory
+   - One index file is used to import each part of the genetic algorithm
+   - sub-directories include populationGeneration, fitnessScoring, selectionAndBreeding, and converganceAndStopping
