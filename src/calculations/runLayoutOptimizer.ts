@@ -23,9 +23,9 @@ import type {
  */
 export const STANDARD_LENGTH_TABLE: Record<number, number[]> = {
   500: [1490, 990],
-  475: [1415, 940, 465],
+  475: [1415, 940], // Removed 465mm - only has 1 bracket (below minimum of 2)
   450: [1340, 890],
-  425: [1275, 850, 425],
+  425: [1275, 850], // Removed 425mm - only has 1 bracket (below minimum of 2)
   400: [1190, 790],
   375: [1115, 740],
   350: [1390, 1040, 690],
@@ -80,7 +80,10 @@ export function getStandardLengths(
   const lengths: number[] = [];
   const maxBrackets = Math.floor((maxLength + gap) / bracketCentres);
 
-  for (let k = maxBrackets; k >= 1; k--) {
+  // Enforce minimum of 2 brackets for structural stability
+  const minBrackets = RUN_LAYOUT_CONSTANTS.MIN_BRACKETS_FOR_LONG_ANGLE;
+
+  for (let k = maxBrackets; k >= minBrackets; k--) {
     const length = k * bracketCentres - gap;
     if (length > 0 && length <= maxLength) {
       // Round to nearest 5mm increment
