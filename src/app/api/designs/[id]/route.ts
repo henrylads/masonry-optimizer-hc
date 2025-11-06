@@ -12,8 +12,13 @@ export async function GET(
     // TODO: Get userId from auth session
     const userId = 'test-user-id'
 
-    const design = await prisma.design.findUnique({
-      where: { id: params.id },
+    const design = await prisma.design.findFirst({
+      where: {
+        id: params.id,
+        project: {
+          userId: userId
+        }
+      },
       include: {
         project: true
       }
@@ -23,14 +28,6 @@ export async function GET(
       return NextResponse.json(
         { error: 'Design not found' },
         { status: 404 }
-      )
-    }
-
-    // Verify user owns the project
-    if (design.project.userId !== userId) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 403 }
       )
     }
 
