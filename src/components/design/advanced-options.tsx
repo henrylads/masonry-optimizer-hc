@@ -215,12 +215,15 @@ export function AdvancedOptions({ form, frameFixingType }: AdvancedOptionsProps)
                           form.setValue('load_position', loadPositions[value as keyof typeof loadPositions] || 1/3)
                         }
                         // Auto-update facade thickness based on material type
-                        const facadeThicknesses = {
-                          'brick': 102.5,
-                          'precast': 250,
-                          'stone': 150
+                        // Only auto-update if not using custom facade offsets
+                        if (!form.getValues('use_custom_facade_offsets')) {
+                          const facadeThicknesses = {
+                            'brick': 102.5,
+                            'precast': 250,
+                            'stone': 150
+                          }
+                          form.setValue('facade_thickness', facadeThicknesses[value as keyof typeof facadeThicknesses] || 102.5)
                         }
-                        form.setValue('facade_thickness', facadeThicknesses[value as keyof typeof facadeThicknesses] || 102.5)
                       }}
                       value={field.value}
                     >
@@ -830,7 +833,7 @@ export function AdvancedOptions({ form, frameFixingType }: AdvancedOptionsProps)
                       form.setValue("enable_angle_extension", enableExtension)
 
                       // Set default value for max_allowable_bracket_extension when enabling
-                      if (enableExtension && !form.getValues("max_allowable_bracket_extension")) {
+                      if (enableExtension && form.getValues("max_allowable_bracket_extension") == null) {
                         form.setValue("max_allowable_bracket_extension", -200)
                       }
                     }
