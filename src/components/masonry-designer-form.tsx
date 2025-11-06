@@ -45,12 +45,19 @@ import { CoreFields } from '@/components/design/core-fields'
 import { AdvancedOptions } from '@/components/design/advanced-options'
 import { InlineDensityCalculator } from '@/components/design/inline-density-calculator'
 
+// Import autosave hook
+import { useDesignAutosave } from '@/hooks/use-design-autosave'
+
 
 interface MasonryDesignerFormProps {
+  designId?: string | null
+  projectId?: string
   onTestSubmit?: (values: z.infer<typeof formSchema>) => void;
 }
 
 export default function MasonryDesignerForm({
+  designId,
+  projectId,
   onTestSubmit
 }: MasonryDesignerFormProps) {
   // AI Tools hook for handling AI-generated optimization results
@@ -186,6 +193,13 @@ export default function MasonryDesignerForm({
       custom_steel_height: 127,
       steel_bolt_size: 'all',
     },
+  })
+
+  // Use autosave hook when design context is provided
+  useDesignAutosave({
+    designId: designId || null,
+    projectId: projectId || '',
+    form
   })
 
   // Calculate dynamic fixing position constraints based on frame type

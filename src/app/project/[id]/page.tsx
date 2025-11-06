@@ -9,6 +9,7 @@ import { CreateDesignInput } from '@/types/design-types'
 import { AuthHeader } from '@/components/auth-header'
 import { MainNavigation } from '@/components/main-navigation'
 import { Button } from '@/components/ui/button'
+import MasonryDesignerForm from '@/components/masonry-designer-form'
 
 export default function ProjectPage() {
   const params = useParams()
@@ -52,7 +53,7 @@ export default function ProjectPage() {
   return (
     <div className="min-h-screen flex flex-col">
       <AuthHeader />
-      <MainNavigation />
+      <MainNavigation hideNavTabs />
 
       <div className="flex-1 flex">
         <ProjectSidebar
@@ -64,7 +65,7 @@ export default function ProjectPage() {
           onDeleteDesign={handleDeleteDesign}
         />
 
-        <main className="flex-1 p-8">
+        <main className="flex-1 p-8 overflow-auto">
           {!activeDesignId ? (
             <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
               <h2 className="text-2xl font-bold mb-4">No design selected</h2>
@@ -76,11 +77,10 @@ export default function ProjectPage() {
               </Button>
             </div>
           ) : (
-            <div>
-              <p className="text-muted-foreground">
-                Design form will go here (Task 6)
-              </p>
-            </div>
+            <MasonryDesignerForm
+              designId={activeDesignId}
+              projectId={projectId}
+            />
           )}
         </main>
       </div>
