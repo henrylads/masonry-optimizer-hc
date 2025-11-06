@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -15,6 +15,7 @@ import type {
   BrickDensityResults,
   LineLoadResults,
 } from '@/types/masonryDensity';
+import { cn } from '@/lib/utils';
 
 const DEFAULT_BRICK_LENGTH = 225; // mm
 const DEFAULT_BRICK_WIDTH = 75; // mm
@@ -23,7 +24,15 @@ const DEFAULT_MORTAR_DENSITY = 2000; // kg/m3
 const DEFAULT_NUMBER_OF_REVEALS = 2;
 const DEFAULT_REVEAL_LENGTH = 215; // mm
 
-export default function MasonryDensityCalculator() {
+interface MasonryDensityCalculatorProps {
+  onCalculate?: (result: number) => void;
+  compact?: boolean;
+}
+
+export default function MasonryDensityCalculator({
+  onCalculate,
+  compact = false
+}: MasonryDensityCalculatorProps = {}) {
   const router = useRouter();
 
   // Brick Density Inputs
@@ -81,6 +90,13 @@ export default function MasonryDensityCalculator() {
     setLineLoadResults(lineResults);
   };
 
+  // Trigger callback when load is calculated
+  useEffect(() => {
+    if (lineLoadResults && onCalculate) {
+      onCalculate(lineLoadResults.loadingPerMeter);
+    }
+  }, [lineLoadResults, onCalculate]);
+
   const handleUseInDesigner = () => {
     if (lineLoadResults) {
       // Store the loading value in localStorage
@@ -91,13 +107,17 @@ export default function MasonryDensityCalculator() {
   };
 
   return (
-    <div className="container mx-auto py-8 space-y-6">
-      <div className="space-y-2">
-        <h1 className="text-3xl font-bold">Masonry Density Calculator</h1>
-        <p className="text-muted-foreground">
-          Calculate brick density and loading on piers for masonry support systems
-        </p>
-      </div>
+    <div className={cn(
+      compact ? "space-y-4" : "container mx-auto py-8 space-y-6"
+    )}>
+      {!compact && (
+        <div className="space-y-2">
+          <h1 className="text-3xl font-bold">Masonry Density Calculator</h1>
+          <p className="text-muted-foreground">
+            Calculate brick density and loading on piers for masonry support systems
+          </p>
+        </div>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Brick Density Section */}
@@ -307,19 +327,23 @@ export default function MasonryDensityCalculator() {
                 <div className="font-mono font-semibold text-lg">{lineLoadResults.loadingPerMeter.toFixed(5)} kN/m</div>
               </div>
 
-              <Separator />
+              {!compact && (
+                <>
+                  <Separator />
 
-              <Button
-                onClick={handleUseInDesigner}
-                className="w-full"
-                variant="default"
-              >
-                Use in Support Designer
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-              <p className="text-xs text-muted-foreground text-center">
-                Transfer the loading value to the Support Designer as the characteristic load
-              </p>
+                  <Button
+                    onClick={handleUseInDesigner}
+                    className="w-full"
+                    variant="default"
+                  >
+                    Use in Support Designer
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                  <p className="text-xs text-muted-foreground text-center">
+                    Transfer the loading value to the Support Designer as the characteristic load
+                  </p>
+                </>
+              )}
             </CardContent>
           </Card>
         </div>
