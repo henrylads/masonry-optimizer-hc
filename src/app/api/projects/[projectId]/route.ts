@@ -3,10 +3,10 @@ import { prisma } from '@/lib/prisma'
 import { updateProjectSchema } from '@/types/project-types'
 import { ZodError } from 'zod'
 
-// GET /api/projects/[id] - Get single project
+// GET /api/projects/[projectId] - Get single project
 export async function GET(
   _request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: { projectId: string } }
 ) {
   try {
     // TODO: Get userId from auth session
@@ -14,7 +14,7 @@ export async function GET(
 
     const project = await prisma.project.findUnique({
       where: {
-        id: params.id,
+        id: params.projectId,
         userId: userId // Verify ownership
       },
       include: {
@@ -41,10 +41,10 @@ export async function GET(
   }
 }
 
-// PATCH /api/projects/[id] - Update project
+// PATCH /api/projects/[projectId] - Update project
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: { projectId: string } }
 ) {
   try {
     const body = await request.json()
@@ -57,7 +57,7 @@ export async function PATCH(
 
     // First verify the project belongs to the user
     const existingProject = await prisma.project.findUnique({
-      where: { id: params.id },
+      where: { id: params.projectId },
       select: { userId: true }
     })
 
@@ -76,7 +76,7 @@ export async function PATCH(
     }
 
     const project = await prisma.project.update({
-      where: { id: params.id },
+      where: { id: params.projectId },
       data: {
         ...validatedData,
         updatedAt: new Date()
@@ -99,10 +99,10 @@ export async function PATCH(
   }
 }
 
-// DELETE /api/projects/[id] - Delete project
+// DELETE /api/projects/[projectId] - Delete project
 export async function DELETE(
   _request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: { projectId: string } }
 ) {
   try {
     // TODO: Get userId from auth session
@@ -110,7 +110,7 @@ export async function DELETE(
 
     // First verify the project belongs to the user
     const existingProject = await prisma.project.findUnique({
-      where: { id: params.id },
+      where: { id: params.projectId },
       select: { userId: true }
     })
 
@@ -129,7 +129,7 @@ export async function DELETE(
     }
 
     await prisma.project.delete({
-      where: { id: params.id }
+      where: { id: params.projectId }
     })
 
     return NextResponse.json({ success: true })
