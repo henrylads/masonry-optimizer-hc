@@ -45,8 +45,8 @@ export function CoreFields({ form, onOpenDensityCalculator }: CoreFieldsProps) {
                   type="number"
                   step="0.5"
                   placeholder="e.g., 100"
-                  {...field}
-                  onChange={(e) => field.onChange(parseFloat(e.target.value))}
+                  value={field.value ?? ''}
+                  onChange={(e) => field.onChange(Number(e.target.value) || 0)}
                 />
               </FormControl>
               <FormDescription>
@@ -99,8 +99,8 @@ export function CoreFields({ form, onOpenDensityCalculator }: CoreFieldsProps) {
                   <Input
                     type="number"
                     placeholder="e.g., 225"
-                    {...field}
-                    onChange={(e) => field.onChange(parseFloat(e.target.value))}
+                    value={field.value ?? ''}
+                    onChange={(e) => field.onChange(Number(e.target.value) || 0)}
                   />
                 </FormControl>
                 <FormDescription>
@@ -123,8 +123,8 @@ export function CoreFields({ form, onOpenDensityCalculator }: CoreFieldsProps) {
                 <Input
                   type="number"
                   placeholder="e.g., 0"
-                  {...field}
-                  onChange={(e) => field.onChange(parseFloat(e.target.value))}
+                  value={field.value ?? ''}
+                  onChange={(e) => field.onChange(Number(e.target.value) || 0)}
                 />
               </FormControl>
               <FormDescription>
@@ -148,8 +148,8 @@ export function CoreFields({ form, onOpenDensityCalculator }: CoreFieldsProps) {
                     type="number"
                     step="0.1"
                     placeholder="e.g., 5.5"
-                    {...field}
-                    onChange={(e) => field.onChange(parseFloat(e.target.value))}
+                    value={field.value ?? ''}
+                    onChange={(e) => field.onChange(Number(e.target.value) || 0)}
                   />
                 </FormControl>
                 {onOpenDensityCalculator && (
