@@ -6,15 +6,16 @@ import { ZodError } from 'zod'
 // GET /api/designs/[id] - Get single design
 export async function GET(
   _request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // TODO: Get userId from auth session
     const userId = 'test-user-id'
+    const { id } = await params
 
     const design = await prisma.design.findFirst({
       where: {
-        id: params.id,
+        id: id,
         project: {
           userId: userId
         }
@@ -44,7 +45,7 @@ export async function GET(
 // PATCH /api/designs/[id] - Update design
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const body = await request.json()
@@ -54,10 +55,11 @@ export async function PATCH(
 
     // TODO: Get userId from auth session
     const userId = 'test-user-id'
+    const { id } = await params
 
     // First verify the design belongs to a project owned by the user
     const existingDesign = await prisma.design.findUnique({
-      where: { id: params.id },
+      where: { id: id },
       include: {
         project: {
           select: { userId: true }
@@ -80,7 +82,7 @@ export async function PATCH(
     }
 
     const design = await prisma.design.update({
-      where: { id: params.id },
+      where: { id: id },
       data: {
         ...validatedData,
         updatedAt: new Date()
@@ -106,15 +108,16 @@ export async function PATCH(
 // DELETE /api/designs/[id] - Delete design
 export async function DELETE(
   _request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // TODO: Get userId from auth session
     const userId = 'test-user-id'
+    const { id } = await params
 
     // First verify the design belongs to a project owned by the user
     const existingDesign = await prisma.design.findUnique({
-      where: { id: params.id },
+      where: { id: id },
       include: {
         project: {
           select: { userId: true }
@@ -137,7 +140,7 @@ export async function DELETE(
     }
 
     await prisma.design.delete({
-      where: { id: params.id }
+      where: { id: id }
     })
 
     return NextResponse.json({ success: true })

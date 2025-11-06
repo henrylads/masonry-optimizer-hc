@@ -6,16 +6,17 @@ import { ZodError } from 'zod'
 // GET /api/projects/[projectId]/designs - List designs in project
 export async function GET(
   _request: NextRequest,
-  { params }: { params: { projectId: string } }
+  { params }: { params: Promise<{ projectId: string }> }
 ) {
   try {
     // TODO: Get userId from auth session
     const userId = 'test-user-id'
+    const { projectId } = await params
 
     // First verify the project belongs to the user
     const project = await prisma.project.findUnique({
       where: {
-        id: params.projectId,
+        id: projectId,
         userId: userId // Verify ownership
       },
       select: { id: true }
@@ -29,7 +30,7 @@ export async function GET(
     }
 
     const designs = await prisma.design.findMany({
-      where: { projectId: params.projectId },
+      where: { projectId: projectId },
       orderBy: { updatedAt: 'desc' }
     })
 
@@ -46,7 +47,7 @@ export async function GET(
 // POST /api/projects/[projectId]/designs - Create new design
 export async function POST(
   request: NextRequest,
-  { params }: { params: { projectId: string } }
+  { params }: { params: Promise<{ projectId: string }> }
 ) {
   try {
     const body = await request.json()
@@ -56,11 +57,12 @@ export async function POST(
 
     // TODO: Get userId from auth session
     const userId = 'test-user-id'
+    const { projectId } = await params
 
     // First verify the project belongs to the user
     const project = await prisma.project.findUnique({
       where: {
-        id: params.projectId,
+        id: projectId,
         userId: userId // Verify ownership
       },
       select: { id: true }
@@ -106,7 +108,7 @@ export async function POST(
 
     const design = await prisma.design.create({
       data: {
-        projectId: params.projectId,
+        projectId: projectId,
         name: validatedData.name,
         formParameters,
       }
