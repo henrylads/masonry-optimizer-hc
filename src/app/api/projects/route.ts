@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { CreateProjectInput } from '@/types/project-types'
+import { createProjectSchema } from '@/types/project-types'
+import { ZodError } from 'zod'
 
 // GET /api/projects - List all projects for user
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     // TODO: Get userId from auth session
     // For now, hardcode a test user ID
@@ -21,7 +22,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ projects })
   } catch (error) {
-    console.error('Error fetching projects:', error)
+    console.error('Error fetching projects:', error instanceof Error ? error.message : 'Unknown error')
     return NextResponse.json(
       { error: 'Failed to fetch projects' },
       { status: 500 }
@@ -32,7 +33,10 @@ export async function GET(request: NextRequest) {
 // POST /api/projects - Create new project
 export async function POST(request: NextRequest) {
   try {
-    const body: CreateProjectInput = await request.json()
+    const body = await request.json()
+
+    // Validate input with Zod schema
+    const validatedData = createProjectSchema.parse(body)
 
     // TODO: Get userId from auth session
     const userId = 'test-user-id'
@@ -40,16 +44,22 @@ export async function POST(request: NextRequest) {
     const project = await prisma.project.create({
       data: {
         userId,
-        name: body.name,
-        description: body.description || null,
-        stage: body.stage,
-        totalValue: body.totalValue || null,
+        name: validatedData.name,
+        description: validatedData.description || null,
+        stage: validatedData.stage,
+        totalValue: validatedData.totalValue || null,
       }
     })
 
     return NextResponse.json({ project }, { status: 201 })
   } catch (error) {
-    console.error('Error creating project:', error)
+    if (error instanceof ZodError) {
+      return NextResponse.json(
+        { error: 'Validation failed', details: error.errors },
+        { status: 400 }
+      )
+    }
+    console.error('Error creating project:', error instanceof Error ? error.message : 'Unknown error')
     return NextResponse.json(
       { error: 'Failed to create project' },
       { status: 500 }
