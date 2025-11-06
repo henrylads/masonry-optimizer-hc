@@ -1,0 +1,46 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String    @id @default(cuid())
+  email     String    @unique
+  name      String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  projects  Project[]
+}
+
+model Project {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name         String
+  description  String?  @db.Text
+  stage        String   @default("planning") // "planning" or "contract"
+  totalValue   Decimal? @db.Decimal(12, 2)
+  enrichedData Json?    // {location, architect, completionDate, buildingType}
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  designs      Design[]
+
+  @@index([userId])
+}
+
+model Design {
+  id                  String   @id @default(cuid())
+  projectId           String
+  project             Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name                String
+  formParameters      Json     // All form field values
+  calculationResults  Json?    // Optimization results, run layout, verification
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@index([projectId])
+}
