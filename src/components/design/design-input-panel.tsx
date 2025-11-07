@@ -26,7 +26,7 @@ export function DesignInputPanel({
   const hasErrors = Object.keys(form.formState.errors).length > 0
 
   return (
-    <div className="w-80 h-full border-r bg-white overflow-y-auto">
+    <div className="h-full overflow-y-auto">
       <div className="p-4 space-y-6">
         {/* Top Run Optimization Button */}
         <Button

@@ -35,6 +35,8 @@ export default function DesignPage() {
   const [progress, setProgress] = useState(0)
   const [rightPanelOpen, setRightPanelOpen] = useState(true)
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'error'>('saved')
+  const [leftPanelWidth, setLeftPanelWidth] = useState(320)
+  const [isResizing, setIsResizing] = useState(false)
 
   // Form
   const form = useForm<z.infer<typeof formSchema>>({
@@ -106,6 +108,22 @@ export default function DesignPage() {
   useEffect(() => {
     localStorage.setItem('design-right-panel-open', String(rightPanelOpen))
   }, [rightPanelOpen])
+
+  // Restore left panel width from localStorage
+  useEffect(() => {
+    const savedWidth = localStorage.getItem('design-left-panel-width')
+    if (savedWidth !== null) {
+      const width = parseInt(savedWidth, 10)
+      if (width >= 280 && width <= 600) {
+        setLeftPanelWidth(width)
+      }
+    }
+  }, [])
+
+  // Save left panel width to localStorage
+  useEffect(() => {
+    localStorage.setItem('design-left-panel-width', String(leftPanelWidth))
+  }, [leftPanelWidth])
 
   // Handle optimization
   const handleOptimize = useCallback(async () => {
@@ -214,6 +232,46 @@ export default function DesignPage() {
     }
   }, [designId])
 
+  // Handle left panel resize
+  const handleMouseDown = useCallback(() => {
+    setIsResizing(true)
+  }, [])
+
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    if (!isResizing) return
+
+    const newWidth = e.clientX
+    // Constrain width between 280px and 600px
+    const constrainedWidth = Math.max(280, Math.min(600, newWidth))
+    setLeftPanelWidth(constrainedWidth)
+  }, [isResizing])
+
+  const handleMouseUp = useCallback(() => {
+    setIsResizing(false)
+  }, [])
+
+  // Add/remove mouse event listeners for resizing
+  useEffect(() => {
+    if (isResizing) {
+      document.addEventListener('mousemove', handleMouseMove)
+      document.addEventListener('mouseup', handleMouseUp)
+      document.body.style.cursor = 'col-resize'
+      document.body.style.userSelect = 'none'
+    } else {
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+    }
+  }, [isResizing, handleMouseMove, handleMouseUp])
+
   if (isLoading || !design || !project) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -236,13 +294,26 @@ export default function DesignPage() {
       />
 
       <div className="flex-1 flex overflow-hidden">
-        <Form {...form}>
-          <DesignInputPanel
-            form={form}
-            onOptimize={handleOptimize}
-            isOptimizing={isOptimizing}
-          />
-        </Form>
+        <div
+          className="h-full border-r bg-white flex-shrink-0 relative"
+          style={{ width: `${leftPanelWidth}px` }}
+        >
+          <Form {...form}>
+            <DesignInputPanel
+              form={form}
+              onOptimize={handleOptimize}
+              isOptimizing={isOptimizing}
+            />
+          </Form>
+
+          {/* Resize Handle */}
+          <div
+            onMouseDown={handleMouseDown}
+            className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-500/50 transition-colors group"
+          >
+            <div className="absolute right-0 top-0 bottom-0 w-4 -mr-2" />
+          </div>
+        </div>
 
         <DesignViewerPanel
           optimizationResult={optimizationResult}
