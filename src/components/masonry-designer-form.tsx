@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label"
 import { Slider } from "@/components/ui/slider"
 import { ClaritiLogo } from "@/components/clariti-logo"
 import { ResultsDisplay } from "@/components/results-display"
+import { IntegratedResults } from "@/components/design/integrated-results"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
@@ -907,10 +908,14 @@ export default function MasonryDesignerForm({
                   </TabsContent>
                   <TabsContent value="results">
                     {combinedResult && (
-                      <ResultsDisplay
+                      <IntegratedResults
                         result={combinedResult}
                         history={generationHistory}
                         designInputs={form.getValues()}
+                        onCompare={() => {
+                          // TODO: Implement design comparison modal
+                          console.log('Compare designs')
+                        }}
                       />
                     )}
                   </TabsContent>
@@ -1026,10 +1031,14 @@ export default function MasonryDesignerForm({
 
                 {/* Show actual results when available */}
                 {combinedResult && (
-                  <ResultsDisplay
+                  <IntegratedResults
                     result={combinedResult}
                     history={generationHistory}
                     designInputs={form.getValues()}
+                    onCompare={() => {
+                      // TODO: Implement design comparison modal
+                      console.log('Compare designs')
+                    }}
                   />
                 )}
               </CardContent>
