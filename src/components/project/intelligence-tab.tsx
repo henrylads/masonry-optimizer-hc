@@ -24,15 +24,18 @@ export function IntelligenceTab() {
       {/* Disabled search interface */}
       <div className="mb-8">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" aria-hidden="true" />
           <Input
             placeholder="Ask questions about this project..."
             disabled
             className="pl-10 h-12 text-base cursor-not-allowed opacity-60"
             title="Perplexity integration coming soon"
+            aria-label="Project intelligence search (disabled)"
+            aria-disabled="true"
+            aria-describedby="search-status-message"
           />
         </div>
-        <p className="text-sm text-muted-foreground mt-2 text-center">
+        <p id="search-status-message" className="text-sm text-muted-foreground mt-2 text-center">
           Search functionality will be available once Perplexity integration is complete
         </p>
       </div>
@@ -41,13 +44,13 @@ export function IntelligenceTab() {
       <Card className="bg-muted/30">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Brain className="h-5 w-5" />
+            <Brain className="h-5 w-5" aria-hidden="true" />
             Upcoming Features
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-start gap-3">
-            <BookOpen className="h-5 w-5 text-muted-foreground mt-0.5" />
+            <BookOpen className="h-5 w-5 text-muted-foreground mt-0.5" aria-hidden="true" />
             <div>
               <p className="font-medium">Research building codes and regulations</p>
               <p className="text-sm text-muted-foreground">
@@ -57,7 +60,7 @@ export function IntelligenceTab() {
           </div>
 
           <div className="flex items-start gap-3">
-            <TrendingUp className="h-5 w-5 text-muted-foreground mt-0.5" />
+            <TrendingUp className="h-5 w-5 text-muted-foreground mt-0.5" aria-hidden="true" />
             <div>
               <p className="font-medium">Find similar projects and case studies</p>
               <p className="text-sm text-muted-foreground">
@@ -67,7 +70,7 @@ export function IntelligenceTab() {
           </div>
 
           <div className="flex items-start gap-3">
-            <Search className="h-5 w-5 text-muted-foreground mt-0.5" />
+            <Search className="h-5 w-5 text-muted-foreground mt-0.5" aria-hidden="true" />
             <div>
               <p className="font-medium">Get real-time construction industry insights</p>
               <p className="text-sm text-muted-foreground">
@@ -77,7 +80,7 @@ export function IntelligenceTab() {
           </div>
 
           <div className="flex items-start gap-3">
-            <HelpCircle className="h-5 w-5 text-muted-foreground mt-0.5" />
+            <HelpCircle className="h-5 w-5 text-muted-foreground mt-0.5" aria-hidden="true" />
             <div>
               <p className="font-medium">Answer technical questions about materials and methods</p>
               <p className="text-sm text-muted-foreground">
