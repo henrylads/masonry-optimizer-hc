@@ -118,8 +118,17 @@ export default function DesignPage() {
     setSelectedAlternativeIndex(0)
 
     try {
-      // Run optimization (simplified - actual implementation would call API)
-      const result = await runBruteForce(values, (p) => setProgress(p))
+      // Run optimization with proper config structure
+      const output = await runBruteForce({
+        maxGenerations: 1000,
+        designInputs: values,
+        onProgress: (generation, maxGenerations) => {
+          setProgress((generation / maxGenerations) * 100)
+        }
+      })
+
+      // Extract result from GeneticAlgorithmOutput
+      const result = output.result
 
       // For now, create mock alternatives (replace with actual algorithm results)
       const mockAlternatives = [result]
