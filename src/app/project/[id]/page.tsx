@@ -2,18 +2,26 @@
 
 import { useState } from 'react'
 import { useParams } from 'next/navigation'
-import { ProjectSidebar } from '@/components/project/project-sidebar'
+import { AppSidebar } from '@/components/app-sidebar'
+import { ProjectHeader } from '@/components/project/project-header'
+import { DesignsTab } from '@/components/project/designs-tab'
+import { IntelligenceTab } from '@/components/project/intelligence-tab'
 import { CreateDesignModal } from '@/components/project/create-design-modal'
 import { useProject } from '@/hooks/use-project'
 import { CreateDesignInput } from '@/types/design-types'
 import { AuthHeader } from '@/components/auth-header'
 import { MainNavigation } from '@/components/main-navigation'
 import { Button } from '@/components/ui/button'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { ChevronLeft } from 'lucide-react'
 import MasonryDesignerForm from '@/components/masonry-designer-form'
+import { useRouter } from 'next/navigation'
 
 export default function ProjectPage() {
   const params = useParams()
+  const router = useRouter()
   const projectId = params.id as string
+  const [activeTab, setActiveTab] = useState<'designs' | 'intelligence'>('designs')
   const [activeDesignId, setActiveDesignId] = useState<string | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
   const { project, designs, isLoading, mutate } = useProject(projectId)
@@ -42,6 +50,17 @@ export default function ProjectPage() {
     mutate()
   }
 
+  const handleDeleteProject = async () => {
+    if (!confirm('Are you sure you want to delete this project? This cannot be undone.')) return
+
+    await fetch(`/api/projects/${projectId}`, { method: 'DELETE' })
+    router.push('/dashboard')
+  }
+
+  const handleBackToDesigns = () => {
+    setActiveDesignId(null)
+  }
+
   if (isLoading) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>
   }
@@ -50,38 +69,65 @@ export default function ProjectPage() {
     return <div className="min-h-screen flex items-center justify-center">Project not found</div>
   }
 
+  const showDesignForm = activeDesignId !== null && activeTab === 'designs'
+
   return (
     <div className="min-h-screen flex flex-col">
       <AuthHeader />
       <MainNavigation hideNavTabs />
 
       <div className="flex-1 flex">
-        <ProjectSidebar
-          project={project}
-          designs={designs}
-          activeDesignId={activeDesignId}
-          onSelectDesign={setActiveDesignId}
-          onNewDesign={() => setModalOpen(true)}
-          onDeleteDesign={handleDeleteDesign}
-        />
+        <AppSidebar />
 
         <main className="flex-1 p-8 overflow-auto">
-          {!activeDesignId ? (
-            <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
-              <h2 className="text-2xl font-bold mb-4">No design selected</h2>
-              <p className="text-muted-foreground mb-6">
-                Create a new design to start optimizing masonry support systems for this project.
-              </p>
-              <Button onClick={() => setModalOpen(true)}>
-                Create First Design
-              </Button>
-            </div>
-          ) : (
-            <MasonryDesignerForm
-              designId={activeDesignId}
-              projectId={projectId}
-            />
-          )}
+          {/* Project Header */}
+          <ProjectHeader
+            project={project}
+            onDelete={handleDeleteProject}
+          />
+
+          {/* Tabs Navigation */}
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'designs' | 'intelligence')}>
+            <TabsList className="mb-6">
+              <TabsTrigger value="designs">Designs</TabsTrigger>
+              <TabsTrigger value="intelligence">Intelligence</TabsTrigger>
+            </TabsList>
+
+            {/* Designs Tab Content */}
+            <TabsContent value="designs">
+              {showDesignForm ? (
+                <div>
+                  {/* Back button */}
+                  <Button
+                    variant="ghost"
+                    onClick={handleBackToDesigns}
+                    className="mb-4"
+                  >
+                    <ChevronLeft className="mr-2 h-4 w-4" />
+                    Back to Designs
+                  </Button>
+
+                  {/* Design Form */}
+                  <MasonryDesignerForm
+                    designId={activeDesignId}
+                    projectId={projectId}
+                  />
+                </div>
+              ) : (
+                <DesignsTab
+                  designs={designs}
+                  onOpenDesign={setActiveDesignId}
+                  onNewDesign={() => setModalOpen(true)}
+                  onDeleteDesign={handleDeleteDesign}
+                />
+              )}
+            </TabsContent>
+
+            {/* Intelligence Tab Content */}
+            <TabsContent value="intelligence">
+              <IntelligenceTab />
+            </TabsContent>
+          </Tabs>
         </main>
       </div>
 
