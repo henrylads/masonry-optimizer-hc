@@ -7,16 +7,16 @@ import { DesignCard } from './design-card'
 
 interface DesignsTabProps {
   designs: Design[]
-  onOpenDesign: (designId: string) => void
   onNewDesign: () => void
   onDeleteDesign: (designId: string) => void
+  projectId: string
 }
 
 export function DesignsTab({
   designs,
-  onOpenDesign,
   onNewDesign,
-  onDeleteDesign
+  onDeleteDesign,
+  projectId
 }: DesignsTabProps) {
   if (designs.length === 0) {
     return (
@@ -59,7 +59,7 @@ export function DesignsTab({
           <DesignCard
             key={design.id}
             design={design}
-            onOpen={onOpenDesign}
+            projectId={projectId}
             onDelete={onDeleteDesign}
           />
         ))}
