@@ -54,7 +54,21 @@ export function DesignViewerPanel({
 
       {/* 3D Viewer */}
       {optimizationResult && (
-        <ShapeDiver />
+        <ShapeDiver
+          initialParameters={{
+            support_type: optimizationResult.genetic.bracket_type === 'Inverted' ? 'I' : 'S',
+            bracket_thickness: optimizationResult.genetic.bracket_thickness,
+            bracket_height: optimizationResult.genetic.bracket_height || optimizationResult.calculated.bracket_height,
+            bracket_spacing: optimizationResult.genetic.bracket_centres,
+            profile_thickness: optimizationResult.genetic.angle_thickness,
+            profile_height: optimizationResult.genetic.vertical_leg,
+            profile_length: optimizationResult.genetic.horizontal_leg,
+            bolt_diameter: optimizationResult.genetic.bolt_diameter,
+            slab_thickness: optimizationResult.calculated.slab_thickness,
+            fixing_position: optimizationResult.genetic.fixing_position || optimizationResult.calculated.optimized_fixing_position,
+            dim_d: optimizationResult.genetic.dim_d || optimizationResult.calculated.dim_d
+          }}
+        />
       )}
     </div>
   )
