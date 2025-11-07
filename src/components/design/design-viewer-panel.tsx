@@ -33,6 +33,9 @@ export function DesignViewerPanel({
     // Check if there's a notch (notch_height and notch_depth > 0)
     const hasNotch = (optimizationResult.genetic.notch_height > 0 && optimizationResult.genetic.notch_depth > 0)
 
+    const dimDValue = optimizationResult.genetic.dim_d || optimizationResult.calculated.dim_d
+    const dimDOverride = dimDValue !== undefined && dimDValue > 0
+
     const baseParams = {
       support_type: optimizationResult.genetic.bracket_type === 'Inverted' ? 'I' : 'S',
       bracket_thickness: optimizationResult.genetic.bracket_thickness,
@@ -42,10 +45,11 @@ export function DesignViewerPanel({
       profile_thickness: optimizationResult.genetic.angle_thickness,
       profile_height: optimizationResult.genetic.vertical_leg,
       profile_length: optimizationResult.genetic.horizontal_leg,
-      bolt_diameter: optimizationResult.genetic.bolt_diameter,
+      fixing_diameter: optimizationResult.genetic.bolt_diameter,
       slab_thickness: optimizationResult.calculated.slab_thickness,
       fixing_position: optimizationResult.genetic.fixing_position || optimizationResult.calculated.optimized_fixing_position,
-      dim_d: optimizationResult.genetic.dim_d || optimizationResult.calculated.dim_d,
+      dim_d: dimDOverride,
+      dim_d_value: dimDValue || 0,
       back_notch_option: hasNotch
     }
 
