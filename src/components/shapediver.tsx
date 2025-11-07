@@ -433,17 +433,19 @@ export const ShapeDiverCard: React.FC<ShapeDiverCardProps> = ({
     }, [initialParameters]); // Removed extractOutputs to prevent frequent session recreation
 
     return (
-        <Card className={`h-full ${className}`}>
-            <CardHeader>
-                <CardTitle className="text-xl font-semibold text-cfs-dark">{title}</CardTitle>
-            </CardHeader>
-            <CardContent className="h-[calc(100%-4rem)] flex items-center justify-center">
-                <canvas 
+        <Card className={`h-full ${className || ''}`}>
+            {title && (
+                <CardHeader>
+                    <CardTitle className="text-xl font-semibold text-cfs-dark">{title}</CardTitle>
+                </CardHeader>
+            )}
+            <CardContent className={title ? "h-[calc(100%-4rem)] flex items-center justify-center" : "h-full flex items-center justify-center p-0"}>
+                <canvas
                     ref={canvasRef}
-                    style={{ 
+                    style={{
                         width: '100%',
                         height: '100%',
-                        backgroundColor: 'transparent' 
+                        backgroundColor: 'transparent'
                     }}
                 />
             </CardContent>

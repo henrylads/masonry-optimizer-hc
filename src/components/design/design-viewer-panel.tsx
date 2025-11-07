@@ -89,7 +89,13 @@ export function DesignViewerPanel({
 
       {/* 3D Viewer */}
       {shapeDiverParams && (
-        <ShapeDiver initialParameters={shapeDiverParams} />
+        <div className="absolute inset-0">
+          <ShapeDiver
+            initialParameters={shapeDiverParams}
+            title=""
+            className="border-0 shadow-none"
+          />
+        </div>
       )}
     </div>
   )
