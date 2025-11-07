@@ -112,12 +112,13 @@ export default function ProjectPage() {
       <div className="flex-1 flex">
         <AppSidebar />
 
-        <main className="flex-1 p-8 overflow-auto">
-          {/* Project Header */}
-          <ProjectHeader
-            project={project}
-            onDelete={handleDeleteProject}
-          />
+        <div className="flex-1 overflow-auto">
+          <div className="container mx-auto py-8 px-4">
+            {/* Project Header */}
+            <ProjectHeader
+              project={project}
+              onDelete={handleDeleteProject}
+            />
 
           {/* Tabs Navigation */}
           <Tabs value={activeTab} onValueChange={(v) => {
@@ -165,7 +166,8 @@ export default function ProjectPage() {
               <IntelligenceTab />
             </TabsContent>
           </Tabs>
-        </main>
+          </div>
+        </div>
       </div>
 
       <CreateDesignModal
