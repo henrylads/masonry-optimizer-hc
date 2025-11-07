@@ -32,7 +32,10 @@ export function AlternativesTab({
 
       {alternatives.map((alt, index) => {
         const isSelected = index === selectedIndex
-        const allPassed = alt.verificationResults?.allChecksPassed ?? false
+        const allPassed = alt.calculated.detailed_verification_results?.passes ??
+                          alt.calculated.all_checks_pass ??
+                          false
+        const totalWeight = alt.calculated.weights?.totalWeight
 
         return (
           <button
@@ -57,9 +60,11 @@ export function AlternativesTab({
               </div>
 
               <div className="flex items-center gap-3">
-                <span className="text-sm font-semibold">
-                  {alt.totalWeight?.toFixed(1)} kg
-                </span>
+                {totalWeight !== undefined && (
+                  <span className="text-sm font-semibold">
+                    {totalWeight.toFixed(1)} kg/m
+                  </span>
+                )}
                 {allPassed ? (
                   <CheckCircle className="h-4 w-4 text-green-500" />
                 ) : (

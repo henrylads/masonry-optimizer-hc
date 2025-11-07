@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { ChevronRight, CheckCircle, XCircle, Weight, DollarSign } from 'lucide-react'
+import { ChevronRight, CheckCircle, XCircle, Weight } from 'lucide-react'
 import type { OptimisationResult } from '@/types/optimization-types'
 
 interface ResultsTabProps {
@@ -13,7 +13,10 @@ export function ResultsTab({ result }: ResultsTabProps) {
   const [parametersExpanded, setParametersExpanded] = useState(false)
   const [verificationExpanded, setVerificationExpanded] = useState(false)
 
-  const allChecksPassed = result.verificationResults?.allChecksPassed ?? false
+  const allChecksPassed = result.calculated.detailed_verification_results?.passes ??
+                          result.calculated.all_checks_pass ??
+                          false
+  const totalWeight = result.calculated.weights?.totalWeight
 
   return (
     <div className="space-y-4">
@@ -31,23 +34,13 @@ export function ResultsTab({ result }: ResultsTabProps) {
 
         {summaryExpanded && (
           <div className="p-4 space-y-3">
-            <div className="flex items-center gap-3">
-              <Weight className="h-5 w-5 text-muted-foreground" />
-              <div>
-                <p className="text-sm text-muted-foreground">Total Weight</p>
-                <p className="text-2xl font-bold">
-                  {result.totalWeight?.toFixed(2)} kg
-                </p>
-              </div>
-            </div>
-
-            {result.estimatedCost && (
+            {totalWeight !== undefined && (
               <div className="flex items-center gap-3">
-                <DollarSign className="h-5 w-5 text-muted-foreground" />
+                <Weight className="h-5 w-5 text-muted-foreground" />
                 <div>
-                  <p className="text-sm text-muted-foreground">Estimated Cost</p>
-                  <p className="text-xl font-semibold">
-                    £{result.estimatedCost.toFixed(2)}
+                  <p className="text-sm text-muted-foreground">Total Weight</p>
+                  <p className="text-2xl font-bold">
+                    {totalWeight.toFixed(2)} kg/m
                   </p>
                 </div>
               </div>
@@ -88,20 +81,30 @@ export function ResultsTab({ result }: ResultsTabProps) {
           <div className="p-4 space-y-2">
             <div className="grid grid-cols-2 gap-2 text-sm">
               <span className="text-muted-foreground">Bracket Type:</span>
-              <span className="font-medium">{result.bracketType || 'N/A'}</span>
+              <span className="font-medium">{result.genetic.bracket_type || 'Standard'}</span>
 
               <span className="text-muted-foreground">Angle Size:</span>
-              <span className="font-medium">{result.angleSize || 'N/A'}</span>
+              <span className="font-medium">
+                {result.genetic.vertical_leg && result.genetic.horizontal_leg
+                  ? `${result.genetic.vertical_leg}x${result.genetic.horizontal_leg}x${result.genetic.angle_thickness}mm`
+                  : 'N/A'}
+              </span>
 
-              <span className="text-muted-foreground">Material:</span>
-              <span className="font-medium">{result.material || 'N/A'}</span>
+              <span className="text-muted-foreground">Bracket Centres:</span>
+              <span className="font-medium">{result.genetic.bracket_centres}mm</span>
 
-              {result.channelProduct && (
+              <span className="text-muted-foreground">Bracket Thickness:</span>
+              <span className="font-medium">{result.genetic.bracket_thickness}mm</span>
+
+              {result.genetic.channel_type && (
                 <>
                   <span className="text-muted-foreground">Channel:</span>
-                  <span className="font-medium">{result.channelProduct}</span>
+                  <span className="font-medium">{result.genetic.channel_type}</span>
                 </>
               )}
+
+              <span className="text-muted-foreground">Bolt Diameter:</span>
+              <span className="font-medium">M{result.genetic.bolt_diameter}</span>
             </div>
           </div>
         )}
@@ -119,27 +122,36 @@ export function ResultsTab({ result }: ResultsTabProps) {
           />
         </button>
 
-        {verificationExpanded && result.verificationResults && (
+        {verificationExpanded && result.calculated.detailed_verification_results && (
           <div className="p-4 space-y-2">
             <VerificationCheck
-              name="Shear Check"
-              passed={result.verificationResults.shearCheck?.passed ?? false}
-              utilization={result.verificationResults.shearCheck?.utilization}
-            />
-            <VerificationCheck
-              name="Tension Check"
-              passed={result.verificationResults.tensionCheck?.passed ?? false}
-              utilization={result.verificationResults.tensionCheck?.utilization}
-            />
-            <VerificationCheck
               name="Moment Check"
-              passed={result.verificationResults.momentCheck?.passed ?? false}
-              utilization={result.verificationResults.momentCheck?.utilization}
+              passed={result.calculated.detailed_verification_results.momentResults?.passes ?? false}
+              utilization={result.calculated.detailed_verification_results.momentResults?.utilisation}
+            />
+            <VerificationCheck
+              name="Shear Check"
+              passed={result.calculated.detailed_verification_results.shearResults?.passes ?? false}
+              utilization={result.calculated.detailed_verification_results.shearResults?.utilisation}
             />
             <VerificationCheck
               name="Deflection Check"
-              passed={result.verificationResults.deflectionCheck?.passed ?? false}
-              utilization={result.verificationResults.deflectionCheck?.utilization}
+              passed={result.calculated.detailed_verification_results.deflectionResults?.passes ?? false}
+              utilization={result.calculated.detailed_verification_results.deflectionResults?.deflection_limit_ratio}
+            />
+            <VerificationCheck
+              name="Connection Check"
+              passed={result.calculated.detailed_verification_results.angleToBracketResults?.passes ?? false}
+              utilization={result.calculated.detailed_verification_results.angleToBracketResults?.bearing_utilisation}
+            />
+            <VerificationCheck
+              name="Combined Check"
+              passed={result.calculated.detailed_verification_results.combinedResults?.passes ?? false}
+              utilization={result.calculated.detailed_verification_results.combinedResults?.utilisation}
+            />
+            <VerificationCheck
+              name="Fixing Check"
+              passed={result.calculated.detailed_verification_results.fixingResults?.passes ?? false}
             />
           </div>
         )}
