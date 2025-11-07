@@ -4,7 +4,7 @@ import { Design } from '@/types/design-types'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { MoreVertical, FileText, Weight, DollarSign } from 'lucide-react'
+import { MoreVertical, Weight, DollarSign } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,9 +18,12 @@ interface DesignCardProps {
   onDelete: (designId: string) => void
 }
 
+// Define explicit status type for type safety
+type DesignStatus = 'New' | 'Draft' | 'Optimized' | 'In Review'
+
 export function DesignCard({ design, onOpen, onDelete }: DesignCardProps) {
   // Derive status from design data (basic logic - can be enhanced)
-  const getStatus = () => {
+  const getStatus = (): DesignStatus => {
     if (design.calculationResults) return 'Optimized'
     if (design.formParameters && Object.keys(design.formParameters).length > 0) return 'Draft'
     return 'New'
@@ -28,12 +31,13 @@ export function DesignCard({ design, onOpen, onDelete }: DesignCardProps) {
 
   const status = getStatus()
 
-  // Status badge colors
-  const statusColors = {
-    'New': 'bg-gray-100 text-gray-800',
-    'Draft': 'bg-yellow-100 text-yellow-800',
-    'Optimized': 'bg-green-100 text-green-800',
-    'In Review': 'bg-blue-100 text-blue-800',
+  // Status badge colors with complete class strings including hover states
+  // NOTE: Tailwind requires complete class strings for proper detection
+  const statusColors: Record<DesignStatus, string> = {
+    'New': 'bg-gray-100 text-gray-800 hover:bg-gray-100',
+    'Draft': 'bg-yellow-100 text-yellow-800 hover:bg-yellow-100',
+    'Optimized': 'bg-green-100 text-green-800 hover:bg-green-100',
+    'In Review': 'bg-blue-100 text-blue-800 hover:bg-blue-100',
   }
 
   const handleOpenClick = (e: React.MouseEvent) => {
@@ -68,7 +72,7 @@ export function DesignCard({ design, onOpen, onDelete }: DesignCardProps) {
         <div className="flex gap-2">
           <Badge
             variant="secondary"
-            className={`${statusColors[status as keyof typeof statusColors]} hover:${statusColors[status as keyof typeof statusColors]}`}
+            className={statusColors[status]}
           >
             {status}
           </Badge>
