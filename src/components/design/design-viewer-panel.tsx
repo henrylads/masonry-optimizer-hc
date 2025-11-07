@@ -5,7 +5,7 @@ import { Loader2, Box } from 'lucide-react'
 import type { OptimisationResult } from '@/types/optimization-types'
 
 // Dynamically import ShapeDiver to avoid SSR issues
-const ShapeDiver = dynamic(() => import('@/components/shapediver'), {
+const ShapeDiver = dynamic(() => import('@/components/shapediver').then(mod => ({ default: mod.ShapeDiverCard })), {
   ssr: false,
   loading: () => (
     <div className="w-full h-full flex items-center justify-center bg-[#e5e7eb]">
@@ -54,7 +54,7 @@ export function DesignViewerPanel({
 
       {/* 3D Viewer */}
       {optimizationResult && (
-        <ShapeDiver result={optimizationResult} />
+        <ShapeDiver />
       )}
     </div>
   )
