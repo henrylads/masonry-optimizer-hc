@@ -6,12 +6,18 @@ interface UseDesignAutosaveProps {
   designId: string | null
   projectId: string
   form: UseFormReturn<FormDataType>
+  onSaveStart?: () => void
+  onSaveSuccess?: () => void
+  onSaveError?: () => void
 }
 
 export function useDesignAutosave({
   designId,
   projectId,
   form,
+  onSaveStart,
+  onSaveSuccess,
+  onSaveError,
 }: UseDesignAutosaveProps) {
   const timeoutRef = useRef<NodeJS.Timeout>()
   const formValues = form.watch()
@@ -26,6 +32,7 @@ export function useDesignAutosave({
 
     timeoutRef.current = setTimeout(async () => {
       try {
+        onSaveStart?.()
         await fetch(`/api/designs/${designId}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
@@ -34,8 +41,10 @@ export function useDesignAutosave({
           }),
         })
         console.log('Design auto-saved')
+        onSaveSuccess?.()
       } catch (error) {
         console.error('Auto-save failed:', error)
+        onSaveError?.()
       }
     }, 2000)
 
@@ -44,5 +53,5 @@ export function useDesignAutosave({
         clearTimeout(timeoutRef.current)
       }
     }
-  }, [designId, formValues])
+  }, [designId, formValues, onSaveStart, onSaveSuccess, onSaveError])
 }

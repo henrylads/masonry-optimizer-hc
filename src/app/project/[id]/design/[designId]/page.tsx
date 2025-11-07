@@ -45,7 +45,8 @@ export default function DesignPage() {
   // Autosave
   useDesignAutosave({
     designId,
-    formData: form.watch(),
+    projectId,
+    form,
     onSaveStart: () => setSaveStatus('saving'),
     onSaveSuccess: () => setSaveStatus('saved'),
     onSaveError: () => setSaveStatus('error')

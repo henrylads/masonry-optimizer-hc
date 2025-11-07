@@ -59,7 +59,7 @@ export default function DashboardPage() {
         <AppSidebar />
 
         <div className="flex-1 overflow-auto">
-          <div className="container mx-auto py-8 px-4">
+          <div className="py-8 px-8">
             {!hasProjects ? (
               // Empty state
               <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
