@@ -33,7 +33,7 @@ export function DesignViewerPanel({
     // Check if there's a notch (notch_height and notch_depth > 0)
     const hasNotch = (optimizationResult.genetic.notch_height > 0 && optimizationResult.genetic.notch_depth > 0)
 
-    return {
+    const baseParams = {
       support_type: optimizationResult.genetic.bracket_type === 'Inverted' ? 'I' : 'S',
       bracket_thickness: optimizationResult.genetic.bracket_thickness,
       bracket_height: optimizationResult.genetic.bracket_height || optimizationResult.calculated.bracket_height,
@@ -45,11 +45,20 @@ export function DesignViewerPanel({
       slab_thickness: optimizationResult.calculated.slab_thickness,
       fixing_position: optimizationResult.genetic.fixing_position || optimizationResult.calculated.optimized_fixing_position,
       dim_d: optimizationResult.genetic.dim_d || optimizationResult.calculated.dim_d,
-      // Notch parameters - only pass if there's actually a notch
-      back_notch_option: hasNotch,
-      back_notch_height: hasNotch ? optimizationResult.genetic.notch_height : 0,
-      back_notch_length: hasNotch ? optimizationResult.genetic.notch_depth : 0
+      back_notch_option: hasNotch
     }
+
+    // Only include notch dimensions if there's actually a notch
+    // (ShapeDiver has minimum values of 10mm and rejects 0)
+    if (hasNotch) {
+      return {
+        ...baseParams,
+        back_notch_height: optimizationResult.genetic.notch_height,
+        back_notch_length: optimizationResult.genetic.notch_depth
+      }
+    }
+
+    return baseParams
   }, [
     optimizationResult?.genetic.bracket_type,
     optimizationResult?.genetic.bracket_thickness,
