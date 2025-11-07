@@ -1,5 +1,6 @@
 'use client'
 
+import { useRouter } from 'next/navigation'
 import { Design } from '@/types/design-types'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -14,14 +15,16 @@ import {
 
 interface DesignCardProps {
   design: Design
-  onOpen: (designId: string) => void
   onDelete: (designId: string) => void
+  projectId: string
 }
 
 // Define explicit status type for type safety
 type DesignStatus = 'New' | 'Draft' | 'Optimized' | 'In Review'
 
-export function DesignCard({ design, onOpen, onDelete }: DesignCardProps) {
+export function DesignCard({ design, onDelete, projectId }: DesignCardProps) {
+  const router = useRouter()
+
   // Derive status from design data (basic logic - can be enhanced)
   const getStatus = (): DesignStatus => {
     if (design.calculationResults) return 'Optimized'
@@ -42,7 +45,7 @@ export function DesignCard({ design, onOpen, onDelete }: DesignCardProps) {
 
   const handleOpenClick = (e: React.MouseEvent) => {
     e.stopPropagation()
-    onOpen(design.id)
+    router.push(`/project/${projectId}/design/${design.id}`)
   }
 
   return (
