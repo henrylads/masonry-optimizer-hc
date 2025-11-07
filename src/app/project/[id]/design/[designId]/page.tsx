@@ -118,10 +118,39 @@ export default function DesignPage() {
     setSelectedAlternativeIndex(0)
 
     try {
+      // Map form fields to DesignInputs format
+      const designInputs = {
+        // Map cavity to cavity_width
+        cavity_width: values.cavity,
+
+        // Add required edge distances (constants from form validation)
+        top_critical_edge: 75,
+        bottom_critical_edge: 50,
+
+        // Pass through all other matching fields
+        support_level: values.support_level,
+        slab_thickness: values.slab_thickness,
+        characteristic_load: values.characteristic_load,
+        notch_height: values.notch_height,
+        notch_depth: values.notch_depth,
+        fixing_position: values.fixing_position,
+        use_custom_fixing_position: values.use_custom_fixing_position,
+        facade_thickness: values.facade_thickness,
+        load_position: values.load_position,
+        front_offset: values.front_offset,
+        isolation_shim_thickness: values.isolation_shim_thickness,
+        material_type: values.material_type,
+        max_allowable_bracket_extension: values.max_allowable_bracket_extension,
+        enable_angle_extension: values.enable_angle_extension,
+        frame_fixing_type: values.frame_fixing_type,
+        steel_bolt_size: values.steel_bolt_size,
+        steel_fixing_method: values.steel_fixing_method,
+      }
+
       // Run optimization with proper config structure
       const output = await runBruteForce({
         maxGenerations: 1000,
-        designInputs: values,
+        designInputs,
         onProgress: (generation, maxGenerations) => {
           setProgress((generation / maxGenerations) * 100)
         }
