@@ -13,8 +13,6 @@ import { AuthHeader } from '@/components/auth-header'
 import { MainNavigation } from '@/components/main-navigation'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { ChevronLeft } from 'lucide-react'
-import MasonryDesignerForm from '@/components/masonry-designer-form'
 import { useRouter } from 'next/navigation'
 
 export default function ProjectPage() {
@@ -22,7 +20,6 @@ export default function ProjectPage() {
   const router = useRouter()
   const projectId = params.id as string
   const [activeTab, setActiveTab] = useState<'designs' | 'intelligence'>('designs')
-  const [activeDesignId, setActiveDesignId] = useState<string | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
   const { project, designs, isLoading, mutate } = useProject(projectId)
 
@@ -42,7 +39,6 @@ export default function ProjectPage() {
 
       const { design } = await response.json()
       mutate()
-      setActiveDesignId(design.id)
     } catch (error) {
       console.error('Error creating design:', error)
       alert('An error occurred while creating the design. Please try again.')
@@ -61,9 +57,6 @@ export default function ProjectPage() {
         return
       }
 
-      if (activeDesignId === designId) {
-        setActiveDesignId(null)
-      }
       mutate()
     } catch (error) {
       console.error('Error deleting design:', error)
@@ -90,10 +83,6 @@ export default function ProjectPage() {
     }
   }
 
-  const handleBackToDesigns = () => {
-    setActiveDesignId(null)
-  }
-
   if (isLoading) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>
   }
@@ -101,8 +90,6 @@ export default function ProjectPage() {
   if (!project) {
     return <div className="min-h-screen flex items-center justify-center">Project not found</div>
   }
-
-  const showDesignForm = activeDesignId !== null && activeTab === 'designs'
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -113,7 +100,7 @@ export default function ProjectPage() {
         <AppSidebar />
 
         <div className="flex-1 overflow-auto">
-          <div className="container mx-auto py-8 px-4">
+          <div className="py-8 px-8">
             {/* Project Header */}
             <ProjectHeader
               project={project}
@@ -133,32 +120,12 @@ export default function ProjectPage() {
 
             {/* Designs Tab Content */}
             <TabsContent value="designs">
-              {showDesignForm ? (
-                <div>
-                  {/* Back button */}
-                  <Button
-                    variant="ghost"
-                    onClick={handleBackToDesigns}
-                    className="mb-4"
-                  >
-                    <ChevronLeft className="mr-2 h-4 w-4" />
-                    Back to Designs
-                  </Button>
-
-                  {/* Design Form */}
-                  <MasonryDesignerForm
-                    designId={activeDesignId}
-                    projectId={projectId}
-                  />
-                </div>
-              ) : (
-                <DesignsTab
-                  designs={designs}
-                  onOpenDesign={setActiveDesignId}
-                  onNewDesign={() => setModalOpen(true)}
-                  onDeleteDesign={handleDeleteDesign}
-                />
-              )}
+              <DesignsTab
+                designs={designs}
+                projectId={projectId}
+                onNewDesign={() => setModalOpen(true)}
+                onDeleteDesign={handleDeleteDesign}
+              />
             </TabsContent>
 
             {/* Intelligence Tab Content */}
