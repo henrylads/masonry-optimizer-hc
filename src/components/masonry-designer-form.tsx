@@ -14,7 +14,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { Slider } from "@/components/ui/slider"
-import { ClaritiLogo } from "@/components/clariti-logo"
 import { IntegratedResults } from "@/components/design/integrated-results"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -30,15 +29,11 @@ import { formSchema } from '@/types/form-schema'
 import { getSectionSizes } from '@/data/steelSections'
 import type { SteelSectionType } from '@/types/steelFixingTypes'
 
-// Import chat interface components
-import { ChatInterface } from '@/components/chat-interface'
+// Import chat interface types (keeping for state management even though UI is hidden)
 import type { ExtractedParameter, InputMode, WorkflowMode, WorkflowConfig } from '@/types/chat-types'
 
-// Import AI tools hook
+// Import AI tools hook (keeping for potential backend functionality)
 import { useAITools } from '@/hooks/use-ai-tools'
-
-// Import workflow toggle
-import { WorkflowToggle } from '@/components/workflow-toggle'
 
 // Import progressive disclosure form components
 import { CoreFields } from '@/components/design/core-fields'
@@ -695,63 +690,15 @@ export default function MasonryDesignerForm({
 
   return (
     <div className="px-4 py-4 lg:px-8">
-      <div className="flex justify-between items-center mb-6 pr-28">
-        <ClaritiLogo className="h-8" />
-        <h1 className="text-3xl font-bold">Masonry Support Designer</h1>
-      </div>
-
-
-      {/* Workflow Mode Toggle */}
-      <div className="mb-6 flex justify-end">
-        <WorkflowToggle
-          currentMode={workflowMode}
-          onModeChange={handleWorkflowModeChange}
-          disabled={combinedIsLoading}
-        />
-      </div>
-
       {/* Main Content */}
-      <div className={cn(
-        "transition-all duration-300",
-        workflowMode === 'manual' ? '' : '',
-        workflowMode === 'ai-assisted' ? 'lg:grid lg:grid-cols-[30%_1fr] lg:gap-8' : '',
-        workflowMode === 'fully-automated' ? 'lg:grid lg:grid-cols-[2fr_3fr] lg:gap-8' : ''
-      )}>
-        {/* Chat Interface (when in AI modes) */}
-        {(workflowMode === 'ai-assisted' || workflowMode === 'fully-automated') && (
-          <div className="mb-6 lg:mb-0 lg:h-[calc(100vh-140px)] lg:flex lg:flex-col">
-            <ChatInterface
-              onParametersExtracted={handleParametersExtracted}
-              onParametersConfirmed={handleParametersConfirmed}
-              onError={handleChatError}
-              disabled={isLoading}
-              className="h-[calc(100vh-180px)] lg:h-full"
-              workflowMode={workflowMode}
-              sessionId={sessionId || undefined}
-            />
-          </div>
-        )}
-
-        {/* Form Interface - hide completely in fully-automated mode */}
-        {workflowMode !== 'fully-automated' && (
+      <div className="transition-all duration-300">
+        {/* Form Interface */}
+        {true && (
           <div className="lg:overflow-auto">
             <Card className="h-fit">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  Masonry Support Designer
-                  {workflowMode === 'ai-assisted' && extractedParameters.length > 0 && (
-                    <span className="text-sm bg-[#c2f20e]/20 text-[#c2f20e] px-2 py-1 rounded-full">
-                      {extractedParameters.length} parameter{extractedParameters.length !== 1 ? 's' : ''} extracted
-                    </span>
-                  )}
-                </CardTitle>
                 <CardDescription>
-                  {workflowMode === 'manual' 
-                    ? 'Enter your project specifications to design the optimal bracket'
-                    : extractedParameters.length > 0 
-                      ? 'Values are automatically populated as you chat. Click &quot;Start Optimization&quot; when ready.'
-                      : 'Start chatting to automatically populate form fields with extracted parameters'
-                  }
+                  Enter your project specifications to design the optimal bracket
                 </CardDescription>
               </CardHeader>
               

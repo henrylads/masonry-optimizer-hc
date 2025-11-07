@@ -7,7 +7,7 @@ interface ClaritiLogoProps {
 export function ClaritiLogo({ className }: ClaritiLogoProps) {
   return (
     <div className={className}>
-      <Image src="/logo.png" alt="Clariti Logo" width={120} height={40} className="h-full w-auto" />
+      <Image src="/logo.png" alt="Clariti Logo" width={90} height={30} className="h-auto w-auto" />
     </div>
   )
 } 
