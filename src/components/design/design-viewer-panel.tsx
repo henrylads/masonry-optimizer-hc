@@ -30,6 +30,9 @@ export function DesignViewerPanel({
   const shapeDiverParams = useMemo(() => {
     if (!optimizationResult) return undefined
 
+    // Check if there's a notch (notch_height and notch_depth > 0)
+    const hasNotch = (optimizationResult.genetic.notch_height > 0 && optimizationResult.genetic.notch_depth > 0)
+
     return {
       support_type: optimizationResult.genetic.bracket_type === 'Inverted' ? 'I' : 'S',
       bracket_thickness: optimizationResult.genetic.bracket_thickness,
@@ -41,7 +44,11 @@ export function DesignViewerPanel({
       bolt_diameter: optimizationResult.genetic.bolt_diameter,
       slab_thickness: optimizationResult.calculated.slab_thickness,
       fixing_position: optimizationResult.genetic.fixing_position || optimizationResult.calculated.optimized_fixing_position,
-      dim_d: optimizationResult.genetic.dim_d || optimizationResult.calculated.dim_d
+      dim_d: optimizationResult.genetic.dim_d || optimizationResult.calculated.dim_d,
+      // Notch parameters - only pass if there's actually a notch
+      back_notch_option: hasNotch,
+      back_notch_height: hasNotch ? optimizationResult.genetic.notch_height : 0,
+      back_notch_length: hasNotch ? optimizationResult.genetic.notch_depth : 0
     }
   }, [
     optimizationResult?.genetic.bracket_type,
@@ -57,7 +64,9 @@ export function DesignViewerPanel({
     optimizationResult?.genetic.fixing_position,
     optimizationResult?.calculated.optimized_fixing_position,
     optimizationResult?.genetic.dim_d,
-    optimizationResult?.calculated.dim_d
+    optimizationResult?.calculated.dim_d,
+    optimizationResult?.genetic.notch_height,
+    optimizationResult?.genetic.notch_depth
   ])
 
   return (
