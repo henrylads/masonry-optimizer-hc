@@ -1,6 +1,7 @@
 'use client'
 
-import { OptimisationResult } from '@/types/optimization-types'
+import { OptimisationResult, GenerationSummary } from '@/types/optimization-types'
+import { FormDataType } from '@/types/form-schema'
 import { ResultsDisplay } from '@/components/results-display'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -8,10 +9,17 @@ import { Button } from '@/components/ui/button'
 
 interface IntegratedResultsProps {
   result: OptimisationResult
+  history?: GenerationSummary[]
+  designInputs?: FormDataType
   onCompare?: () => void
 }
 
-export function IntegratedResults({ result, onCompare }: IntegratedResultsProps) {
+export function IntegratedResults({
+  result,
+  history = [],
+  designInputs,
+  onCompare
+}: IntegratedResultsProps) {
   return (
     <div className="space-y-6 mt-8">
       <div className="flex items-center justify-between">
@@ -30,7 +38,11 @@ export function IntegratedResults({ result, onCompare }: IntegratedResultsProps)
         </TabsList>
 
         <TabsContent value="results" className="space-y-4">
-          <ResultsDisplay result={result} />
+          <ResultsDisplay
+            result={result}
+            history={history}
+            designInputs={designInputs}
+          />
         </TabsContent>
 
         <TabsContent value="layout" className="space-y-4">
