@@ -1,5 +1,6 @@
 'use client'
 
+import { useMemo } from 'react'
 import dynamic from 'next/dynamic'
 import { Loader2, Box } from 'lucide-react'
 import type { OptimisationResult } from '@/types/optimization-types'
@@ -25,6 +26,40 @@ export function DesignViewerPanel({
   isOptimizing,
   progress
 }: DesignViewerPanelProps) {
+  // Memoize parameters to prevent ShapeDiver from recreating session on every render
+  const shapeDiverParams = useMemo(() => {
+    if (!optimizationResult) return undefined
+
+    return {
+      support_type: optimizationResult.genetic.bracket_type === 'Inverted' ? 'I' : 'S',
+      bracket_thickness: optimizationResult.genetic.bracket_thickness,
+      bracket_height: optimizationResult.genetic.bracket_height || optimizationResult.calculated.bracket_height,
+      bracket_spacing: optimizationResult.genetic.bracket_centres,
+      profile_thickness: optimizationResult.genetic.angle_thickness,
+      profile_height: optimizationResult.genetic.vertical_leg,
+      profile_length: optimizationResult.genetic.horizontal_leg,
+      bolt_diameter: optimizationResult.genetic.bolt_diameter,
+      slab_thickness: optimizationResult.calculated.slab_thickness,
+      fixing_position: optimizationResult.genetic.fixing_position || optimizationResult.calculated.optimized_fixing_position,
+      dim_d: optimizationResult.genetic.dim_d || optimizationResult.calculated.dim_d
+    }
+  }, [
+    optimizationResult?.genetic.bracket_type,
+    optimizationResult?.genetic.bracket_thickness,
+    optimizationResult?.genetic.bracket_height,
+    optimizationResult?.calculated.bracket_height,
+    optimizationResult?.genetic.bracket_centres,
+    optimizationResult?.genetic.angle_thickness,
+    optimizationResult?.genetic.vertical_leg,
+    optimizationResult?.genetic.horizontal_leg,
+    optimizationResult?.genetic.bolt_diameter,
+    optimizationResult?.calculated.slab_thickness,
+    optimizationResult?.genetic.fixing_position,
+    optimizationResult?.calculated.optimized_fixing_position,
+    optimizationResult?.genetic.dim_d,
+    optimizationResult?.calculated.dim_d
+  ])
+
   return (
     <div className="flex-1 relative bg-[#e5e7eb]">
       {/* Empty State */}
@@ -53,22 +88,8 @@ export function DesignViewerPanel({
       )}
 
       {/* 3D Viewer */}
-      {optimizationResult && (
-        <ShapeDiver
-          initialParameters={{
-            support_type: optimizationResult.genetic.bracket_type === 'Inverted' ? 'I' : 'S',
-            bracket_thickness: optimizationResult.genetic.bracket_thickness,
-            bracket_height: optimizationResult.genetic.bracket_height || optimizationResult.calculated.bracket_height,
-            bracket_spacing: optimizationResult.genetic.bracket_centres,
-            profile_thickness: optimizationResult.genetic.angle_thickness,
-            profile_height: optimizationResult.genetic.vertical_leg,
-            profile_length: optimizationResult.genetic.horizontal_leg,
-            bolt_diameter: optimizationResult.genetic.bolt_diameter,
-            slab_thickness: optimizationResult.calculated.slab_thickness,
-            fixing_position: optimizationResult.genetic.fixing_position || optimizationResult.calculated.optimized_fixing_position,
-            dim_d: optimizationResult.genetic.dim_d || optimizationResult.calculated.dim_d
-          }}
-        />
+      {shapeDiverParams && (
+        <ShapeDiver initialParameters={shapeDiverParams} />
       )}
     </div>
   )
