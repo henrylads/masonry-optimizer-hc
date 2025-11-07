@@ -54,7 +54,10 @@ export function DesignInputPanel({
 
           {advancedExpanded && (
             <div className="mt-4">
-              <AdvancedOptions form={form} />
+              <AdvancedOptions
+                form={form}
+                frameFixingType={form.watch('frame_fixing_type')}
+              />
             </div>
           )}
         </div>
