@@ -27,34 +27,67 @@ export default function ProjectPage() {
   const { project, designs, isLoading, mutate } = useProject(projectId)
 
   const handleCreateDesign = async (data: CreateDesignInput) => {
-    const response = await fetch(`/api/projects/${projectId}/designs`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    })
+    try {
+      const response = await fetch(`/api/projects/${projectId}/designs`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      })
 
-    if (response.ok) {
+      if (!response.ok) {
+        const error = await response.json()
+        alert(`Failed to create design: ${error.message || 'Unknown error'}`)
+        return
+      }
+
       const { design } = await response.json()
       mutate()
       setActiveDesignId(design.id)
+    } catch (error) {
+      console.error('Error creating design:', error)
+      alert('An error occurred while creating the design. Please try again.')
     }
   }
 
   const handleDeleteDesign = async (designId: string) => {
     if (!confirm('Are you sure you want to delete this design?')) return
 
-    await fetch(`/api/designs/${designId}`, { method: 'DELETE' })
-    if (activeDesignId === designId) {
-      setActiveDesignId(null)
+    try {
+      const response = await fetch(`/api/designs/${designId}`, { method: 'DELETE' })
+
+      if (!response.ok) {
+        const error = await response.json()
+        alert(`Failed to delete design: ${error.message || 'Unknown error'}`)
+        return
+      }
+
+      if (activeDesignId === designId) {
+        setActiveDesignId(null)
+      }
+      mutate()
+    } catch (error) {
+      console.error('Error deleting design:', error)
+      alert('An error occurred while deleting the design. Please try again.')
     }
-    mutate()
   }
 
   const handleDeleteProject = async () => {
     if (!confirm('Are you sure you want to delete this project? This cannot be undone.')) return
 
-    await fetch(`/api/projects/${projectId}`, { method: 'DELETE' })
-    router.push('/dashboard')
+    try {
+      const response = await fetch(`/api/projects/${projectId}`, { method: 'DELETE' })
+
+      if (!response.ok) {
+        const error = await response.json()
+        alert(`Failed to delete project: ${error.message || 'Unknown error'}`)
+        return
+      }
+
+      router.push('/dashboard')
+    } catch (error) {
+      console.error('Error deleting project:', error)
+      alert('An error occurred while deleting the project. Please try again.')
+    }
   }
 
   const handleBackToDesigns = () => {
@@ -87,7 +120,11 @@ export default function ProjectPage() {
           />
 
           {/* Tabs Navigation */}
-          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'designs' | 'intelligence')}>
+          <Tabs value={activeTab} onValueChange={(v) => {
+            if (v === 'designs' || v === 'intelligence') {
+              setActiveTab(v)
+            }
+          }}>
             <TabsList className="mb-6">
               <TabsTrigger value="designs">Designs</TabsTrigger>
               <TabsTrigger value="intelligence">Intelligence</TabsTrigger>
