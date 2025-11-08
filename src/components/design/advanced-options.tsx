@@ -107,92 +107,7 @@ export function AdvancedOptions({ form, frameFixingType }: AdvancedOptionsProps)
 
       <CollapsibleContent className="space-y-6 pt-4">
         <Accordion type="multiple" className="w-full">
-          {/* Group 1: Project Information */}
-          <AccordionItem value="project-info">
-            <AccordionTrigger>Project Information</AccordionTrigger>
-            <AccordionContent className="space-y-4 pt-4">
-              <FormField
-                control={form.control}
-                name="project_name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Project Name</FormLabel>
-                    <FormControl>
-                      <Input placeholder="e.g. High Rise Tower Project" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="section_name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Section/Element Name</FormLabel>
-                    <FormControl>
-                      <Input placeholder="e.g. North Facade - Level 5" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="client_name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Client Name</FormLabel>
-                    <FormControl>
-                      <Input placeholder="e.g. ABC Construction Ltd" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="project_location"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Project Location</FormLabel>
-                    <FormControl>
-                      <Input placeholder="e.g. London, UK" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="project_reference"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Project Reference</FormLabel>
-                    <FormControl>
-                      <Input placeholder="e.g. PRJ-2024-001" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="designer_name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Designer Name</FormLabel>
-                    <FormControl>
-                      <Input placeholder="e.g. John Smith, P.E." {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </AccordionContent>
-          </AccordionItem>
-
-          {/* Group 2: Geometry & Dimensions */}
+          {/* Group 1: Geometry & Dimensions */}
           <AccordionItem value="geometry">
             <AccordionTrigger>Geometry & Dimensions</AccordionTrigger>
             <AccordionContent className="space-y-4 pt-4">
@@ -416,7 +331,7 @@ export function AdvancedOptions({ form, frameFixingType }: AdvancedOptionsProps)
             </AccordionContent>
           </AccordionItem>
 
-          {/* Group 3: Fixing Configuration */}
+          {/* Group 2: Fixing Configuration */}
           <AccordionItem value="fixing-config">
             <AccordionTrigger>Fixing Configuration</AccordionTrigger>
             <AccordionContent className="space-y-4 pt-4">
@@ -631,7 +546,7 @@ export function AdvancedOptions({ form, frameFixingType }: AdvancedOptionsProps)
             </AccordionContent>
           </AccordionItem>
 
-          {/* Group 4: Notch Configuration */}
+          {/* Group 3: Notch Configuration */}
           <AccordionItem value="notch">
             <AccordionTrigger>Notch Configuration</AccordionTrigger>
             <AccordionContent className="space-y-4 pt-4">
@@ -742,7 +657,7 @@ export function AdvancedOptions({ form, frameFixingType }: AdvancedOptionsProps)
             </AccordionContent>
           </AccordionItem>
 
-          {/* Group 5: Angle Configuration */}
+          {/* Group 4: Angle Configuration */}
           <AccordionItem value="angle">
             <AccordionTrigger>Angle Configuration</AccordionTrigger>
             <AccordionContent className="space-y-4 pt-4">
@@ -902,7 +817,7 @@ export function AdvancedOptions({ form, frameFixingType }: AdvancedOptionsProps)
             </AccordionContent>
           </AccordionItem>
 
-          {/* Group 6: Steel Section Configuration (conditional on steel types) */}
+          {/* Group 5: Steel Section Configuration (conditional on steel types) */}
           {isSteelType && (
             <AccordionItem value="steel-config">
               <AccordionTrigger>Steel Section Configuration</AccordionTrigger>

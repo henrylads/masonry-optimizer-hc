@@ -136,6 +136,29 @@ export default function DesignPage() {
     setSelectedAlternativeIndex(0)
 
     try {
+      // Calculate effective height for steel fixings and build steel_section object
+      const isSteelFrame = values.frame_fixing_type?.startsWith('steel');
+      let effectiveSlabThickness = values.slab_thickness;
+      let steelSection = undefined;
+
+      if (isSteelFrame) {
+        if (values.use_custom_steel_section && values.custom_steel_height) {
+          effectiveSlabThickness = values.custom_steel_height;
+        } else if (values.steel_section_size) {
+          // Extract height from steel section size (e.g., "203x133" -> 203)
+          const height = parseInt(values.steel_section_size.split('x')[0]);
+          effectiveSlabThickness = height || values.slab_thickness;
+        }
+
+        // Build steel_section object for the algorithm
+        steelSection = {
+          sectionType: values.steel_section_type as 'I-BEAM' | 'RHS' | 'SHS',
+          size: values.use_custom_steel_section ? null : (values.steel_section_size as any),
+          customHeight: values.use_custom_steel_section ? values.custom_steel_height : undefined,
+          effectiveHeight: effectiveSlabThickness
+        };
+      }
+
       // Map form fields to DesignInputs format
       const designInputs = {
         // Map cavity to cavity_width
@@ -147,12 +170,14 @@ export default function DesignPage() {
 
         // Pass through all other matching fields
         support_level: values.support_level,
-        slab_thickness: values.slab_thickness,
+        slab_thickness: effectiveSlabThickness,
         characteristic_load: values.characteristic_load,
         notch_height: values.notch_height,
         notch_depth: values.notch_depth,
         fixing_position: values.fixing_position,
         use_custom_fixing_position: values.use_custom_fixing_position,
+        dim_d: values.dim_d,
+        use_custom_dim_d: values.use_custom_dim_d,
         facade_thickness: values.facade_thickness,
         load_position: values.load_position,
         front_offset: values.front_offset,
@@ -161,6 +186,7 @@ export default function DesignPage() {
         max_allowable_bracket_extension: values.max_allowable_bracket_extension,
         enable_angle_extension: values.enable_angle_extension,
         frame_fixing_type: values.frame_fixing_type,
+        steel_section: steelSection,
         steel_bolt_size: values.steel_bolt_size,
         steel_fixing_method: values.steel_fixing_method,
       }
@@ -293,9 +319,9 @@ export default function DesignPage() {
         onUpdateDesignName={handleUpdateDesignName}
       />
 
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden min-h-0">
         <div
-          className="h-full border-r bg-white flex-shrink-0 relative"
+          className="h-full border-r bg-white flex-shrink-0 relative overflow-hidden"
           style={{ width: `${leftPanelWidth}px` }}
         >
           <Form {...form}>
@@ -315,11 +341,13 @@ export default function DesignPage() {
           </div>
         </div>
 
-        <DesignViewerPanel
-          optimizationResult={optimizationResult}
-          isOptimizing={isOptimizing}
-          progress={progress}
-        />
+        <div className="flex-1 relative">
+          <DesignViewerPanel
+            optimizationResult={optimizationResult}
+            isOptimizing={isOptimizing}
+            progress={progress}
+          />
+        </div>
 
         <DesignResultsPanel
           optimizationResult={optimizationResult}

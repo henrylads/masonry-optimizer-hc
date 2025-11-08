@@ -50,6 +50,12 @@ export interface DesignInputs {
     /** Flag indicating if user explicitly set a custom fixing position */
     use_custom_fixing_position?: boolean;
 
+    /** Dim D - Distance from bracket bottom to fixing for inverted brackets (130-450mm) */
+    dim_d?: number;
+
+    /** Flag indicating if user explicitly set a custom dim_d value */
+    use_custom_dim_d?: boolean;
+
     /** Facade thickness (mm) - thickness of the masonry facade system - defaults to 102.5mm for brick */
     facade_thickness?: number;
 
@@ -123,6 +129,19 @@ export const DesignInputsSchema = z.object({
         .max(400, "Fixing position must be less than 400mm from top of slab")
         .optional()
         .default(75),
+
+    use_custom_fixing_position: z.boolean()
+        .optional()
+        .default(false),
+
+    dim_d: z.number()
+        .min(130, "Dim D must be at least 130mm")
+        .max(450, "Dim D must be at most 450mm")
+        .optional(),
+
+    use_custom_dim_d: z.boolean()
+        .optional()
+        .default(false),
 
     facade_thickness: z.number()
         .min(50, "Facade thickness must be at least 50mm")

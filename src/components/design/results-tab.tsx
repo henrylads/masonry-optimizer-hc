@@ -46,6 +46,19 @@ export function ResultsTab({ result }: ResultsTabProps) {
               </div>
             )}
 
+            <div className="grid grid-cols-2 gap-3 pt-3">
+              <div>
+                <p className="text-sm text-muted-foreground">Configuration</p>
+                <p className="text-sm font-medium">
+                  {result.genetic.bracket_type || 'Standard'} / {result.genetic.channel_type || 'N/A'}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Bracket Centres</p>
+                <p className="text-sm font-medium">{result.genetic.bracket_centres}mm</p>
+              </div>
+            </div>
+
             <div className="pt-2 border-t">
               <div className="flex items-center gap-2">
                 {allChecksPassed ? (

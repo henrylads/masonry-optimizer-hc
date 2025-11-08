@@ -30,62 +30,115 @@ export function DesignViewerPanel({
   const shapeDiverParams = useMemo(() => {
     if (!optimizationResult) return undefined
 
-    // Check if there's a notch (notch_height and notch_depth > 0)
-    const hasNotch = (optimizationResult.genetic.notch_height > 0 && optimizationResult.genetic.notch_depth > 0)
+    // Base parameters
+    const params = {
+      bracket_thickness: optimizationResult.genetic?.bracket_thickness ?? 3,
+      fixing_diameter: optimizationResult.genetic?.bolt_diameter ?? 10,
+      bracket_length: optimizationResult.calculated?.bracket_projection ?? 150,
+      bracket_height: (() => {
+        // Use limited bracket height if angle extension was applied
+        const angleExtension = optimizationResult?.calculated?.angle_extension_result;
+        if (angleExtension?.extension_applied) {
+          return angleExtension.limited_bracket_height;
+        }
+        // Otherwise use the original bracket height
+        return optimizationResult.calculated?.bracket_height ?? 150;
+      })(),
+      slab_thickness: optimizationResult.calculated?.slab_thickness ?? 225,
 
-    const dimDValue = optimizationResult.genetic.dim_d || optimizationResult.calculated.dim_d
-    const dimDOverride = dimDValue !== undefined && dimDValue > 0
+      // Dim D parameters - ONLY for inverted brackets
+      // ShapeDiver needs BOTH boolean override AND numeric value
+      ...(() => {
+        const bracketType = optimizationResult.calculated?.bracket_type ?? optimizationResult.genetic?.bracket_type;
 
-    const baseParams = {
-      support_type: optimizationResult.genetic.bracket_type === 'Inverted' ? 'I' : 'S',
-      bracket_thickness: optimizationResult.genetic.bracket_thickness,
-      bracket_height: optimizationResult.genetic.bracket_height || optimizationResult.calculated.bracket_height,
-      bracket_length: optimizationResult.calculated.bracket_projection,
-      bracket_spacing: optimizationResult.genetic.bracket_centres,
-      profile_thickness: optimizationResult.genetic.angle_thickness,
-      profile_height: optimizationResult.genetic.vertical_leg,
-      profile_length: optimizationResult.genetic.horizontal_leg,
-      fixing_diameter: optimizationResult.genetic.bolt_diameter,
-      slab_thickness: optimizationResult.calculated.slab_thickness,
-      fixing_position: optimizationResult.genetic.fixing_position || optimizationResult.calculated.optimized_fixing_position,
-      dim_d: dimDOverride,
-      dim_d_value: dimDValue || 0,
-      back_notch_option: hasNotch
-    }
+        // Only include dim_d parameters for inverted brackets
+        if (bracketType === 'Inverted') {
+          const dimDValue = optimizationResult.calculated?.dim_d ?? optimizationResult.genetic?.dim_d ?? 130;
+          return {
+            // Boolean override: Enable override if we have a custom dim_d value different from default (130mm)
+            dim_d: dimDValue > 130, // Enable override if value is greater than default minimum
+            // Numeric Dim D value: The actual calculated Dim D value to use when override is enabled
+            dim_d_value: dimDValue
+          };
+        }
 
-    // Only include notch dimensions if there's actually a notch
-    // (ShapeDiver has minimum values of 10mm and rejects 0)
-    if (hasNotch) {
-      return {
-        ...baseParams,
-        back_notch_height: optimizationResult.genetic.notch_height,
-        back_notch_length: optimizationResult.genetic.notch_depth
-      }
-    }
+        // For standard brackets, don't include dim_d parameters at all
+        return {};
+      })(),
 
-    return baseParams
-  }, [
-    optimizationResult?.genetic.bracket_type,
-    optimizationResult?.genetic.bracket_thickness,
-    optimizationResult?.genetic.bracket_height,
-    optimizationResult?.calculated.bracket_height,
-    optimizationResult?.calculated.bracket_projection,
-    optimizationResult?.genetic.bracket_centres,
-    optimizationResult?.genetic.angle_thickness,
-    optimizationResult?.genetic.vertical_leg,
-    optimizationResult?.genetic.horizontal_leg,
-    optimizationResult?.genetic.bolt_diameter,
-    optimizationResult?.calculated.slab_thickness,
-    optimizationResult?.genetic.fixing_position,
-    optimizationResult?.calculated.optimized_fixing_position,
-    optimizationResult?.genetic.dim_d,
-    optimizationResult?.calculated.dim_d,
-    optimizationResult?.genetic.notch_height,
-    optimizationResult?.genetic.notch_depth
-  ])
+      // Fixing position - distance from top of slab to fixing point
+      // Adjusted for exclusion zone constraints to ensure bracket top stays within limits
+      fixing_position: (() => {
+        const optimizedPos = optimizationResult.calculated?.optimized_fixing_position;
+        const geneticPos = optimizationResult.genetic?.fixing_position;
+        const baseFixingPos = optimizedPos ?? geneticPos ?? 75;
+
+        // Check if exclusion zone constraints are active
+        const angleExtension = optimizationResult?.calculated?.angle_extension_result;
+        const hasExclusionZone = angleExtension?.extension_applied && angleExtension?.max_extension_limit !== null;
+
+        if (hasExclusionZone) {
+          const exclusionLimit = angleExtension!.max_extension_limit;
+          const heightAboveSSL = optimizationResult.calculated?.height_above_ssl ?? 0;
+
+          // For exclusion zones at or above slab top (≥ 0mm), adjust fixing position
+          // to ensure bracket top doesn't exceed the exclusion limit
+          if (exclusionLimit >= 0) {
+            // Calculate required adjustment to position bracket top at exclusion limit
+            const effectiveHeightAboveSSL = Math.min(heightAboveSSL, exclusionLimit);
+
+            // Adjust fixing position to account for reduced height above SSL
+            const heightReduction = heightAboveSSL - effectiveHeightAboveSSL;
+            const adjustedFixingPos = baseFixingPos + heightReduction;
+
+            return adjustedFixingPos;
+          }
+        }
+
+        return baseFixingPos;
+      })(),
+
+      back_notch_height: Math.max(10, optimizationResult.calculated?.detailed_verification_results?.droppingBelowSlabResults?.H_notch ?? 25),
+      back_notch_length: Math.max(10, 25), // Default notch depth
+      back_notch_option: ((optimizationResult.calculated?.detailed_verification_results?.droppingBelowSlabResults?.H_notch ?? 0) > 0),
+
+      // Material grades - use separate parameters for bracket and angle
+      bracket_material_grade: '316',
+      angle_material_grade: '316',
+
+      // Support type from calculation results, with fallback to 'Standard'
+      support_type: optimizationResult.calculated?.bracket_type === 'Inverted' ? 'Inverted' : 'Standard',
+      toe_plate_type: 'Standard',
+
+      // Angle-specific parameters from genetic results
+      angle_type: optimizationResult.genetic?.angle_orientation || 'Standard', // Use actual angle orientation from genetic results
+      profile_thickness: optimizationResult.genetic?.angle_thickness ?? 4,
+      profile_length: optimizationResult.genetic?.horizontal_leg ?? 75,  // Horizontal leg of angle
+      profile_height: (() => {
+        // Use extended angle height if angle extension was applied
+        const angleExtension = optimizationResult?.calculated?.angle_extension_result;
+        if (angleExtension?.extension_applied) {
+          return angleExtension.extended_angle_height;
+        }
+        // Otherwise use the original vertical leg
+        return optimizationResult.genetic?.vertical_leg ?? 60;
+      })(),   // Vertical leg of angle (potentially extended)
+
+      // Add bracket positioning parameters if available
+      ...(optimizationResult.calculated?.bracketLayout && {
+        angle_length: optimizationResult.calculated.bracketLayout.angleLength,
+        bracket_count: optimizationResult.calculated.bracketLayout.bracketCount,
+        bracket_spacing: optimizationResult.calculated.bracketLayout.spacing,
+        start_offset: optimizationResult.calculated.bracketLayout.startOffset,
+        spacing_gap: 10 // Default gap between angles
+      })
+    };
+
+    return params;
+  }, [optimizationResult])
 
   return (
-    <div className="flex-1 relative bg-[#e5e7eb]">
+    <div className="absolute inset-0 bg-[#e5e7eb]">
       {/* Empty State */}
       {!optimizationResult && !isOptimizing && (
         <div className="absolute inset-0 flex flex-col items-center justify-center">

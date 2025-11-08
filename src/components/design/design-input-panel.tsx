@@ -3,11 +3,12 @@
 import { useState } from 'react'
 import { UseFormReturn } from 'react-hook-form'
 import { Button } from '@/components/ui/button'
-import { ChevronRight } from 'lucide-react'
+import { MessageSquare, Wrench, Send } from 'lucide-react'
 import { CoreFields } from '@/components/design/core-fields'
 import { AdvancedOptions } from '@/components/design/advanced-options'
 import type { formSchema } from '@/types/form-schema'
 import type { z } from 'zod'
+import { cn } from '@/lib/utils'
 
 interface DesignInputPanelProps {
   form: UseFormReturn<z.infer<typeof formSchema>>
@@ -15,61 +16,115 @@ interface DesignInputPanelProps {
   isOptimizing: boolean
 }
 
+type Section = 'core' | 'chat'
+
 export function DesignInputPanel({
   form,
   onOptimize,
   isOptimizing
 }: DesignInputPanelProps) {
-  const [advancedExpanded, setAdvancedExpanded] = useState(false)
+  const [activeSection, setActiveSection] = useState<Section>('core')
 
   // Check if form has validation errors
   const hasErrors = Object.keys(form.formState.errors).length > 0
 
-  return (
-    <div className="h-full overflow-y-auto">
-      <div className="p-4 space-y-6">
-        {/* Top Run Optimization Button */}
-        <Button
-          onClick={onOptimize}
-          disabled={isOptimizing || hasErrors}
-          className="w-full bg-black hover:bg-black/90 text-white"
-        >
-          {isOptimizing ? 'Optimizing...' : 'Run Optimization'}
-        </Button>
-
-        {/* Core Fields */}
-        <CoreFields form={form} />
-
-        {/* Advanced Options */}
-        <div className="border-t pt-4">
-          <button
-            onClick={() => setAdvancedExpanded(!advancedExpanded)}
-            className="flex items-center gap-2 text-sm font-medium w-full hover:text-foreground transition-colors"
-          >
-            <ChevronRight
-              className={`h-4 w-4 transition-transform ${advancedExpanded ? 'rotate-90' : ''}`}
-            />
-            Advanced Options
-          </button>
-
-          {advancedExpanded && (
-            <div className="mt-4">
-              <AdvancedOptions
-                form={form}
-                frameFixingType={form.watch('frame_fixing_type')}
-              />
+  const sections = [
+    {
+      id: 'core' as Section,
+      icon: Wrench,
+      label: 'Design Parameters',
+      content: (
+        <div className="space-y-6">
+          <CoreFields form={form} />
+          <AdvancedOptions form={form} frameFixingType={form.watch('frame_fixing_type')} />
+        </div>
+      )
+    },
+    {
+      id: 'chat' as Section,
+      icon: MessageSquare,
+      label: 'AI Chat',
+      content: (
+        <div className="space-y-4">
+          <div className="text-sm text-muted-foreground">
+            Chat with AI to help configure your masonry support system
+          </div>
+          <div className="border rounded-lg p-4 bg-muted/30 min-h-[300px] flex flex-col">
+            <div className="flex-1 space-y-3 mb-4">
+              <div className="bg-background p-3 rounded-lg text-sm">
+                <p className="font-medium mb-1">AI Assistant</p>
+                <p className="text-muted-foreground">
+                  Hello! I can help you configure your masonry support system. What would you like to know?
+                </p>
+              </div>
             </div>
-          )}
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="Type your message..."
+                className="flex-1 px-3 py-2 border rounded-lg text-sm"
+                disabled
+              />
+              <Button size="sm" disabled>
+                <Send className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      )
+    }
+  ]
+
+  // Find the active section content
+  const activeContent = sections.find(s => s.id === activeSection)
+
+  return (
+    <div className="h-full flex flex-col overflow-hidden">
+      <div className="flex-1 flex overflow-hidden">
+        {/* Icon Navigation Bar */}
+        <div className="w-14 bg-muted/30 border-r flex flex-col items-center py-4 gap-2 flex-shrink-0">
+          {sections.map((section) => {
+            const Icon = section.icon
+            const isActive = activeSection === section.id
+
+            return (
+              <button
+                key={section.id}
+                onClick={() => setActiveSection(section.id)}
+                className={cn(
+                  "w-10 h-10 rounded-lg flex items-center justify-center transition-all",
+                  "hover:bg-muted",
+                  isActive && "bg-background shadow-sm border-l-2 border-primary"
+                )}
+                title={section.label}
+              >
+                <Icon className={cn(
+                  "h-5 w-5",
+                  isActive ? "text-foreground" : "text-muted-foreground"
+                )} />
+              </button>
+            )
+          })}
         </div>
 
-        {/* Bottom Run Optimization Button */}
-        <Button
-          onClick={onOptimize}
-          disabled={isOptimizing || hasErrors}
-          className="w-full bg-black hover:bg-black/90 text-white"
-        >
-          {isOptimizing ? 'Optimizing...' : 'Run Optimization'}
-        </Button>
+        {/* Content Area */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="p-4 space-y-6">
+            {/* Active Section Content */}
+            {activeContent?.content}
+
+            {/* Bottom Run Optimization Button - only show on Design Parameters tab */}
+            {activeSection === 'core' && (
+              <Button
+                onClick={onOptimize}
+                disabled={isOptimizing || hasErrors}
+                className="w-full bg-black hover:bg-black/90 text-white"
+              >
+                {isOptimizing ? 'Optimizing...' : 'Run Optimization'}
+              </Button>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   )
