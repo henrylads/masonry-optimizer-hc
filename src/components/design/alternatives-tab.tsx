@@ -37,6 +37,32 @@ export function AlternativesTab({
                           false
         const totalWeight = alt.calculated.weights?.totalWeight
 
+        // Extract key differentiators
+        const channelType = alt.genetic.channel_type
+        const steelBoltSize = alt.genetic.steel_bolt_size
+        const steelFixingMethod = alt.genetic.steel_fixing_method
+        const bracketThickness = alt.genetic.bracket_thickness
+        const angleThickness = alt.genetic.angle_thickness
+
+        // Build description based on what's different
+        const description = []
+        if (channelType) {
+          description.push(channelType)
+        }
+        if (steelBoltSize) {
+          description.push(steelBoltSize)
+        }
+        if (steelFixingMethod) {
+          const methodLabel = steelFixingMethod === 'SET_SCREW' ? 'Set Screw' : 'Blind Bolt'
+          description.push(methodLabel)
+        }
+        if (bracketThickness) {
+          description.push(`${bracketThickness}mm bracket`)
+        }
+        if (angleThickness) {
+          description.push(`${angleThickness}mm angle`)
+        }
+
         return (
           <button
             key={index}
@@ -47,30 +73,40 @@ export function AlternativesTab({
                 : 'border-border hover:border-black/30 hover:bg-muted/30'
             }`}
           >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className={`h-4 w-4 rounded-full border-2 flex items-center justify-center ${
-                  isSelected ? 'border-black' : 'border-muted-foreground'
-                }`}>
-                  {isSelected && (
-                    <div className="h-2 w-2 rounded-full bg-black" />
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className={`h-4 w-4 rounded-full border-2 flex items-center justify-center ${
+                    isSelected ? 'border-black' : 'border-muted-foreground'
+                  }`}>
+                    {isSelected && (
+                      <div className="h-2 w-2 rounded-full bg-black" />
+                    )}
+                  </div>
+                  <span className="font-medium">Solution {index + 1}</span>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  {totalWeight !== undefined && (
+                    <span className="text-sm font-semibold">
+                      {totalWeight.toFixed(1)} kg/m
+                    </span>
+                  )}
+                  {allPassed ? (
+                    <CheckCircle className="h-4 w-4 text-green-500" />
+                  ) : (
+                    <AlertTriangle className="h-4 w-4 text-yellow-500" />
                   )}
                 </div>
-                <span className="font-medium">Solution {index + 1}</span>
               </div>
 
-              <div className="flex items-center gap-3">
-                {totalWeight !== undefined && (
-                  <span className="text-sm font-semibold">
-                    {totalWeight.toFixed(1)} kg/m
-                  </span>
-                )}
-                {allPassed ? (
-                  <CheckCircle className="h-4 w-4 text-green-500" />
-                ) : (
-                  <AlertTriangle className="h-4 w-4 text-yellow-500" />
-                )}
-              </div>
+              {description.length > 0 && (
+                <div className="pl-7">
+                  <p className="text-xs text-muted-foreground">
+                    {description.join(' • ')}
+                  </p>
+                </div>
+              )}
             </div>
           </button>
         )

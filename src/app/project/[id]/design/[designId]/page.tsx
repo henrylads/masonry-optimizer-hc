@@ -159,6 +159,44 @@ export default function DesignPage() {
         };
       }
 
+      // Enumerate allowed channel types based on form selections
+      const fixingType = values.fixing_type
+      const channelProduct = values.channel_product
+      const postfixProduct = values.postfix_product
+
+      const allowed_channel_types = (() => {
+        const channelTypes: string[] = []
+
+        if (fixingType === 'all') {
+          // Include channels based on both dropdown selections
+          if (channelProduct !== 'all') {
+            channelTypes.push(channelProduct)
+          } else {
+            channelTypes.push('CPRO38', 'CPRO50', 'CPRO52')
+          }
+
+          if (postfixProduct !== 'all') {
+            channelTypes.push(postfixProduct)
+          } else {
+            channelTypes.push('R-HPTIII-70', 'R-HPTIII-90')
+          }
+        } else if (fixingType === 'post-fix') {
+          if (postfixProduct && postfixProduct !== 'all') {
+            channelTypes.push(postfixProduct)
+          } else {
+            channelTypes.push('R-HPTIII-70', 'R-HPTIII-90')
+          }
+        } else if (fixingType === 'channel-fix') {
+          if (channelProduct && channelProduct !== 'all') {
+            channelTypes.push(channelProduct)
+          } else {
+            channelTypes.push('CPRO38', 'CPRO50', 'CPRO52')
+          }
+        }
+
+        return channelTypes.length > 0 ? channelTypes : ['CPRO38', 'CPRO50', 'CPRO52', 'R-HPTIII-70', 'R-HPTIII-90']
+      })()
+
       // Map form fields to DesignInputs format
       const designInputs = {
         // Map cavity to cavity_width
@@ -189,6 +227,7 @@ export default function DesignPage() {
         steel_section: steelSection,
         steel_bolt_size: values.steel_bolt_size,
         steel_fixing_method: values.steel_fixing_method,
+        allowed_channel_types: allowed_channel_types as any,
       }
 
       // Run optimization with proper config structure
@@ -203,11 +242,14 @@ export default function DesignPage() {
       // Extract result from GeneticAlgorithmOutput
       const result = output.result
 
-      // For now, create mock alternatives (replace with actual algorithm results)
-      const mockAlternatives = [result]
+      // Use algorithm's returned alternatives and extract the design from each AlternativeDesign
+      const alternatives = (result.alternatives || []).map(alt => ({
+        ...alt.design,
+        totalWeight: alt.totalWeight
+      }))
 
       setOptimizationResult(result)
-      setAlternatives(mockAlternatives)
+      setAlternatives(alternatives)
       setSelectedAlternativeIndex(0)
 
       // Auto-open right panel if closed

@@ -2,19 +2,7 @@
 
 import { useState } from 'react'
 import { UseFormReturn } from 'react-hook-form'
-import { ChevronDown } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible'
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from '@/components/ui/accordion'
+import { ChevronRight } from 'lucide-react'
 import {
   FormControl,
   FormDescription,
@@ -45,7 +33,12 @@ interface AdvancedOptionsProps {
 }
 
 export function AdvancedOptions({ form, frameFixingType }: AdvancedOptionsProps) {
-  const [isOpen, setIsOpen] = useState(false)
+  const [geometryExpanded, setGeometryExpanded] = useState(false)
+  const [fixingExpanded, setFixingExpanded] = useState(false)
+  const [notchExpanded, setNotchExpanded] = useState(false)
+  const [angleExpanded, setAngleExpanded] = useState(false)
+  const [steelExpanded, setSteelExpanded] = useState(false)
+
   const isConcreteType = frameFixingType?.startsWith('concrete')
   const isSteelType = frameFixingType?.startsWith('steel')
 
@@ -81,36 +74,18 @@ export function AdvancedOptions({ form, frameFixingType }: AdvancedOptionsProps)
   })()
 
   return (
-    <Collapsible
-      open={isOpen}
-      onOpenChange={setIsOpen}
-      className="w-full space-y-4"
-    >
-      <CollapsibleTrigger asChild>
-        <Button
-          variant="ghost"
-          className="flex w-full justify-between items-center p-4 hover:bg-muted"
+    <div className="space-y-4">
+      {/* Group 1: Geometry & Dimensions */}
+      <div className="border rounded-lg overflow-hidden">
+        <button
+          onClick={() => setGeometryExpanded(!geometryExpanded)}
+          className="w-full px-4 py-3 flex items-center justify-between bg-muted/30 hover:bg-muted/50 transition-colors"
         >
-          <div className="flex items-center gap-2">
-            <ChevronDown
-              className={`h-4 w-4 transition-transform ${
-                isOpen ? 'transform rotate-180' : ''
-              }`}
-            />
-            <span className="font-medium">Advanced Options</span>
-          </div>
-          <span className="text-sm text-muted-foreground">
-            {isOpen ? 'Hide' : 'Show'} additional parameters
-          </span>
-        </Button>
-      </CollapsibleTrigger>
-
-      <CollapsibleContent className="space-y-6 pt-4">
-        <Accordion type="multiple" className="w-full">
-          {/* Group 1: Geometry & Dimensions */}
-          <AccordionItem value="geometry">
-            <AccordionTrigger>Geometry & Dimensions</AccordionTrigger>
-            <AccordionContent className="space-y-4 pt-4">
+          <span className="font-semibold">Geometry & Dimensions</span>
+          <ChevronRight className={`h-4 w-4 transition-transform ${geometryExpanded ? 'rotate-90' : ''}`} />
+        </button>
+        {geometryExpanded && (
+          <div className="p-4 space-y-4">
               <FormField
                 control={form.control}
                 name="material_type"
@@ -328,13 +303,21 @@ export function AdvancedOptions({ form, frameFixingType }: AdvancedOptionsProps)
                   />
                 </>
               )}
-            </AccordionContent>
-          </AccordionItem>
+          </div>
+        )}
+      </div>
 
-          {/* Group 2: Fixing Configuration */}
-          <AccordionItem value="fixing-config">
-            <AccordionTrigger>Fixing Configuration</AccordionTrigger>
-            <AccordionContent className="space-y-4 pt-4">
+      {/* Group 2: Fixing Configuration */}
+      <div className="border rounded-lg overflow-hidden">
+        <button
+          onClick={() => setFixingExpanded(!fixingExpanded)}
+          className="w-full px-4 py-3 flex items-center justify-between bg-muted/30 hover:bg-muted/50 transition-colors"
+        >
+          <span className="font-semibold">Fixing Configuration</span>
+          <ChevronRight className={`h-4 w-4 transition-transform ${fixingExpanded ? 'rotate-90' : ''}`} />
+        </button>
+        {fixingExpanded && (
+          <div className="p-4 space-y-4">
               <FormField
                 control={form.control}
                 name="fixing_type"
@@ -543,13 +526,21 @@ export function AdvancedOptions({ form, frameFixingType }: AdvancedOptionsProps)
                   )}
                 />
               )}
-            </AccordionContent>
-          </AccordionItem>
+          </div>
+        )}
+      </div>
 
-          {/* Group 3: Notch Configuration */}
-          <AccordionItem value="notch">
-            <AccordionTrigger>Notch Configuration</AccordionTrigger>
-            <AccordionContent className="space-y-4 pt-4">
+      {/* Group 3: Notch Configuration */}
+      <div className="border rounded-lg overflow-hidden">
+        <button
+          onClick={() => setNotchExpanded(!notchExpanded)}
+          className="w-full px-4 py-3 flex items-center justify-between bg-muted/30 hover:bg-muted/50 transition-colors"
+        >
+          <span className="font-semibold">Notch Configuration</span>
+          <ChevronRight className={`h-4 w-4 transition-transform ${notchExpanded ? 'rotate-90' : ''}`} />
+        </button>
+        {notchExpanded && (
+          <div className="p-4 space-y-4">
               <div>
                 <Label className="text-base font-medium mb-4 block">Do you require a notch?</Label>
                 <ToggleGroup
@@ -654,13 +645,21 @@ export function AdvancedOptions({ form, frameFixingType }: AdvancedOptionsProps)
                   />
                 </div>
               )}
-            </AccordionContent>
-          </AccordionItem>
+          </div>
+        )}
+      </div>
 
-          {/* Group 4: Angle Configuration */}
-          <AccordionItem value="angle">
-            <AccordionTrigger>Angle Configuration</AccordionTrigger>
-            <AccordionContent className="space-y-4 pt-4">
+      {/* Group 4: Angle Configuration */}
+      <div className="border rounded-lg overflow-hidden">
+        <button
+          onClick={() => setAngleExpanded(!angleExpanded)}
+          className="w-full px-4 py-3 flex items-center justify-between bg-muted/30 hover:bg-muted/50 transition-colors"
+        >
+          <span className="font-semibold">Angle Configuration</span>
+          <ChevronRight className={`h-4 w-4 transition-transform ${angleExpanded ? 'rotate-90' : ''}`} />
+        </button>
+        {angleExpanded && (
+          <div className="p-4 space-y-4">
               <div>
                 <Label className="text-base font-medium mb-4 block">Is there a limit to the angle length?</Label>
                 <ToggleGroup
@@ -814,14 +813,22 @@ export function AdvancedOptions({ form, frameFixingType }: AdvancedOptionsProps)
                   )}
                 />
               )}
-            </AccordionContent>
-          </AccordionItem>
+          </div>
+        )}
+      </div>
 
-          {/* Group 5: Steel Section Configuration (conditional on steel types) */}
-          {isSteelType && (
-            <AccordionItem value="steel-config">
-              <AccordionTrigger>Steel Section Configuration</AccordionTrigger>
-              <AccordionContent className="space-y-4 pt-4">
+      {/* Group 5: Steel Section Configuration (conditional on steel types) */}
+      {isSteelType && (
+        <div className="border rounded-lg overflow-hidden">
+          <button
+            onClick={() => setSteelExpanded(!steelExpanded)}
+            className="w-full px-4 py-3 flex items-center justify-between bg-muted/30 hover:bg-muted/50 transition-colors"
+          >
+            <span className="font-semibold">Steel Section Configuration</span>
+            <ChevronRight className={`h-4 w-4 transition-transform ${steelExpanded ? 'rotate-90' : ''}`} />
+          </button>
+          {steelExpanded && (
+            <div className="p-4 space-y-4">
                 <FormField
                   control={form.control}
                   name="use_custom_steel_section"
@@ -964,11 +971,10 @@ export function AdvancedOptions({ form, frameFixingType }: AdvancedOptionsProps)
                     )}
                   />
                 )}
-              </AccordionContent>
-            </AccordionItem>
+            </div>
           )}
-        </Accordion>
-      </CollapsibleContent>
-    </Collapsible>
+        </div>
+      )}
+    </div>
   )
 }

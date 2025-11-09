@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { UseFormReturn } from 'react-hook-form'
 import { Button } from '@/components/ui/button'
-import { MessageSquare, Wrench, Send } from 'lucide-react'
+import { MessageSquare, Wrench, Send, Settings } from 'lucide-react'
 import { CoreFields } from '@/components/design/core-fields'
 import { AdvancedOptions } from '@/components/design/advanced-options'
 import type { formSchema } from '@/types/form-schema'
@@ -16,7 +16,7 @@ interface DesignInputPanelProps {
   isOptimizing: boolean
 }
 
-type Section = 'core' | 'chat'
+type Section = 'core' | 'advanced' | 'chat'
 
 export function DesignInputPanel({
   form,
@@ -34,10 +34,17 @@ export function DesignInputPanel({
       icon: Wrench,
       label: 'Design Parameters',
       content: (
-        <div className="space-y-6">
+        <div className="space-y-4">
           <CoreFields form={form} />
-          <AdvancedOptions form={form} frameFixingType={form.watch('frame_fixing_type')} />
         </div>
+      )
+    },
+    {
+      id: 'advanced' as Section,
+      icon: Settings,
+      label: 'Advanced Options',
+      content: (
+        <AdvancedOptions form={form} frameFixingType={form.watch('frame_fixing_type')} />
       )
     },
     {
@@ -109,7 +116,7 @@ export function DesignInputPanel({
 
         {/* Content Area */}
         <div className="flex-1 overflow-y-auto">
-          <div className="p-4 space-y-6">
+          <div className="p-6 space-y-8">
             {/* Active Section Content */}
             {activeContent?.content}
 
@@ -118,7 +125,7 @@ export function DesignInputPanel({
               <Button
                 onClick={onOptimize}
                 disabled={isOptimizing || hasErrors}
-                className="w-full bg-black hover:bg-black/90 text-white"
+                className="w-full bg-black hover:bg-black/90 text-white mt-2"
               >
                 {isOptimizing ? 'Optimizing...' : 'Run Optimization'}
               </Button>

@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ResultsTab } from './results-tab'
 import { AlternativesTab } from './alternatives-tab'
+import { ComparisonTab } from './comparison-tab'
 import type { OptimisationResult } from '@/types/optimization-types'
 
 interface DesignResultsPanelProps {
@@ -49,9 +50,10 @@ export function DesignResultsPanel({
             {optimizationResult ? (
               <div className="p-4">
                 <Tabs defaultValue="results" className="w-full">
-                  <TabsList className="w-full grid grid-cols-2 mb-4">
+                  <TabsList className="w-full grid grid-cols-3 mb-4">
                     <TabsTrigger value="results">Results</TabsTrigger>
                     <TabsTrigger value="alternatives">Alternatives</TabsTrigger>
+                    <TabsTrigger value="comparison">Compare</TabsTrigger>
                   </TabsList>
 
                   <TabsContent value="results">
@@ -63,6 +65,15 @@ export function DesignResultsPanel({
                       alternatives={alternatives}
                       selectedIndex={selectedIndex}
                       onSelect={onSelectAlternative}
+                    />
+                  </TabsContent>
+
+                  <TabsContent value="comparison">
+                    <ComparisonTab
+                      result={optimizationResult}
+                      alternatives={alternatives}
+                      selectedIndex={selectedIndex}
+                      onSelectAlternative={onSelectAlternative}
                     />
                   </TabsContent>
                 </Tabs>

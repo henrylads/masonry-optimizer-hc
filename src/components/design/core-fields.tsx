@@ -31,8 +31,8 @@ export function CoreFields({ form, onOpenDensityCalculator }: CoreFieldsProps) {
   const isConcreteType = frameFixingType?.startsWith('concrete')
 
   return (
-    <div className="space-y-6">
-      <div className="grid gap-6 md:grid-cols-2">
+    <div className="space-y-4">
+      <div className="grid gap-4 sm:grid-cols-1">
         {/* Field 1: Cavity Width */}
         <FormField
           control={form.control}
@@ -50,7 +50,7 @@ export function CoreFields({ form, onOpenDensityCalculator }: CoreFieldsProps) {
                 />
               </FormControl>
               <FormDescription>
-                Distance between frame and masonry (50-400mm)
+                50-400mm
               </FormDescription>
               <FormMessage />
             </FormItem>
@@ -80,7 +80,7 @@ export function CoreFields({ form, onOpenDensityCalculator }: CoreFieldsProps) {
                 </SelectContent>
               </Select>
               <FormDescription>
-                Type of structural frame connection
+                Structural frame type
               </FormDescription>
               <FormMessage />
             </FormItem>
@@ -104,7 +104,7 @@ export function CoreFields({ form, onOpenDensityCalculator }: CoreFieldsProps) {
                   />
                 </FormControl>
                 <FormDescription>
-                  Concrete slab depth (150-500mm)
+                  150-500mm
                 </FormDescription>
                 <FormMessage />
               </FormItem>
@@ -128,7 +128,7 @@ export function CoreFields({ form, onOpenDensityCalculator }: CoreFieldsProps) {
                 />
               </FormControl>
               <FormDescription>
-                Vertical offset from slab (-600 to 500mm)
+                -600 to 500mm
               </FormDescription>
               <FormMessage />
             </FormItem>
@@ -165,7 +165,7 @@ export function CoreFields({ form, onOpenDensityCalculator }: CoreFieldsProps) {
                 )}
               </div>
               <FormDescription>
-                Characteristic load per meter (1-50 kN/m)
+                1-50 kN/m
               </FormDescription>
               <FormMessage />
             </FormItem>

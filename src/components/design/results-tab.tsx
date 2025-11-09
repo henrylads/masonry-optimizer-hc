@@ -59,7 +59,60 @@ export function ResultsTab({ result }: ResultsTabProps) {
               </div>
             </div>
 
-            <div className="pt-2 border-t">
+            {/* Applied Forces */}
+            {result.calculated?.shear_load !== undefined && (
+              <div className="pt-3 border-t">
+                <p className="text-sm font-semibold mb-2">Applied Forces</p>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <span className="text-muted-foreground">Shear Force (V_ed):</span>
+                  <span className="font-medium">{result.calculated.shear_load.toFixed(3)} kN</span>
+
+                  {result.calculated.detailed_verification_results?.momentResults?.M_ed_angle !== undefined && (
+                    <>
+                      <span className="text-muted-foreground">Fixing Moment (M_ed):</span>
+                      <span className="font-medium">
+                        {result.calculated.detailed_verification_results.momentResults.M_ed_angle.toFixed(3)} kNm
+                      </span>
+                    </>
+                  )}
+
+                  {result.calculated.detailed_verification_results?.combinedResults?.N_ed !== undefined && (
+                    <>
+                      <span className="text-muted-foreground">Tension (N_ed):</span>
+                      <span className="font-medium">
+                        {result.calculated.detailed_verification_results.combinedResults.N_ed.toFixed(3)} kN
+                      </span>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* System Deflection */}
+            {result.calculated.total_deflection !== undefined && (
+              <div className="pt-3 border-t">
+                <p className="text-sm font-semibold mb-2">System Deflection</p>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <span className="text-muted-foreground">Total Deflection:</span>
+                  <span className="font-medium">{result.calculated.total_deflection.toFixed(2)} mm</span>
+
+                  {result.calculated.detailed_verification_results?.deflectionResults?.deflection_limit_ratio !== undefined && (
+                    <>
+                      <span className="text-muted-foreground">Utilization:</span>
+                      <span className={`font-medium ${
+                        result.calculated.detailed_verification_results.deflectionResults.deflection_limit_ratio <= 1
+                          ? 'text-green-700'
+                          : 'text-red-700'
+                      }`}>
+                        {(result.calculated.detailed_verification_results.deflectionResults.deflection_limit_ratio * 100).toFixed(1)}%
+                      </span>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <div className="pt-3 border-t">
               <div className="flex items-center gap-2">
                 {allChecksPassed ? (
                   <>
@@ -118,6 +171,20 @@ export function ResultsTab({ result }: ResultsTabProps) {
 
               <span className="text-muted-foreground">Bolt Diameter:</span>
               <span className="font-medium">M{result.genetic.bolt_diameter}</span>
+
+              {result.calculated.rise_to_bolts !== undefined && (
+                <>
+                  <span className="text-muted-foreground">Rise to Bolts:</span>
+                  <span className="font-medium">{result.calculated.rise_to_bolts.toFixed(1)}mm</span>
+                </>
+              )}
+
+              {result.genetic.fixing_position !== undefined && (
+                <>
+                  <span className="text-muted-foreground">Fixing Position:</span>
+                  <span className="font-medium">{result.genetic.fixing_position.toFixed(1)}mm</span>
+                </>
+              )}
             </div>
           </div>
         )}
