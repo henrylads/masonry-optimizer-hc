@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { ChevronRight, CheckCircle, XCircle, Weight } from 'lucide-react'
+import { ChevronRight, CheckCircle, XCircle, Weight, Ruler, ArrowDown } from 'lucide-react'
 import type { OptimisationResult } from '@/types/optimization-types'
 
 interface ResultsTabProps {
@@ -46,18 +46,27 @@ export function ResultsTab({ result }: ResultsTabProps) {
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-3 pt-3">
-              <div>
-                <p className="text-sm text-muted-foreground">Configuration</p>
-                <p className="text-sm font-medium">
-                  {result.genetic.bracket_type || 'Standard'} / {result.genetic.channel_type || 'N/A'}
-                </p>
-              </div>
+            <div className="flex items-center gap-3">
+              <Ruler className="h-5 w-5 text-muted-foreground" />
               <div>
                 <p className="text-sm text-muted-foreground">Bracket Centres</p>
-                <p className="text-sm font-medium">{result.genetic.bracket_centres}mm</p>
+                <p className="text-2xl font-bold">
+                  {result.genetic.bracket_centres}mm
+                </p>
               </div>
             </div>
+
+            {result.calculated.detailed_verification_results?.totalDeflectionResults !== undefined && (
+              <div className="flex items-center gap-3">
+                <ArrowDown className="h-5 w-5 text-muted-foreground" />
+                <div>
+                  <p className="text-sm text-muted-foreground">Total System Deflection</p>
+                  <p className="text-2xl font-bold">
+                    {result.calculated.detailed_verification_results.totalDeflectionResults.Total_deflection_of_system.toFixed(2)} mm
+                  </p>
+                </div>
+              </div>
+            )}
 
             {/* Applied Forces */}
             {result.calculated?.shear_load !== undefined && (
@@ -67,11 +76,11 @@ export function ResultsTab({ result }: ResultsTabProps) {
                   <span className="text-muted-foreground">Shear Force (V_ed):</span>
                   <span className="font-medium">{result.calculated.shear_load.toFixed(3)} kN</span>
 
-                  {result.calculated.detailed_verification_results?.momentResults?.M_ed_angle !== undefined && (
+                  {result.calculated?.m_ed !== undefined && (
                     <>
                       <span className="text-muted-foreground">Fixing Moment (M_ed):</span>
                       <span className="font-medium">
-                        {result.calculated.detailed_verification_results.momentResults.M_ed_angle.toFixed(3)} kNm
+                        {result.calculated.m_ed.toFixed(3)} kNm
                       </span>
                     </>
                   )}
@@ -88,29 +97,6 @@ export function ResultsTab({ result }: ResultsTabProps) {
               </div>
             )}
 
-            {/* System Deflection */}
-            {result.calculated.total_deflection !== undefined && (
-              <div className="pt-3 border-t">
-                <p className="text-sm font-semibold mb-2">System Deflection</p>
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  <span className="text-muted-foreground">Total Deflection:</span>
-                  <span className="font-medium">{result.calculated.total_deflection.toFixed(2)} mm</span>
-
-                  {result.calculated.detailed_verification_results?.deflectionResults?.deflection_limit_ratio !== undefined && (
-                    <>
-                      <span className="text-muted-foreground">Utilization:</span>
-                      <span className={`font-medium ${
-                        result.calculated.detailed_verification_results.deflectionResults.deflection_limit_ratio <= 1
-                          ? 'text-green-700'
-                          : 'text-red-700'
-                      }`}>
-                        {(result.calculated.detailed_verification_results.deflectionResults.deflection_limit_ratio * 100).toFixed(1)}%
-                      </span>
-                    </>
-                  )}
-                </div>
-              </div>
-            )}
 
             <div className="pt-3 border-t">
               <div className="flex items-center gap-2">
@@ -172,10 +158,10 @@ export function ResultsTab({ result }: ResultsTabProps) {
               <span className="text-muted-foreground">Bolt Diameter:</span>
               <span className="font-medium">M{result.genetic.bolt_diameter}</span>
 
-              {result.calculated.rise_to_bolts !== undefined && (
+              {result.calculated.rise_to_bolts_display !== undefined && (
                 <>
                   <span className="text-muted-foreground">Rise to Bolts:</span>
-                  <span className="font-medium">{result.calculated.rise_to_bolts.toFixed(1)}mm</span>
+                  <span className="font-medium">{result.calculated.rise_to_bolts_display.toFixed(1)}mm</span>
                 </>
               )}
 

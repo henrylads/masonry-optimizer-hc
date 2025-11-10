@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { ChevronLeft, ChevronRight, Wrench, Settings, MessageSquare } from 'lucide-react'
 import { formSchema } from '@/types/form-schema'
 import { runBruteForce } from '@/calculations/bruteForceAlgorithm'
 import { useDesignAutosave } from '@/hooks/use-design-autosave'
@@ -33,6 +34,7 @@ export default function DesignPage() {
   const [selectedAlternativeIndex, setSelectedAlternativeIndex] = useState(0)
   const [isOptimizing, setIsOptimizing] = useState(false)
   const [progress, setProgress] = useState(0)
+  const [leftPanelOpen, setLeftPanelOpen] = useState(true)
   const [rightPanelOpen, setRightPanelOpen] = useState(true)
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'error'>('saved')
   const [leftPanelWidth, setLeftPanelWidth] = useState(320)
@@ -95,6 +97,19 @@ export default function DesignPage() {
 
     loadData()
   }, [designId, projectId, router, form])
+
+  // Restore left panel state from localStorage
+  useEffect(() => {
+    const savedState = localStorage.getItem('design-left-panel-open')
+    if (savedState !== null) {
+      setLeftPanelOpen(savedState === 'true')
+    }
+  }, [])
+
+  // Save left panel state to localStorage
+  useEffect(() => {
+    localStorage.setItem('design-left-panel-open', String(leftPanelOpen))
+  }, [leftPanelOpen])
 
   // Restore right panel state from localStorage
   useEffect(() => {
@@ -362,25 +377,69 @@ export default function DesignPage() {
       />
 
       <div className="flex-1 flex overflow-hidden min-h-0">
-        <div
-          className="h-full border-r bg-white flex-shrink-0 relative overflow-hidden"
-          style={{ width: `${leftPanelWidth}px` }}
-        >
-          <Form {...form}>
-            <DesignInputPanel
-              form={form}
-              onOptimize={handleOptimize}
-              isOptimizing={isOptimizing}
-            />
-          </Form>
-
-          {/* Resize Handle */}
+        <div className="relative flex">
+          {/* Panel Content */}
           <div
-            onMouseDown={handleMouseDown}
-            className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-500/50 transition-colors group"
+            className={`h-full border-r bg-white flex-shrink-0 relative overflow-hidden transition-all duration-300`}
+            style={{ width: leftPanelOpen ? `${leftPanelWidth}px` : '48px' }}
           >
-            <div className="absolute right-0 top-0 bottom-0 w-4 -mr-2" />
+            {leftPanelOpen ? (
+              <>
+                <Form {...form}>
+                  <DesignInputPanel
+                    form={form}
+                    onOptimize={handleOptimize}
+                    isOptimizing={isOptimizing}
+                  />
+                </Form>
+
+                {/* Resize Handle */}
+                <div
+                  onMouseDown={handleMouseDown}
+                  className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-500/50 transition-colors group"
+                >
+                  <div className="absolute right-0 top-0 bottom-0 w-4 -mr-2" />
+                </div>
+              </>
+            ) : (
+              <div className="h-full w-12 bg-muted/10 flex flex-col items-center py-4 gap-2">
+                <button
+                  onClick={() => setLeftPanelOpen(true)}
+                  className="p-2 hover:bg-muted/30 rounded-md transition-colors"
+                  title="Design Parameters"
+                >
+                  <Wrench className="h-5 w-5" />
+                </button>
+                <button
+                  onClick={() => setLeftPanelOpen(true)}
+                  className="p-2 hover:bg-muted/30 rounded-md transition-colors"
+                  title="Advanced Options"
+                >
+                  <Settings className="h-5 w-5" />
+                </button>
+                <button
+                  onClick={() => setLeftPanelOpen(true)}
+                  className="p-2 hover:bg-muted/30 rounded-md transition-colors"
+                  title="AI Chat"
+                >
+                  <MessageSquare className="h-5 w-5" />
+                </button>
+              </div>
+            )}
           </div>
+
+          {/* Toggle Button */}
+          <button
+            onClick={() => setLeftPanelOpen(!leftPanelOpen)}
+            className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-full h-20 w-6 bg-white border border-l-0 rounded-r-lg shadow-sm hover:bg-muted/30 transition-colors flex items-center justify-center z-20"
+            aria-label={leftPanelOpen ? 'Close input panel' : 'Open input panel'}
+          >
+            {leftPanelOpen ? (
+              <ChevronLeft className="h-4 w-4" />
+            ) : (
+              <ChevronRight className="h-4 w-4" />
+            )}
+          </button>
         </div>
 
         <div className="flex-1 relative">
