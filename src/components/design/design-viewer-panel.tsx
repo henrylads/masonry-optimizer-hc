@@ -32,6 +32,10 @@ export function DesignViewerPanel({
 
     // Base parameters
     const params = {
+      // Add unique identifier to force React to detect parameter changes
+      // This ensures ShapeDiver properly updates when parameters change (e.g., removing notch)
+      _updateKey: Date.now(),
+
       bracket_thickness: optimizationResult.genetic?.bracket_thickness ?? 3,
       fixing_diameter: optimizationResult.genetic?.bolt_diameter ?? 10,
       bracket_length: optimizationResult.calculated?.bracket_projection ?? 150,
@@ -98,9 +102,25 @@ export function DesignViewerPanel({
         return baseFixingPos;
       })(),
 
-      back_notch_height: Math.max(10, optimizationResult.calculated?.detailed_verification_results?.droppingBelowSlabResults?.H_notch ?? 25),
-      back_notch_length: Math.max(10, 25), // Default notch depth
-      back_notch_option: ((optimizationResult.calculated?.detailed_verification_results?.droppingBelowSlabResults?.H_notch ?? 0) > 0),
+      // Notch parameters - only include when notch exists
+      ...(() => {
+        const notchHeight = optimizationResult.calculated?.detailed_verification_results?.droppingBelowSlabResults?.H_notch ?? 0;
+
+        if (notchHeight > 0) {
+          // Include notch parameters with valid values
+          return {
+            back_notch_height: Math.max(10, notchHeight),
+            back_notch_length: 25,
+            back_notch_option: true
+          };
+        } else {
+          // Don't include notch parameters at all when no notch exists
+          // This prevents ShapeDiver from receiving invalid values (0 is below minimum of 10)
+          return {
+            back_notch_option: false
+          };
+        }
+      })(),
 
       // Material grades - use separate parameters for bracket and angle
       bracket_material_grade: '316',

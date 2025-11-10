@@ -344,67 +344,69 @@ export function AdvancedOptions({ form, frameFixingType }: AdvancedOptionsProps)
                 )}
               />
 
-              {isConcreteType && (
-                <>
-                  <FormField
-                    control={form.control}
-                    name="channel_product"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Channel Fix Type</FormLabel>
-                        <FormControl>
-                          <Select
-                            value={field.value}
-                            onValueChange={field.onChange}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select channel type" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="all">All Channels</SelectItem>
-                              <SelectItem value="CPRO38">CPRO38</SelectItem>
-                              <SelectItem value="CPRO50">CPRO50</SelectItem>
-                              <SelectItem value="CPRO52">CPRO52</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </FormControl>
-                        <FormDescription>
-                          Select specific channel product or test all
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+              {/* Show channel product for cast-in and all concrete options */}
+              {(frameFixingType === 'concrete-cast-in' || frameFixingType === 'concrete-all') && (
+                <FormField
+                  control={form.control}
+                  name="channel_product"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Channel Fix Type</FormLabel>
+                      <FormControl>
+                        <Select
+                          value={field.value}
+                          onValueChange={field.onChange}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select channel type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Channels</SelectItem>
+                            <SelectItem value="CPRO38">CPRO38</SelectItem>
+                            <SelectItem value="CPRO50">CPRO50</SelectItem>
+                            <SelectItem value="CPRO52">CPRO52</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </FormControl>
+                      <FormDescription>
+                        Select specific channel product or test all
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
 
-                  <FormField
-                    control={form.control}
-                    name="postfix_product"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Post Fix Type</FormLabel>
-                        <FormControl>
-                          <Select
-                            value={field.value}
-                            onValueChange={field.onChange}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select post type" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="all">All Post-Fix</SelectItem>
-                              <SelectItem value="R-HPTIII-70">R-HPTIII-70</SelectItem>
-                              <SelectItem value="R-HPTIII-90">R-HPTIII-90</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </FormControl>
-                        <FormDescription>
-                          Select specific post-fix product or test all
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </>
+              {/* Show postfix product for post-fix and all concrete options */}
+              {(frameFixingType === 'concrete-post-fix' || frameFixingType === 'concrete-all') && (
+                <FormField
+                  control={form.control}
+                  name="postfix_product"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Post Fix Type</FormLabel>
+                      <FormControl>
+                        <Select
+                          value={field.value}
+                          onValueChange={field.onChange}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select post type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Post-Fix</SelectItem>
+                            <SelectItem value="R-HPTIII-70">R-HPTIII-70</SelectItem>
+                            <SelectItem value="R-HPTIII-90">R-HPTIII-90</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </FormControl>
+                      <FormDescription>
+                        Select specific post-fix product or test all
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               )}
 
               <FormField
@@ -442,7 +444,7 @@ export function AdvancedOptions({ form, frameFixingType }: AdvancedOptionsProps)
                           min={fixingPositionConstraints.min}
                           max={fixingPositionConstraints.max}
                           placeholder="e.g. 100"
-                          value={field.value}
+                          value={field.value ?? 75}
                           onChange={(e) => {
                             const inputValue = e.target.value
                             if (inputValue === '') {

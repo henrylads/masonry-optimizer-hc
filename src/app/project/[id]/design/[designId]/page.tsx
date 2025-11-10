@@ -174,13 +174,27 @@ export default function DesignPage() {
         };
       }
 
-      // Enumerate allowed channel types based on form selections
-      const fixingType = values.fixing_type
+      // Enumerate allowed channel types based on frame_fixing_type
+      const frameFixingType = values.frame_fixing_type
       const channelProduct = values.channel_product
       const postfixProduct = values.postfix_product
 
       const allowed_channel_types = (() => {
         const channelTypes: string[] = []
+
+        // Determine fixing type from frame_fixing_type
+        let fixingType: 'all' | 'post-fix' | 'channel-fix'
+
+        if (frameFixingType === 'concrete-cast-in') {
+          fixingType = 'channel-fix'
+        } else if (frameFixingType === 'concrete-post-fix') {
+          fixingType = 'post-fix'
+        } else if (frameFixingType === 'concrete-all') {
+          fixingType = 'all'
+        } else {
+          // Steel types - no channel types needed
+          return []
+        }
 
         if (fixingType === 'all') {
           // Include channels based on both dropdown selections
