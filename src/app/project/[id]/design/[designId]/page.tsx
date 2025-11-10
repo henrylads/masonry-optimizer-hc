@@ -13,6 +13,7 @@ import { DesignBreadcrumb } from '@/components/design/design-breadcrumb'
 import { DesignInputPanel } from '@/components/design/design-input-panel'
 import { DesignViewerPanel } from '@/components/design/design-viewer-panel'
 import { DesignResultsPanel } from '@/components/design/design-results-panel'
+import { PDFDownloadButton } from '@/components/pdf-download-button'
 import { Form } from '@/components/ui/form'
 import type { OptimisationResult } from '@/types/optimization-types'
 import type { Design } from '@/types/design-types'
@@ -379,7 +380,20 @@ export default function DesignPage() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <AuthHeader />
+      <AuthHeader
+        rightActions={
+          optimizationResult && (
+            <PDFDownloadButton
+              optimizationResult={optimizationResult}
+              designInputs={form.getValues()}
+              projectName={project.name}
+              designName={design.name}
+              variant="outline"
+              size="sm"
+            />
+          )
+        }
+      />
 
       <DesignBreadcrumb
         projectId={projectId}

@@ -133,16 +133,17 @@ export function DesignViewerPanel({
       // Angle-specific parameters from genetic results
       angle_type: optimizationResult.genetic?.angle_orientation || 'Standard', // Use actual angle orientation from genetic results
       profile_thickness: optimizationResult.genetic?.angle_thickness ?? 4,
-      profile_length: optimizationResult.genetic?.horizontal_leg ?? 75,  // Horizontal leg of angle
+      profile_length: Math.max(40, Math.min(150, optimizationResult.genetic?.horizontal_leg ?? 75)),  // Horizontal leg of angle (constrained 40-150mm to match ShapeDiver limits)
       profile_height: (() => {
         // Use extended angle height if angle extension was applied
         const angleExtension = optimizationResult?.calculated?.angle_extension_result;
-        if (angleExtension?.extension_applied) {
-          return angleExtension.extended_angle_height;
-        }
-        // Otherwise use the original vertical leg
-        return optimizationResult.genetic?.vertical_leg ?? 60;
-      })(),   // Vertical leg of angle (potentially extended)
+        const baseHeight = angleExtension?.extension_applied
+          ? angleExtension.extended_angle_height
+          : optimizationResult.genetic?.vertical_leg ?? 60;
+
+        // Constrain to reasonable range (50-300mm) to prevent ShapeDiver errors
+        return Math.max(50, Math.min(300, baseHeight));
+      })(),   // Vertical leg of angle (potentially extended, constrained 50-300mm)
 
       // Add bracket positioning parameters if available
       ...(optimizationResult.calculated?.bracketLayout && {

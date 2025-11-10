@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { MessageSquare, Wrench, Send, Settings } from 'lucide-react'
 import { CoreFields } from '@/components/design/core-fields'
 import { AdvancedOptions } from '@/components/design/advanced-options'
+import { InlineDensityCalculator } from '@/components/design/inline-density-calculator'
 import type { formSchema } from '@/types/form-schema'
 import type { z } from 'zod'
 import { cn } from '@/lib/utils'
@@ -24,9 +25,16 @@ export function DesignInputPanel({
   isOptimizing
 }: DesignInputPanelProps) {
   const [activeSection, setActiveSection] = useState<Section>('core')
+  const [showDensityCalculator, setShowDensityCalculator] = useState(false)
 
   // Check if form has validation errors
   const hasErrors = Object.keys(form.formState.errors).length > 0
+
+  // Handler for density calculator value selection
+  const handleDensityCalculatorValue = (load: number) => {
+    form.setValue('characteristic_load', load)
+    setShowDensityCalculator(false)
+  }
 
   const sections = [
     {
@@ -35,7 +43,17 @@ export function DesignInputPanel({
       label: 'Design Parameters',
       content: (
         <div className="space-y-4">
-          <CoreFields form={form} />
+          <CoreFields
+            form={form}
+            onOpenDensityCalculator={() => setShowDensityCalculator(!showDensityCalculator)}
+          />
+
+          {/* Density Calculator - conditionally rendered */}
+          {showDensityCalculator && (
+            <InlineDensityCalculator
+              onValueSelect={handleDensityCalculatorValue}
+            />
+          )}
         </div>
       )
     },

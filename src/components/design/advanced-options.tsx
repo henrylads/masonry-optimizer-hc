@@ -262,7 +262,7 @@ export function AdvancedOptions({ form, frameFixingType }: AdvancedOptionsProps)
                           <Input
                             type="number"
                             placeholder="12"
-                            value={field.value}
+                            value={field.value ?? 12}
                             onChange={(e) => field.onChange(Number(e.target.value) || 0)}
                             min="-50"
                             max="100"
@@ -287,7 +287,7 @@ export function AdvancedOptions({ form, frameFixingType }: AdvancedOptionsProps)
                           <Input
                             type="number"
                             placeholder="3"
-                            value={field.value}
+                            value={field.value ?? 3}
                             onChange={(e) => field.onChange(Number(e.target.value) || 0)}
                             min="0"
                             max="20"

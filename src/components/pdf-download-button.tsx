@@ -13,6 +13,8 @@ interface PDFDownloadButtonProps {
   optimizationResult: OptimizationResult;
   designInputs: FormDataType;
   shapeDiverOutputs?: ShapeDiverOutputs;
+  projectName?: string;
+  designName?: string;
   disabled?: boolean;
   variant?: 'default' | 'outline' | 'secondary' | 'ghost' | 'link' | 'destructive';
   size?: 'default' | 'sm' | 'lg' | 'icon';
@@ -27,6 +29,8 @@ export const PDFDownloadButton: React.FC<PDFDownloadButtonProps> = ({
   optimizationResult,
   designInputs,
   shapeDiverOutputs,
+  projectName,
+  designName,
   disabled = false,
   variant = 'outline',
   size = 'default',
@@ -52,7 +56,7 @@ export const PDFDownloadButton: React.FC<PDFDownloadButtonProps> = ({
       }
 
       // Generate and download the PDF
-      await generatePDFReport(optimizationResult, designInputs, shapeDiverOutputs);
+      await generatePDFReport(optimizationResult, designInputs, shapeDiverOutputs, projectName, designName);
 
       // Log successful generation for debugging
       console.log('📄 PDF report generated successfully', {

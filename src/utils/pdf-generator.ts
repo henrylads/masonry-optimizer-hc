@@ -19,6 +19,8 @@ export class CalculationPDFGenerator {
   private margin: number;
   private data: PDFReportData;
   private shapeDiverOutputs?: ShapeDiverOutputs;
+  private projectName?: string;
+  private designName?: string;
 
   constructor() {
     this.doc = new jsPDF();
@@ -32,11 +34,13 @@ export class CalculationPDFGenerator {
   /**
    * Main method to generate the complete calculation report
    */
-  async generateReport(result: OptimizationResult, formData: FormDataType, shapeDiverOutputs?: ShapeDiverOutputs): Promise<void> {
+  async generateReport(result: OptimizationResult, formData: FormDataType, shapeDiverOutputs?: ShapeDiverOutputs, projectName?: string, designName?: string): Promise<void> {
     try {
       // Extract all data needed for the PDF
       this.data = extractPDFReportData(result, formData);
       this.shapeDiverOutputs = shapeDiverOutputs;
+      this.projectName = projectName;
+      this.designName = designName;
 
       // Build the PDF document
       this.addHeader();
@@ -71,6 +75,24 @@ export class CalculationPDFGenerator {
     this.doc.setFont(undefined, 'bold');
     this.doc.text(this.data.metadata.title, this.margin, this.currentY);
     this.currentY += 15;
+
+    // Project and Design Names (if available)
+    if (this.projectName || this.designName) {
+      this.doc.setFontSize(12);
+      this.doc.setFont(undefined, 'normal');
+
+      if (this.projectName) {
+        this.doc.text(`Project: ${this.projectName}`, this.margin, this.currentY);
+        this.currentY += 7;
+      }
+
+      if (this.designName) {
+        this.doc.text(`Design: ${this.designName}`, this.margin, this.currentY);
+        this.currentY += 7;
+      }
+
+      this.currentY += 5;
+    }
 
     // Metadata
     this.doc.setFontSize(10);
@@ -512,8 +534,10 @@ export class CalculationPDFGenerator {
 export const generatePDFReport = async (
   result: OptimizationResult,
   formData: FormDataType,
-  shapeDiverOutputs?: ShapeDiverOutputs
+  shapeDiverOutputs?: ShapeDiverOutputs,
+  projectName?: string,
+  designName?: string
 ): Promise<void> => {
   const generator = new CalculationPDFGenerator();
-  await generator.generateReport(result, formData, shapeDiverOutputs);
+  await generator.generateReport(result, formData, shapeDiverOutputs, projectName, designName);
 };

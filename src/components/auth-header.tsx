@@ -4,7 +4,11 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { LogOut } from 'lucide-react'
 
-export function AuthHeader() {
+interface AuthHeaderProps {
+  rightActions?: React.ReactNode
+}
+
+export function AuthHeader({ rightActions }: AuthHeaderProps = {}) {
   const router = useRouter()
 
   const handleLogout = async () => {
@@ -18,7 +22,8 @@ export function AuthHeader() {
   }
 
   return (
-    <div className="fixed top-4 right-4 z-50">
+    <div className="fixed top-4 right-4 z-50 flex items-center gap-2">
+      {rightActions}
       <Button
         variant="outline"
         size="sm"
