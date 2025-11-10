@@ -137,9 +137,17 @@ export function ResultsTab({ result }: ResultsTabProps) {
 
               <span className="text-muted-foreground">Angle Size:</span>
               <span className="font-medium">
-                {result.genetic.vertical_leg && result.genetic.horizontal_leg
-                  ? `${result.genetic.vertical_leg}x${result.genetic.horizontal_leg}x${result.genetic.angle_thickness}mm`
-                  : 'N/A'}
+                {(() => {
+                  // Use extended angle height if angle extension was applied
+                  const angleExtension = result.calculated?.angle_extension_result;
+                  const verticalLeg = angleExtension?.extension_applied
+                    ? angleExtension.extended_angle_height
+                    : result.genetic.vertical_leg;
+
+                  return verticalLeg && result.genetic.horizontal_leg
+                    ? `${verticalLeg}x${result.genetic.horizontal_leg}x${result.genetic.angle_thickness}mm`
+                    : 'N/A';
+                })()}
               </span>
 
               <span className="text-muted-foreground">Bracket Centres:</span>
