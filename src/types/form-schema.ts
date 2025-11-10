@@ -42,6 +42,11 @@ export const formSchema = z.object({
     .number()
     .min(1, { message: "Characteristic load must be at least 1 kN/m" })
     .max(50, { message: "Characteristic load must be at most 50 kN/m" }),
+  run_length: z.coerce
+    .number()
+    .min(100, { message: "Run length must be at least 100mm" })
+    .max(250000, { message: "Run length must be at most 250000mm (250m)" })
+    .default(1000),
   has_notch: z.boolean().default(false),
   notch_height: z.coerce
     .number()

@@ -171,6 +171,29 @@ export function CoreFields({ form, onOpenDensityCalculator }: CoreFieldsProps) {
             </FormItem>
           )}
         />
+
+        {/* Field 6: Run Length */}
+        <FormField
+          control={form.control}
+          name="run_length"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Run Length (mm) *</FormLabel>
+              <FormControl>
+                <Input
+                  type="number"
+                  placeholder="e.g., 5000"
+                  value={field.value ?? 1000}
+                  onChange={(e) => field.onChange(Number(e.target.value) || 1000)}
+                />
+              </FormControl>
+              <FormDescription>
+                100-250000mm (for 3D visualization)
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
       </div>
     </div>
   )

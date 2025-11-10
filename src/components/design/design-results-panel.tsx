@@ -5,7 +5,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ResultsTab } from './results-tab'
 import { AlternativesTab } from './alternatives-tab'
 import { ComparisonTab } from './comparison-tab'
+import { RunLayoutTab } from './run-layout-tab'
 import type { OptimisationResult } from '@/types/optimization-types'
+import type { RunOptimizationResult } from '@/types/runLayout'
 
 interface DesignResultsPanelProps {
   optimizationResult: OptimisationResult | null
@@ -14,6 +16,8 @@ interface DesignResultsPanelProps {
   onSelectAlternative: (index: number) => void
   isOpen: boolean
   onToggle: () => void
+  runLayoutResult: RunOptimizationResult | null
+  runLength: number
 }
 
 export function DesignResultsPanel({
@@ -22,7 +26,9 @@ export function DesignResultsPanel({
   selectedIndex,
   onSelectAlternative,
   isOpen,
-  onToggle
+  onToggle,
+  runLayoutResult,
+  runLength
 }: DesignResultsPanelProps) {
   return (
     <div className="relative">
@@ -50,10 +56,11 @@ export function DesignResultsPanel({
             {optimizationResult ? (
               <div className="p-4">
                 <Tabs defaultValue="results" className="w-full">
-                  <TabsList className="w-full grid grid-cols-3 mb-4">
+                  <TabsList className="w-full grid grid-cols-4 mb-4">
                     <TabsTrigger value="results">Results</TabsTrigger>
-                    <TabsTrigger value="alternatives">Alternatives</TabsTrigger>
+                    <TabsTrigger value="alternatives">Alts</TabsTrigger>
                     <TabsTrigger value="comparison">Compare</TabsTrigger>
+                    <TabsTrigger value="runlayout">Run</TabsTrigger>
                   </TabsList>
 
                   <TabsContent value="results">
@@ -74,6 +81,14 @@ export function DesignResultsPanel({
                       alternatives={alternatives}
                       selectedIndex={selectedIndex}
                       onSelectAlternative={onSelectAlternative}
+                    />
+                  </TabsContent>
+
+                  <TabsContent value="runlayout">
+                    <RunLayoutTab
+                      runLayoutResult={runLayoutResult}
+                      runLength={runLength}
+                      bracketCentres={optimizationResult?.genetic.bracket_centres ?? 0}
                     />
                   </TabsContent>
                 </Tabs>

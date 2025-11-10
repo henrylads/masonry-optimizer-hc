@@ -7,6 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { ChevronLeft, ChevronRight, Wrench, Settings, MessageSquare } from 'lucide-react'
 import { formSchema } from '@/types/form-schema'
 import { runBruteForce } from '@/calculations/bruteForceAlgorithm'
+import { optimizeRunLayout } from '@/calculations/runLayoutOptimizer'
 import { useDesignAutosave } from '@/hooks/use-design-autosave'
 import { AuthHeader } from '@/components/auth-header'
 import { DesignBreadcrumb } from '@/components/design/design-breadcrumb'
@@ -18,6 +19,7 @@ import { Form } from '@/components/ui/form'
 import type { OptimisationResult } from '@/types/optimization-types'
 import type { Design } from '@/types/design-types'
 import type { Project } from '@/types/project-types'
+import type { RunOptimizationResult } from '@/types/runLayout'
 import type { z } from 'zod'
 
 export default function DesignPage() {
@@ -40,6 +42,7 @@ export default function DesignPage() {
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'error'>('saved')
   const [leftPanelWidth, setLeftPanelWidth] = useState(320)
   const [isResizing, setIsResizing] = useState(false)
+  const [runLayoutResult, setRunLayoutResult] = useState<RunOptimizationResult | null>(null)
 
   // Form
   const form = useForm<z.infer<typeof formSchema>>({
@@ -282,6 +285,15 @@ export default function DesignPage() {
       setAlternatives(alternatives)
       setSelectedAlternativeIndex(0)
 
+      // Calculate run layout for visualization
+      const runLength = values.run_length ?? 1000
+      const bracketCentres = result.genetic.bracket_centres
+      const runLayout = optimizeRunLayout({
+        totalRunLength: runLength,
+        bracketCentres: bracketCentres,
+      })
+      setRunLayoutResult(runLayout)
+
       // Auto-open right panel if closed
       if (!rightPanelOpen) {
         setRightPanelOpen(true)
@@ -295,13 +307,37 @@ export default function DesignPage() {
           calculationResults: result
         })
       })
+
+      // Generate ShapeDiver JSON files (non-blocking)
+      try {
+        const jsonResponse = await fetch('/api/shapediver-json', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            optimizationResult: result,
+            formInputs: values,
+            designName: design?.name,
+            projectName: project?.name
+          })
+        })
+
+        if (jsonResponse.ok) {
+          const jsonData = await jsonResponse.json()
+          console.log('ShapeDiver JSON files generated:', jsonData.files)
+        } else {
+          console.warn('Failed to generate ShapeDiver JSON files:', await jsonResponse.text())
+        }
+      } catch (jsonError) {
+        console.error('Error generating ShapeDiver JSON files:', jsonError)
+        // Don't fail the optimization if JSON generation fails
+      }
     } catch (error) {
       console.error('Optimization failed:', error)
       alert('Optimization failed. Please check your inputs and try again.')
     } finally {
       setIsOptimizing(false)
     }
-  }, [form, designId, rightPanelOpen])
+  }, [form, designId, rightPanelOpen, design, project])
 
   // Handle alternative selection
   const handleSelectAlternative = useCallback((index: number) => {
@@ -485,6 +521,8 @@ export default function DesignPage() {
           onSelectAlternative={handleSelectAlternative}
           isOpen={rightPanelOpen}
           onToggle={() => setRightPanelOpen(!rightPanelOpen)}
+          runLayoutResult={runLayoutResult}
+          runLength={form.watch('run_length') ?? 1000}
         />
       </div>
     </div>

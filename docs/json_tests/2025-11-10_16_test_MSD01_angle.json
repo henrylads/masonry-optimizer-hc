@@ -1,0 +1,280 @@
+{
+  "anglesCount": {
+    "description": "Number of angle types",
+    "value": 4,
+    "unit": ""
+  },
+  "angleInstancesCount": {
+    "description": "Total number of angle instances",
+    "value": 7,
+    "unit": ""
+  },
+  "angles": [
+    {
+      "angleIndex": {
+        "description": "Index of angle type",
+        "value": 0,
+        "unit": ""
+      },
+      "angleName": {
+        "description": "Name identifier for the angle type",
+        "value": "Level-1-ANG-Type-00",
+        "unit": ""
+      },
+      "anglePositions": {
+        "description": "X-coordinates of angle instances from start of run",
+        "value": [
+          0
+        ],
+        "unit": "mm"
+      },
+      "angleBracketLocations": {
+        "description": "X-coordinates of bracket locations from start of angle",
+        "value": [
+          118,
+          493,
+          868,
+          1243
+        ],
+        "unit": "mm"
+      },
+      "angleSKU": {
+        "description": "Stock keeping unit identifier",
+        "value": "AMS-90/60-4-1425-316",
+        "unit": ""
+      },
+      "angleProperties": {
+        "angleType": {
+          "description": "Type of angle profile",
+          "value": "Standard",
+          "unit": ""
+        },
+        "angleMaterial": {
+          "description": "Material grade of stainless steel",
+          "value": "316",
+          "unit": ""
+        },
+        "angleProfileThickness": {
+          "description": "Thickness of the angle profile",
+          "value": 4,
+          "unit": "mm"
+        },
+        "angleProfileLength": {
+          "description": "Length of the angle profile",
+          "value": 90,
+          "unit": "mm"
+        },
+        "angleProfileHeight": {
+          "description": "Height of the angle profile",
+          "value": 60,
+          "unit": "mm"
+        },
+        "angleLength": {
+          "description": "Total length of the angle",
+          "value": 1425,
+          "unit": "mm"
+        }
+      }
+    },
+    {
+      "angleIndex": {
+        "description": "Index of angle type",
+        "value": 1,
+        "unit": ""
+      },
+      "angleName": {
+        "description": "Name identifier for the angle type",
+        "value": "Level-1-ANG-Type-01",
+        "unit": ""
+      },
+      "anglePositions": {
+        "description": "X-coordinates of angle instances from start of run",
+        "value": [
+          1435
+        ],
+        "unit": "mm"
+      },
+      "angleBracketLocations": {
+        "description": "X-coordinates of bracket locations from start of angle",
+        "value": [
+          183,
+          558,
+          933,
+          1308
+        ],
+        "unit": "mm"
+      },
+      "angleSKU": {
+        "description": "Stock keeping unit identifier",
+        "value": "AMS-90/60-4-1485-316",
+        "unit": ""
+      },
+      "angleProperties": {
+        "angleType": {
+          "description": "Type of angle profile",
+          "value": "Standard",
+          "unit": ""
+        },
+        "angleMaterial": {
+          "description": "Material grade of stainless steel",
+          "value": "316",
+          "unit": ""
+        },
+        "angleProfileThickness": {
+          "description": "Thickness of the angle profile",
+          "value": 4,
+          "unit": "mm"
+        },
+        "angleProfileLength": {
+          "description": "Length of the angle profile",
+          "value": 90,
+          "unit": "mm"
+        },
+        "angleProfileHeight": {
+          "description": "Height of the angle profile",
+          "value": 60,
+          "unit": "mm"
+        },
+        "angleLength": {
+          "description": "Total length of the angle",
+          "value": 1485,
+          "unit": "mm"
+        }
+      }
+    },
+    {
+      "angleIndex": {
+        "description": "Index of angle type",
+        "value": 2,
+        "unit": ""
+      },
+      "angleName": {
+        "description": "Name identifier for the angle type",
+        "value": "Level-1-ANG-Type-02",
+        "unit": ""
+      },
+      "anglePositions": {
+        "description": "X-coordinates of angle instances from start of run",
+        "value": [
+          2930,
+          4430,
+          5930,
+          7430
+        ],
+        "unit": "mm"
+      },
+      "angleBracketLocations": {
+        "description": "X-coordinates of bracket locations from start of angle",
+        "value": [
+          183,
+          558,
+          933,
+          1308
+        ],
+        "unit": "mm"
+      },
+      "angleSKU": {
+        "description": "Stock keeping unit identifier",
+        "value": "AMS-90/60-4-1490-316",
+        "unit": ""
+      },
+      "angleProperties": {
+        "angleType": {
+          "description": "Type of angle profile",
+          "value": "Standard",
+          "unit": ""
+        },
+        "angleMaterial": {
+          "description": "Material grade of stainless steel",
+          "value": "316",
+          "unit": ""
+        },
+        "angleProfileThickness": {
+          "description": "Thickness of the angle profile",
+          "value": 4,
+          "unit": "mm"
+        },
+        "angleProfileLength": {
+          "description": "Length of the angle profile",
+          "value": 90,
+          "unit": "mm"
+        },
+        "angleProfileHeight": {
+          "description": "Height of the angle profile",
+          "value": 60,
+          "unit": "mm"
+        },
+        "angleLength": {
+          "description": "Total length of the angle",
+          "value": 1490,
+          "unit": "mm"
+        }
+      }
+    },
+    {
+      "angleIndex": {
+        "description": "Index of angle type",
+        "value": 3,
+        "unit": ""
+      },
+      "angleName": {
+        "description": "Name identifier for the angle type",
+        "value": "Level-1-ANG-Type-03",
+        "unit": ""
+      },
+      "anglePositions": {
+        "description": "X-coordinates of angle instances from start of run",
+        "value": [
+          8930
+        ],
+        "unit": "mm"
+      },
+      "angleBracketLocations": {
+        "description": "X-coordinates of bracket locations from start of angle",
+        "value": [
+          150,
+          525,
+          900
+        ],
+        "unit": "mm"
+      },
+      "angleSKU": {
+        "description": "Stock keeping unit identifier",
+        "value": "AMS-90/60-4-1050-316",
+        "unit": ""
+      },
+      "angleProperties": {
+        "angleType": {
+          "description": "Type of angle profile",
+          "value": "Standard",
+          "unit": ""
+        },
+        "angleMaterial": {
+          "description": "Material grade of stainless steel",
+          "value": "316",
+          "unit": ""
+        },
+        "angleProfileThickness": {
+          "description": "Thickness of the angle profile",
+          "value": 4,
+          "unit": "mm"
+        },
+        "angleProfileLength": {
+          "description": "Length of the angle profile",
+          "value": 90,
+          "unit": "mm"
+        },
+        "angleProfileHeight": {
+          "description": "Height of the angle profile",
+          "value": 60,
+          "unit": "mm"
+        },
+        "angleLength": {
+          "description": "Total length of the angle",
+          "value": 1050,
+          "unit": "mm"
+        }
+      }
+    }
+  ]
+}
