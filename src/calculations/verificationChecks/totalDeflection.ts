@@ -7,7 +7,7 @@ const TOTAL_DEFLECTION_CONSTANTS = {
     /** Young's modulus for steel (N/mm²) */
     E: 200000,
     /** Maximum allowable total deflection (mm) */
-    MAX_DEFLECTION: 1.5,
+    MAX_DEFLECTION: 2,
     /** Ixx_3 lookup table for angle thickness */
     IXX_3_LOOKUP: {
         3: 139727,
