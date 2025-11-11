@@ -344,7 +344,7 @@ export function generateRunJSON(
   // Extract slab dimensions
   const slabWidth = formInputs.slab_thickness ?? 225 // Width = slab thickness
   const slabDepth = 225 // Default depth (not currently in form)
-  const supportLevel = Math.abs(formInputs.support_level) // Support level from bracket_drop (make positive)
+  const supportLevel = formInputs.support_level // Support level from bracket_drop (preserves sign)
 
   // Extract bracket projection
   const bracketProjection = optimizationResult.calculated.bracket_projection ??
