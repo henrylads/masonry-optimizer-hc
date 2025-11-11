@@ -1,0 +1,11 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+
+# Testing rules
+
+Do not change a file in order to make it pass a test you have written.
+The tests should be written to serve the files not the other way round
+Only five decimal places are required to pass a test even if higher precision is required in the actual calculations
