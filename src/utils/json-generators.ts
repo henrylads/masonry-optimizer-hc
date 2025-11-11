@@ -198,11 +198,11 @@ export function generateBracketJSON(
     bracketHeight: createParameter('Height of the bracket', Math.round(bracketHeight), 'mm'),
     bracketFixingDiameter: createParameter('Diameter of fixing holes', boltDiameter, 'mm'),
     bracketToePlateType: createParameter('Type of toe plate configuration', 'Standard', ''),
-    bracketBackNotchOption: createParameter('Whether back notch is present', false, ''),
-    bracketBackNotchLength: createParameter('Length of back notch', 0, 'mm'),
-    bracketBackNotchHeight: createParameter('Height of back notch', 0, 'mm'),
-    bracketToeNotchLength: createParameter('Length of toe notch', Math.round(notchDepth), 'mm'),
-    bracketToeNotchHeight: createParameter('Height of toe notch', Math.round(notchHeight), 'mm'),
+    bracketBackNotchOption: createParameter('Whether back notch is present', hasNotch, ''),
+    bracketBackNotchLength: createParameter('Length of back notch', Math.round(notchDepth), 'mm'),
+    bracketBackNotchHeight: createParameter('Height of back notch', Math.round(notchHeight), 'mm'),
+    bracketToeNotchLength: createParameter('Length of toe notch', 22, 'mm'),
+    bracketToeNotchHeight: createParameter('Height of toe notch', 60, 'mm'),
     bracketCutNotchAboveHeight: createParameter('Height of cut notch above', 12, 'mm'),
   }
 
