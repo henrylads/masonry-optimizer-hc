@@ -8,6 +8,7 @@ import { ComparisonTab } from './comparison-tab'
 import { RunLayoutTab } from './run-layout-tab'
 import type { OptimisationResult } from '@/types/optimization-types'
 import type { RunOptimizationResult } from '@/types/runLayout'
+import type { ShapeDiverOutputs } from '@/components/shapediver'
 
 interface DesignResultsPanelProps {
   optimizationResult: OptimisationResult | null
@@ -18,6 +19,7 @@ interface DesignResultsPanelProps {
   onToggle: () => void
   runLayoutResult: RunOptimizationResult | null
   runLength: number
+  shapeDiverOutputs?: ShapeDiverOutputs | null
 }
 
 export function DesignResultsPanel({
@@ -28,7 +30,8 @@ export function DesignResultsPanel({
   isOpen,
   onToggle,
   runLayoutResult,
-  runLength
+  runLength,
+  shapeDiverOutputs
 }: DesignResultsPanelProps) {
   return (
     <div className="relative">
@@ -64,7 +67,7 @@ export function DesignResultsPanel({
                   </TabsList>
 
                   <TabsContent value="results">
-                    <ResultsTab result={optimizationResult} />
+                    <ResultsTab result={optimizationResult} shapeDiverOutputs={shapeDiverOutputs} />
                   </TabsContent>
 
                   <TabsContent value="alternatives">

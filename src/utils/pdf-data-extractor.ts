@@ -133,7 +133,7 @@ export const extractDesignInputs = (formData: FormDataType, result?: Optimizatio
         },
         {
           label: 'Fixing Position',
-          value: (result?.calculated?.optimized_fixing_position || result?.genetic?.fixing_position || formData.fixing_position ?? 75).toString(),
+          value: (result?.calculated?.optimized_fixing_position || result?.genetic?.fixing_position || (formData.fixing_position ?? 75)).toString(),
           unit: 'mm from top of steel section'
         }
       ] : [
@@ -147,7 +147,7 @@ export const extractDesignInputs = (formData: FormDataType, result?: Optimizatio
         },
         {
           label: 'Fixing Position',
-          value: (result?.calculated?.optimized_fixing_position || result?.genetic?.fixing_position || formData.fixing_position ?? 75).toString(),
+          value: (result?.calculated?.optimized_fixing_position || result?.genetic?.fixing_position || (formData.fixing_position ?? 75)).toString(),
           unit: 'mm from top of slab'
         }
       ])
@@ -312,7 +312,7 @@ export const extractCalculations = (verificationResults: VerificationResults): F
       ],
       outputs: [
         { parameter: 'Total Deflection', value: safeToString(deflectionResults.totalDeflection), unit: 'mm' },
-        { parameter: 'Deflection Limit', value: 'L/300', unit: 'mm' },
+        { parameter: 'Deflection Limit', value: '2', unit: 'mm' },
         { parameter: 'Utilization', value: safeToString(deflectionResults.utilization), unit: '%' }
       ],
       utilization: safeNumber(deflectionResults.utilization),

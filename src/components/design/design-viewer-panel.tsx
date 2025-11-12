@@ -4,6 +4,7 @@ import { useMemo } from 'react'
 import dynamic from 'next/dynamic'
 import { Loader2, Box } from 'lucide-react'
 import type { OptimisationResult } from '@/types/optimization-types'
+import type { ShapeDiverOutputs } from '@/components/shapediver'
 
 // Dynamically import ShapeDiver to avoid SSR issues
 const ShapeDiver = dynamic(() => import('@/components/shapediver').then(mod => ({ default: mod.ShapeDiverCard })), {
@@ -19,12 +20,14 @@ interface DesignViewerPanelProps {
   optimizationResult: OptimisationResult | null
   isOptimizing: boolean
   progress: number
+  onOutputsChange?: (outputs: ShapeDiverOutputs) => void
 }
 
 export function DesignViewerPanel({
   optimizationResult,
   isOptimizing,
-  progress
+  progress,
+  onOutputsChange
 }: DesignViewerPanelProps) {
   // Memoize parameters to prevent ShapeDiver from recreating session on every render
   const shapeDiverParams = useMemo(() => {
@@ -192,6 +195,7 @@ export function DesignViewerPanel({
             initialParameters={shapeDiverParams}
             title=""
             className="border-0 shadow-none"
+            onOutputsChange={onOutputsChange}
           />
         </div>
       )}

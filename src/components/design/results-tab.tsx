@@ -1,14 +1,16 @@
 'use client'
 
 import { useState } from 'react'
-import { ChevronRight, CheckCircle, XCircle, Weight, Ruler, ArrowDown } from 'lucide-react'
+import { ChevronRight, CheckCircle, XCircle, Weight, Ruler, ArrowDown, Leaf } from 'lucide-react'
 import type { OptimisationResult } from '@/types/optimization-types'
+import type { ShapeDiverOutputs } from '@/components/shapediver'
 
 interface ResultsTabProps {
   result: OptimisationResult
+  shapeDiverOutputs?: ShapeDiverOutputs | null
 }
 
-export function ResultsTab({ result }: ResultsTabProps) {
+export function ResultsTab({ result, shapeDiverOutputs }: ResultsTabProps) {
   const [summaryExpanded, setSummaryExpanded] = useState(true)
   const [parametersExpanded, setParametersExpanded] = useState(false)
   const [verificationExpanded, setVerificationExpanded] = useState(false)
@@ -63,6 +65,31 @@ export function ResultsTab({ result }: ResultsTabProps) {
                   <p className="text-sm text-muted-foreground">Total System Deflection</p>
                   <p className="text-2xl font-bold">
                     {result.calculated.detailed_verification_results.totalDeflectionResults.Total_deflection_of_system.toFixed(2)} mm
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* ShapeDiver Outputs */}
+            {shapeDiverOutputs?.totalSystemWeight !== undefined && (
+              <div className="flex items-center gap-3">
+                <Weight className="h-5 w-5 text-muted-foreground" />
+                <div>
+                  <p className="text-sm text-muted-foreground">Total System Weight</p>
+                  <p className="text-2xl font-bold">
+                    {shapeDiverOutputs.totalSystemWeight.toFixed(2)} kg
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {shapeDiverOutputs?.totalSystemEmbodiedCarbon !== undefined && (
+              <div className="flex items-center gap-3">
+                <Leaf className="h-5 w-5 text-muted-foreground" />
+                <div>
+                  <p className="text-sm text-muted-foreground">Embodied Carbon</p>
+                  <p className="text-2xl font-bold">
+                    {shapeDiverOutputs.totalSystemEmbodiedCarbon.toFixed(2)} kgCO2e
                   </p>
                 </div>
               </div>

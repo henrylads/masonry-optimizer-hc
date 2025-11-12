@@ -9,7 +9,7 @@ const DEFLECTION_CONSTANTS = {
     /** Load factor for SLS */
     LOAD_FACTOR_SLS: 1.35,
     /** Maximum allowable deflection (mm) */
-    MAX_DEFLECTION: 1.5,
+    MAX_DEFLECTION: 2,
     /** Ramberg-Osgood parameter */
     n: 8
 } as const;

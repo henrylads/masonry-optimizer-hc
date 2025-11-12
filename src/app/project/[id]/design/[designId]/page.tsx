@@ -20,6 +20,7 @@ import type { OptimisationResult } from '@/types/optimization-types'
 import type { Design } from '@/types/design-types'
 import type { Project } from '@/types/project-types'
 import type { RunOptimizationResult } from '@/types/runLayout'
+import type { ShapeDiverOutputs } from '@/components/shapediver'
 import type { z } from 'zod'
 
 export default function DesignPage() {
@@ -43,6 +44,7 @@ export default function DesignPage() {
   const [leftPanelWidth, setLeftPanelWidth] = useState(320)
   const [isResizing, setIsResizing] = useState(false)
   const [runLayoutResult, setRunLayoutResult] = useState<RunOptimizationResult | null>(null)
+  const [shapeDiverOutputs, setShapeDiverOutputs] = useState<ShapeDiverOutputs | null>(null)
 
   // Form
   const form = useForm<z.infer<typeof formSchema>>({
@@ -513,6 +515,7 @@ export default function DesignPage() {
             optimizationResult={optimizationResult}
             isOptimizing={isOptimizing}
             progress={progress}
+            onOutputsChange={setShapeDiverOutputs}
           />
         </div>
 
@@ -525,6 +528,7 @@ export default function DesignPage() {
           onToggle={() => setRightPanelOpen(!rightPanelOpen)}
           runLayoutResult={runLayoutResult}
           runLength={form.watch('run_length') ?? 1000}
+          shapeDiverOutputs={shapeDiverOutputs}
         />
       </div>
     </div>
