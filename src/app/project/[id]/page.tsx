@@ -10,7 +10,6 @@ import { CreateDesignModal } from '@/components/project/create-design-modal'
 import { useProject } from '@/hooks/use-project'
 import { CreateDesignInput } from '@/types/design-types'
 import { AuthHeader } from '@/components/auth-header'
-import { MainNavigation } from '@/components/main-navigation'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useRouter } from 'next/navigation'
@@ -60,7 +59,6 @@ export default function ProjectPage() {
   return (
     <div className="min-h-screen flex flex-col">
       <AuthHeader />
-      <MainNavigation hideNavTabs />
 
       <div className="flex-1 flex">
         <AppSidebar />

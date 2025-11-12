@@ -126,7 +126,7 @@ export function ResultsTab({ result, shapeDiverOutputs }: ResultsTabProps) {
 
 
             <div className="pt-3 border-t">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 mb-2">
                 {allChecksPassed ? (
                   <>
                     <CheckCircle className="h-5 w-5 text-green-500" />
@@ -139,6 +139,52 @@ export function ResultsTab({ result, shapeDiverOutputs }: ResultsTabProps) {
                   </>
                 )}
               </div>
+
+              {/* Verification Check Utilizations */}
+              {result.calculated.detailed_verification_results && (
+                <div className="space-y-1 text-xs">
+                  {result.calculated.detailed_verification_results.momentResults?.utilisation !== undefined && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground">Moment:</span>
+                      <span className={`font-medium ${result.calculated.detailed_verification_results.momentResults.passes ? 'text-green-600' : 'text-red-600'}`}>
+                        {result.calculated.detailed_verification_results.momentResults.utilisation.toFixed(1)}%
+                      </span>
+                    </div>
+                  )}
+                  {result.calculated.detailed_verification_results.shearResults?.utilisation !== undefined && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground">Shear:</span>
+                      <span className={`font-medium ${result.calculated.detailed_verification_results.shearResults.passes ? 'text-green-600' : 'text-red-600'}`}>
+                        {result.calculated.detailed_verification_results.shearResults.utilisation.toFixed(1)}%
+                      </span>
+                    </div>
+                  )}
+                  {result.calculated.detailed_verification_results.deflectionResults?.utilization !== undefined && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground">Deflection:</span>
+                      <span className={`font-medium ${result.calculated.detailed_verification_results.deflectionResults.passes ? 'text-green-600' : 'text-red-600'}`}>
+                        {result.calculated.detailed_verification_results.deflectionResults.utilization.toFixed(1)}%
+                      </span>
+                    </div>
+                  )}
+                  {result.calculated.detailed_verification_results.angleToBracketResults?.U_c_bolt !== undefined && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground">Connection:</span>
+                      <span className={`font-medium ${result.calculated.detailed_verification_results.angleToBracketResults.passes ? 'text-green-600' : 'text-red-600'}`}>
+                        {result.calculated.detailed_verification_results.angleToBracketResults.U_c_bolt.toFixed(1)}%
+                      </span>
+                    </div>
+                  )}
+                  {result.calculated.detailed_verification_results.combinedResults?.U_c !== undefined && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground">Combined:</span>
+                      <span className={`font-medium ${result.calculated.detailed_verification_results.combinedResults.passes ? 'text-green-600' : 'text-red-600'}`}>
+                        {result.calculated.detailed_verification_results.combinedResults.U_c.toFixed(1)}%
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -228,31 +274,32 @@ export function ResultsTab({ result, shapeDiverOutputs }: ResultsTabProps) {
             <VerificationCheck
               name="Moment Check"
               passed={result.calculated.detailed_verification_results.momentResults?.passes ?? false}
-              utilization={result.calculated.detailed_verification_results.momentResults?.utilisation}
+              utilization={result.calculated.detailed_verification_results.momentResults?.utilization}
             />
             <VerificationCheck
               name="Shear Check"
               passed={result.calculated.detailed_verification_results.shearResults?.passes ?? false}
-              utilization={result.calculated.detailed_verification_results.shearResults?.utilisation}
+              utilization={result.calculated.detailed_verification_results.shearResults?.utilization}
             />
             <VerificationCheck
               name="Deflection Check"
-              passed={result.calculated.detailed_verification_results.deflectionResults?.passes ?? false}
-              utilization={result.calculated.detailed_verification_results.deflectionResults?.deflection_limit_ratio}
+              passed={result.calculated.detailed_verification_results.totalDeflectionResults?.passes ?? false}
+              utilization={result.calculated.detailed_verification_results.totalDeflectionResults?.Total_deflection_of_system ? (result.calculated.detailed_verification_results.totalDeflectionResults.Total_deflection_of_system / 2) * 100 : undefined}
             />
             <VerificationCheck
               name="Connection Check"
               passed={result.calculated.detailed_verification_results.angleToBracketResults?.passes ?? false}
-              utilization={result.calculated.detailed_verification_results.angleToBracketResults?.bearing_utilisation}
+              utilization={result.calculated.detailed_verification_results.angleToBracketResults?.U_c_bolt}
             />
             <VerificationCheck
               name="Combined Check"
               passed={result.calculated.detailed_verification_results.combinedResults?.passes ?? false}
-              utilization={result.calculated.detailed_verification_results.combinedResults?.utilisation}
+              utilization={result.calculated.detailed_verification_results.combinedResults?.U_c}
             />
             <VerificationCheck
               name="Fixing Check"
               passed={result.calculated.detailed_verification_results.fixingResults?.passes ?? false}
+              utilization={result.calculated.detailed_verification_results.fixingResults?.utilization}
             />
           </div>
         )}
@@ -284,7 +331,7 @@ function VerificationCheck({
         <span className={`text-sm font-medium ${
           passed ? 'text-green-700' : 'text-red-700'
         }`}>
-          {(utilization * 100).toFixed(1)}%
+          {utilization.toFixed(1)}%
         </span>
       )}
     </div>

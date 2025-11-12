@@ -10,7 +10,6 @@ import { useProjects } from '@/hooks/use-projects'
 import { CreateProjectInput } from '@/types/project-types'
 import { useRouter } from 'next/navigation'
 import { AuthHeader } from '@/components/auth-header'
-import { MainNavigation } from '@/components/main-navigation'
 import { AppSidebar } from '@/components/app-sidebar'
 
 export default function DashboardPage() {
@@ -50,7 +49,6 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen flex flex-col">
       <AuthHeader />
-      <MainNavigation hideNavTabs />
 
       <div className="flex-1 flex">
         <AppSidebar />

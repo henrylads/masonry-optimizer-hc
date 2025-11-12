@@ -4,18 +4,19 @@ import { useState, useEffect, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { ChevronLeft, ChevronRight, Wrench, Settings, MessageSquare } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Wrench, Settings, MessageSquare, Pencil, Loader2 } from 'lucide-react'
 import { formSchema } from '@/types/form-schema'
 import { runBruteForce } from '@/calculations/bruteForceAlgorithm'
 import { optimizeRunLayout } from '@/calculations/runLayoutOptimizer'
 import { useDesignAutosave } from '@/hooks/use-design-autosave'
 import { AuthHeader } from '@/components/auth-header'
-import { DesignBreadcrumb } from '@/components/design/design-breadcrumb'
 import { DesignInputPanel } from '@/components/design/design-input-panel'
 import { DesignViewerPanel } from '@/components/design/design-viewer-panel'
 import { DesignResultsPanel } from '@/components/design/design-results-panel'
 import { PDFDownloadButton } from '@/components/pdf-download-button'
 import { Form } from '@/components/ui/form'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import type { OptimisationResult } from '@/types/optimization-types'
 import type { Design } from '@/types/design-types'
 import type { Project } from '@/types/project-types'
@@ -45,6 +46,9 @@ export default function DesignPage() {
   const [isResizing, setIsResizing] = useState(false)
   const [runLayoutResult, setRunLayoutResult] = useState<RunOptimizationResult | null>(null)
   const [shapeDiverOutputs, setShapeDiverOutputs] = useState<ShapeDiverOutputs | null>(null)
+  const [isEditingName, setIsEditingName] = useState(false)
+  const [editedName, setEditedName] = useState('')
+  const [isUpdatingName, setIsUpdatingName] = useState(false)
 
   // Form
   const form = useForm<z.infer<typeof formSchema>>({
@@ -370,6 +374,36 @@ export default function DesignPage() {
     }
   }, [designId])
 
+  // Handle inline name editing
+  const handleSaveDesignName = useCallback(async () => {
+    if (!design || editedName.trim() === '' || editedName === design.name) {
+      setIsEditingName(false)
+      setEditedName(design?.name || '')
+      return
+    }
+
+    setIsUpdatingName(true)
+    try {
+      await handleUpdateDesignName(editedName.trim())
+      setIsEditingName(false)
+    } catch (error) {
+      console.error('Failed to update design name:', error)
+      setEditedName(design.name)
+      setIsEditingName(false)
+    } finally {
+      setIsUpdatingName(false)
+    }
+  }, [design, editedName, handleUpdateDesignName])
+
+  const handleNameKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSaveDesignName()
+    } else if (e.key === 'Escape') {
+      setEditedName(design?.name || '')
+      setIsEditingName(false)
+    }
+  }, [design, handleSaveDesignName])
+
   // Handle left panel resize
   const handleMouseDown = useCallback(() => {
     setIsResizing(true)
@@ -421,6 +455,85 @@ export default function DesignPage() {
   return (
     <div className="min-h-screen flex flex-col">
       <AuthHeader
+        leftContent={
+          <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => router.push(`/project/${projectId}`)}
+              className="gap-1"
+            >
+              <ChevronLeft className="h-4 w-4" />
+              Back
+            </Button>
+
+            <div className="flex items-center gap-2 text-sm">
+              <button
+                onClick={() => router.push('/dashboard')}
+                className="text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Projects
+              </button>
+              <span className="text-muted-foreground">/</span>
+              <button
+                onClick={() => router.push(`/project/${projectId}`)}
+                className="text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {project.name}
+              </button>
+              <span className="text-muted-foreground">/</span>
+
+              {isEditingName ? (
+                <Input
+                  value={editedName}
+                  onChange={(e) => setEditedName(e.target.value)}
+                  onBlur={handleSaveDesignName}
+                  onKeyDown={handleNameKeyDown}
+                  disabled={isUpdatingName}
+                  className="h-7 w-48"
+                  autoFocus
+                />
+              ) : (
+                <div className="flex items-center gap-1">
+                  <span className="font-semibold">{design.name}</span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setEditedName(design.name)
+                      setIsEditingName(true)
+                    }}
+                    className="h-6 w-6 p-0"
+                  >
+                    <Pencil className="h-3 w-3" />
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            {/* Save status indicator */}
+            <div className="flex items-center gap-2 text-sm ml-4">
+              {saveStatus === 'saved' && (
+                <>
+                  <div className="h-2 w-2 rounded-full bg-green-500" />
+                  <span className="text-muted-foreground">Saved</span>
+                </>
+              )}
+              {saveStatus === 'saving' && (
+                <>
+                  <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                  <span className="text-muted-foreground">Saving...</span>
+                </>
+              )}
+              {saveStatus === 'error' && (
+                <>
+                  <div className="h-2 w-2 rounded-full bg-red-500" />
+                  <span className="text-red-500">Save failed</span>
+                </>
+              )}
+            </div>
+          </div>
+        }
         rightActions={
           optimizationResult && (
             <PDFDownloadButton
@@ -430,18 +543,11 @@ export default function DesignPage() {
               designName={design.name}
               variant="outline"
               size="sm"
+              shapeDiverOutputs={shapeDiverOutputs ?? undefined}
+              className="bg-black text-white hover:bg-black/90 border-black"
             />
           )
         }
-      />
-
-      <DesignBreadcrumb
-        projectId={projectId}
-        projectName={project.name}
-        designId={designId}
-        designName={design.name}
-        saveStatus={saveStatus}
-        onUpdateDesignName={handleUpdateDesignName}
       />
 
       <div className="flex-1 flex overflow-hidden min-h-0">
