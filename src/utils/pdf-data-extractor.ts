@@ -118,8 +118,8 @@ export const extractDesignInputs = (formData: FormDataType, result?: Optimizatio
     ],
     notchConfiguration: formData.has_notch ? [
       { label: 'Notch Enabled', value: 'Yes' },
-      { label: 'Notch Height', value: formData.notch_height.toString(), unit: 'mm' },
-      { label: 'Notch Depth', value: formData.notch_depth.toString(), unit: 'mm' }
+      { label: 'Notch Height', value: (formData.notch_height ?? 0).toString(), unit: 'mm' },
+      { label: 'Notch Depth', value: (formData.notch_depth ?? 0).toString(), unit: 'mm' }
     ] : [
       { label: 'Notch Enabled', value: 'No' }
     ],
