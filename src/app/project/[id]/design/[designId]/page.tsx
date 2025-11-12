@@ -42,7 +42,7 @@ export default function DesignPage() {
   const [leftPanelOpen, setLeftPanelOpen] = useState(true)
   const [rightPanelOpen, setRightPanelOpen] = useState(true)
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'error'>('saved')
-  const [leftPanelWidth, setLeftPanelWidth] = useState(320)
+  const [leftPanelWidth, setLeftPanelWidth] = useState(380)
   const [isResizing, setIsResizing] = useState(false)
   const [runLayoutResult, setRunLayoutResult] = useState<RunOptimizationResult | null>(null)
   const [shapeDiverOutputs, setShapeDiverOutputs] = useState<ShapeDiverOutputs | null>(null)
@@ -140,7 +140,7 @@ export default function DesignPage() {
     const savedWidth = localStorage.getItem('design-left-panel-width')
     if (savedWidth !== null) {
       const width = parseInt(savedWidth, 10)
-      if (width >= 280 && width <= 600) {
+      if (width >= 350 && width <= 600) {
         setLeftPanelWidth(width)
       }
     }
@@ -413,8 +413,8 @@ export default function DesignPage() {
     if (!isResizing) return
 
     const newWidth = e.clientX
-    // Constrain width between 280px and 600px
-    const constrainedWidth = Math.max(280, Math.min(600, newWidth))
+    // Constrain width between 350px and 600px
+    const constrainedWidth = Math.max(350, Math.min(600, newWidth))
     setLeftPanelWidth(constrainedWidth)
   }, [isResizing])
 
@@ -453,7 +453,7 @@ export default function DesignPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="h-screen flex flex-col overflow-hidden">
       <AuthHeader
         leftContent={
           <div className="flex items-center gap-3">
@@ -550,27 +550,26 @@ export default function DesignPage() {
         }
       />
 
-      <div className="flex-1 flex overflow-hidden min-h-0">
-        <div className="relative flex">
+      <div className="flex-1 grid min-h-0 overflow-hidden transition-[grid-template-columns] duration-300" style={{ gridTemplateColumns: leftPanelOpen ? `${leftPanelWidth}px 1fr auto` : '48px 1fr auto' }}>
+        <div className="relative h-full">
           {/* Panel Content */}
-          <div
-            className={`h-full border-r bg-white flex-shrink-0 relative overflow-hidden transition-all duration-300`}
-            style={{ width: leftPanelOpen ? `${leftPanelWidth}px` : '48px' }}
-          >
+          <div className="h-full border-r bg-white relative overflow-hidden">
             {leftPanelOpen ? (
               <>
                 <Form {...form}>
-                  <DesignInputPanel
-                    form={form}
-                    onOptimize={handleOptimize}
-                    isOptimizing={isOptimizing}
-                  />
+                  <div className="h-full">
+                    <DesignInputPanel
+                      form={form}
+                      onOptimize={handleOptimize}
+                      isOptimizing={isOptimizing}
+                    />
+                  </div>
                 </Form>
 
                 {/* Resize Handle */}
                 <div
                   onMouseDown={handleMouseDown}
-                  className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-500/50 transition-colors group"
+                  className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-500/50 transition-colors group z-10"
                 >
                   <div className="absolute right-0 top-0 bottom-0 w-4 -mr-2" />
                 </div>
@@ -616,7 +615,7 @@ export default function DesignPage() {
           </button>
         </div>
 
-        <div className="flex-1 relative">
+        <div className="relative h-full min-w-0 overflow-hidden">
           <DesignViewerPanel
             optimizationResult={optimizationResult}
             isOptimizing={isOptimizing}

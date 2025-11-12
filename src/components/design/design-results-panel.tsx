@@ -50,12 +50,12 @@ export function DesignResultsPanel({
 
       {/* Panel Content */}
       <div
-        className={`h-full border-l bg-white transition-all duration-300 ${
+        className={`h-full border-l bg-white transition-all duration-300 relative ${
           isOpen ? 'w-[350px]' : 'w-0 border-l-0'
         }`}
       >
         {isOpen && (
-          <div className="h-full overflow-y-auto">
+          <div className="absolute inset-0 overflow-y-auto">
             {optimizationResult ? (
               <div className="p-4">
                 <Tabs defaultValue="results" className="w-full">

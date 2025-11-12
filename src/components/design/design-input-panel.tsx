@@ -104,37 +104,36 @@ export function DesignInputPanel({
   const activeContent = sections.find(s => s.id === activeSection)
 
   return (
-    <div className="h-full flex flex-col overflow-hidden">
-      <div className="flex-1 flex overflow-hidden">
-        {/* Icon Navigation Bar */}
-        <div className="w-14 bg-muted/30 border-r flex flex-col items-center py-4 gap-2 flex-shrink-0">
-          {sections.map((section) => {
-            const Icon = section.icon
-            const isActive = activeSection === section.id
+    <div className="absolute inset-0 flex overflow-hidden">
+      {/* Icon Navigation Bar */}
+      <div className="w-14 bg-muted/30 border-r flex flex-col items-center py-4 gap-2 flex-shrink-0">
+        {sections.map((section) => {
+          const Icon = section.icon
+          const isActive = activeSection === section.id
 
-            return (
-              <button
-                key={section.id}
-                onClick={() => setActiveSection(section.id)}
-                className={cn(
-                  "w-10 h-10 rounded-lg flex items-center justify-center transition-all",
-                  "hover:bg-muted",
-                  isActive && "bg-background shadow-sm border-l-2 border-primary"
-                )}
-                title={section.label}
-              >
-                <Icon className={cn(
-                  "h-5 w-5",
-                  isActive ? "text-foreground" : "text-muted-foreground"
-                )} />
-              </button>
-            )
-          })}
-        </div>
+          return (
+            <button
+              key={section.id}
+              onClick={() => setActiveSection(section.id)}
+              className={cn(
+                "w-10 h-10 rounded-lg flex items-center justify-center transition-all",
+                "hover:bg-muted",
+                isActive && "bg-background shadow-sm border-l-2 border-primary"
+              )}
+              title={section.label}
+            >
+              <Icon className={cn(
+                "h-5 w-5",
+                isActive ? "text-foreground" : "text-muted-foreground"
+              )} />
+            </button>
+          )
+        })}
+      </div>
 
-        {/* Content Area */}
-        <div className="flex-1 overflow-y-auto">
-          <div className="p-6 space-y-8">
+      {/* Content Area */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="p-6 space-y-8">
             {/* Active Section Content */}
             {activeContent?.content}
 
@@ -148,7 +147,6 @@ export function DesignInputPanel({
                 {isOptimizing ? 'Optimizing...' : 'Run Optimization'}
               </Button>
             )}
-          </div>
         </div>
       </div>
     </div>
