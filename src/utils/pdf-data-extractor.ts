@@ -100,11 +100,11 @@ export const extractDesignInputs = (formData: FormDataType, result?: Optimizatio
         value: effectiveThickness.toString(),
         unit: 'mm'
       },
-      { label: 'Cavity Width', value: formData.cavity.toString(), unit: 'mm' },
-      { label: 'Bracket Drop', value: formData.support_level.toString(), unit: 'mm' },
-      { label: 'Characteristic Load', value: formData.characteristic_load.toString(), unit: 'kN/m' },
-      { label: 'Facade Thickness', value: formData.facade_thickness.toString(), unit: 'mm' },
-      { label: 'Material Type', value: formData.material_type },
+      { label: 'Cavity Width', value: (formData.cavity ?? 0).toString(), unit: 'mm' },
+      { label: 'Bracket Drop', value: (formData.support_level ?? 0).toString(), unit: 'mm' },
+      { label: 'Characteristic Load', value: (formData.characteristic_load ?? 0).toString(), unit: 'kN/m' },
+      { label: 'Facade Thickness', value: (formData.facade_thickness ?? 102.5).toString(), unit: 'mm' },
+      { label: 'Material Type', value: formData.material_type ?? 'brick' },
       { label: 'Load Position', value: formData.load_position?.toFixed(2) || '0.33' },
       ...(isSteelFixing ? [
         { label: 'Steel Section Type', value: formData.steel_section_type || 'N/A' },
@@ -133,7 +133,7 @@ export const extractDesignInputs = (formData: FormDataType, result?: Optimizatio
         },
         {
           label: 'Fixing Position',
-          value: (result?.calculated?.optimized_fixing_position || result?.genetic?.fixing_position || formData.fixing_position).toString(),
+          value: (result?.calculated?.optimized_fixing_position || result?.genetic?.fixing_position || formData.fixing_position ?? 75).toString(),
           unit: 'mm from top of steel section'
         }
       ] : [
@@ -147,7 +147,7 @@ export const extractDesignInputs = (formData: FormDataType, result?: Optimizatio
         },
         {
           label: 'Fixing Position',
-          value: (result?.calculated?.optimized_fixing_position || result?.genetic?.fixing_position || formData.fixing_position).toString(),
+          value: (result?.calculated?.optimized_fixing_position || result?.genetic?.fixing_position || formData.fixing_position ?? 75).toString(),
           unit: 'mm from top of slab'
         }
       ])
