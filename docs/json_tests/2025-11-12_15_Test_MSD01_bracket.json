@@ -80,6 +80,11 @@
         "description": "Height of cut notch above",
         "value": 12,
         "unit": "mm"
+      },
+      "bracketFixingLevel": {
+        "description": "Fixing level below top of slab/steel",
+        "value": -90,
+        "unit": "mm"
       }
     }
   ]

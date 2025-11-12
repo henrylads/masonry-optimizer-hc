@@ -6,7 +6,7 @@
   },
   "angleInstancesCount": {
     "description": "Total number of angle instances",
-    "value": 1,
+    "value": 2,
     "unit": ""
   },
   "angles": [
@@ -24,7 +24,8 @@
       "anglePositions": {
         "description": "X-coordinates of angle instances from start of run",
         "value": [
-          0
+          0,
+          1000
         ],
         "unit": "mm"
       },

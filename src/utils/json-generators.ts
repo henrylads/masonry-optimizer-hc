@@ -224,7 +224,9 @@ export function generateBracketJSON(
 
   // Calculate fixing level (fixing position from top of slab/steel section)
   // Use optimized_fixing_position from calculated, or fixing_position from genetic
+  // The fixing position is stored as a positive value (distance from top), but ShapeDiver expects negative
   const fixingPosition = calculated.optimized_fixing_position ?? genetic.fixing_position ?? 0
+  const bracketFixingLevel = -Math.round(fixingPosition) // Negative because it's below the top
 
   // Create bracket specification
   const bracketSpec: BracketSpec = {
@@ -243,7 +245,7 @@ export function generateBracketJSON(
     bracketToeNotchLength: createParameter('Length of toe notch', 22, 'mm'),
     bracketToeNotchHeight: createParameter('Height of toe notch', 60, 'mm'),
     bracketCutNotchAboveHeight: createParameter('Height of cut notch above', 12, 'mm'),
-    bracketFixingLevel: createParameter('Fixing level of the bracket', Math.round(fixingPosition), 'mm'),
+    bracketFixingLevel: createParameter('Fixing level below top of slab/steel', bracketFixingLevel, 'mm'),
   }
 
   return {

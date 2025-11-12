@@ -25,238 +25,47 @@ interface ShapeDiverOutput {
 interface ShapeDiverCardProps {
     title?: string;
     className?: string;
-    // Define expected keys from the application side
-    initialParameters?: Partial<Record<'sku' | 'bracket_type' | 'bracket_material_grade' | 'angle_material_grade' |
-    'material_grade' | 'bracket_thickness' | 'bracket_length' | 'bracket_height' | 'bolt_diameter' | 'toe_plate_type' |
-    'back_notch_option' | 'back_notch_length' | 'notch_height' | 'support_type' | 'angle_type' |
-    'profile_thickness' | 'profile_length' | 'profile_height' | 'angle_length' | 'bracket_count' |
-    'bracket_spacing' | 'start_offset' | 'spacing_gap' | 'slab_thickness' | 'fixing_position' | 'dim_d' | 'dim_d_value', ParameterValue>>;
-    
+    // New JSON-based parameters for the new model
+    bracketJSON?: string;
+    angleJSON?: string;
+    runJSON?: string;
+
     // Callback function to receive output values
     onOutputsChange?: (outputs: ShapeDiverOutputs) => void;
 }
 
-// Mapping from application keys to the EXACT ShapeDiver parameter IDs
-// Using IDs instead of names to avoid duplicate parameter name issues
-const paramIdMapping: Record<string, string> = {
-    'support_type': '337cfa15-5d22-492d-af0b-4969d6ac4b3a', // Support Type [S/I]
-    'bracket_material_grade': 'acede6ae-cc51-4747-9868-bc0c9f68fec1', // Material Grade [304/316] for brackets
-    'bracket_thickness': '05110fb6-6b78-42ba-8e1e-76af929c2df9', // Bracket Thickness [mm]
-    'bracket_length': '3063d112-349a-4bc6-b428-c5233b0a6cef', // Bracket Length [mm]
-    'back_notch_height': '17958f34-ed17-4069-a27e-6463e82f1107', // Back Notch Height [mm] : 10-200
-    'fixing_diameter': 'af7c556e-f628-4bed-b71d-e1ac60cd963c', // Fixing Diameter [mm]
-    'back_notch_length': 'bfa0e582-3416-4878-a6ad-ebb45aa84961', // Back Notch Length [mm] : 10-200
-    'toe_plate_type': '00a1860e-0b09-4fb6-b839-f20a21377263', // Toe Plate Type [S/I]
-    'back_notch_option': '21d79fb1-95fd-4ba8-b4d5-7d8cca231fc3', // Back Notch Option
-    'bracket_height': '7930e553-2e98-4269-a9bb-2c92e6fbf900', // Bracket Height [mm]
-    'slab_thickness': '4cf90fe8-0036-4d3d-a384-d7bdf3e7b62e', // Slab thickness [mm]
-    
-    // Backward compatibility - legacy material_grade maps to bracket material grade
-    'material_grade': 'acede6ae-cc51-4747-9868-bc0c9f68fec1', // Material Grade [304/316] for brackets (legacy)
-    
-    // Angle-specific parameters
-    'angle_type': 'a7810331-b00c-4bb1-b60e-5a399f318236', // Angle Type [S/I]
-    'angle_material_grade': '9222bb3a-d90e-43d0-979d-27035d508f77', // Material Grade [304/316] for angles
-    'profile_thickness': 'b99c3cba-33b2-4ce3-aa02-eb31a0e9d110', // Profile Thickness [mm]
-    'profile_length': 'c230176f-ba6c-4a2c-b553-61681bf9161d', // Profile Length [mm]
-    'profile_height': '70cf3ed7-721c-4772-a704-782373b4c034', // Profile Height [mm]
-    
-    // Bracket positioning parameters
-    'angle_length': 'c08f3598-084e-4f59-9778-109c711a347e', // Total Angle Length [mm]
-    'bracket_count': '4e4d2dec-32e1-4964-a7b2-4eed2553cd6e', // Bracket Count [#]
-    'bracket_spacing': '4258ae1b-6044-4c70-8af8-29b73a301257', // C/C distance [mm]
-    'start_offset': '70118ce5-77ad-47c5-8e25-30eac545ad92', // Distance from start [mm]
-    'fixing_position': '4f5b0fb9-0141-47b8-ae7e-987fd3acd563', // Slab mounting offset [mm] - Fixing Position
-    'dim_d': 'd15baeb8-2ee9-4827-b095-17c35637468b', // Override DIM D = min 135mm Rule
-    'dim_d_value': 'd121a6c7-1fd7-4d80-945e-7a5257448eb5', // If override, DIM D [mm] =
-};
-
-// For debugging purposes - mapping from parameter IDs to names
-const paramIdToNameMapping: Record<string, string> = {
-    '337cfa15-5d22-492d-af0b-4969d6ac4b3a': 'Support Type [S/I]',
-    'acede6ae-cc51-4747-9868-bc0c9f68fec1': 'Bracket Material Grade [304/316]',
-    '05110fb6-6b78-42ba-8e1e-76af929c2df9': 'Bracket Thickness [mm]',
-    '3063d112-349a-4bc6-b428-c5233b0a6cef': 'Bracket Length [mm]',
-    '17958f34-ed17-4069-a27e-6463e82f1107': 'Back Notch Height [mm] : 10-200',
-    'af7c556e-f628-4bed-b71d-e1ac60cd963c': 'Fixing Diameter [mm]',
-    'bfa0e582-3416-4878-a6ad-ebb45aa84961': 'Back Notch Length [mm] : 10-200',
-    '00a1860e-0b09-4fb6-b839-f20a21377263': 'Toe Plate Type [S/I]',
-    '21d79fb1-95fd-4ba8-b4d5-7d8cca231fc3': 'Back Notch Option',
-    '7930e553-2e98-4269-a9bb-2c92e6fbf900': 'Bracket Height [mm]',
-    '4cf90fe8-0036-4d3d-a384-d7bdf3e7b62e': 'Slab thickness [mm]',
-    'a7810331-b00c-4bb1-b60e-5a399f318236': 'Angle Type [S/I]',
-    '9222bb3a-d90e-43d0-979d-27035d508f77': 'Angle Material Grade [304/316]',
-    'b99c3cba-33b2-4ce3-aa02-eb31a0e9d110': 'Profile Thickness [mm]',
-    'c230176f-ba6c-4a2c-b553-61681bf9161d': 'Profile Length [mm]',
-    '70cf3ed7-721c-4772-a704-782373b4c034': 'Profile Height [mm]',
-    'c08f3598-084e-4f59-9778-109c711a347e': 'Total Angle Length [mm]',
-    '4e4d2dec-32e1-4964-a7b2-4eed2553cd6e': 'Bracket Count [#]',
-    '4258ae1b-6044-4c70-8af8-29b73a301257': 'C/C distance [mm]',
-    '70118ce5-77ad-47c5-8e25-30eac545ad92': 'Distance from start [mm]',
-    '4f5b0fb9-0141-47b8-ae7e-987fd3acd563': 'Slab mounting offset [mm]',
-    'd15baeb8-2ee9-4827-b095-17c35637468b': 'Override DIM D = min 135mm Rule',
-    'd121a6c7-1fd7-4d80-945e-7a5257448eb5': 'If override, DIM D [mm] =',
-};
-
-// Helper function to format values based on parameter name patterns
-const formatParameterValue = (paramId: string, value: ParameterValue): string => {
-    if (value === null || value === undefined) {
-        console.warn(`Parameter ${paramIdToNameMapping[paramId] || paramId} received null/undefined value.`);
-        return ""; 
+// New model uses JSON inputs instead of individual parameters
+// EXACT 1-to-1 mapping between our JSON files and ShapeDiver parameter IDs:
+//
+// bracketJSON (our variable) → input_bracketJSON (ShapeDiver param) → ID: 070a9b35-2f0b-4f17-8f41-b1974cab7540
+// angleJSON (our variable)   → input_angleJSON (ShapeDiver param)   → ID: 50fcae5e-a936-4699-80a2-75ab83690f7a
+// runJSON (our variable)     → input_runJSON (ShapeDiver param)     → ID: 6e7d3bda-6352-410e-a760-0c1c41559de4
+//
+const SHAPEDIVER_PARAMS = {
+    BRACKET: {
+        id: '070a9b35-2f0b-4f17-8f41-b1974cab7540',
+        name: 'input_bracketJSON',
+        description: 'Bracket specifications JSON'
+    },
+    ANGLE: {
+        id: '50fcae5e-a936-4699-80a2-75ab83690f7a',
+        name: 'input_angleJSON',
+        description: 'Angle assembly JSON'
+    },
+    RUN: {
+        id: '6e7d3bda-6352-410e-a760-0c1c41559de4',
+        name: 'input_runJSON',
+        description: 'Run context JSON (includes support type)'
     }
-
-    const paramName = paramIdToNameMapping[paramId] || '';
-
-    // Specific formatting for Bracket Thickness
-    if (paramId === '05110fb6-6b78-42ba-8e1e-76af929c2df9') { // Bracket Thickness [mm]
-        if (value === 3) return "0";
-        if (value === 4) return "1";
-        console.warn(`Unsupported bracket thickness value: ${value}. Defaulting to index 0.`);
-        return "0"; 
-    }
-
-    // Specific formatting for Profile Thickness
-    if (paramId === 'b99c3cba-33b2-4ce3-aa02-eb31a0e9d110') { // Profile Thickness [mm]
-        if (value === 3) return "0";
-        if (value === 4) return "1";
-        if (value === 5) return "2";
-        if (value === 6) return "3";
-        if (value === 8) return "4";
-        console.warn(`Unsupported profile thickness value: ${value}. Defaulting to index 1 (4mm).`);
-        return "1"; 
-    }
-
-    // Specific formatting for Fixing Diameter
-    if (paramId === 'af7c556e-f628-4bed-b71d-e1ac60cd963c') { // Fixing Diameter [mm]
-        // Parameter expects index as string: "0" (M8), "1" (M10), "2" (M12), "3" (M16)
-        // Handle numeric input or string input like "M10"
-        let diameterNumber = NaN;
-        if (typeof value === 'number') {
-            diameterNumber = value;
-        } else if (typeof value === 'string' && value.toUpperCase().startsWith('M')) {
-             diameterNumber = parseInt(value.substring(1), 10);
-        }
-
-        if (!isNaN(diameterNumber)) {
-            if (diameterNumber === 8) return "0";
-            if (diameterNumber === 10) return "1";
-            if (diameterNumber === 12) return "2";
-            if (diameterNumber === 16) return "3";
-        }
-        
-        // Fallback/Default if value doesn't match known diameters
-        console.warn(`Unsupported fixing diameter value: ${value}. Defaulting to index 1 (M10).`);
-        return "1"; // Default to M10
-    }
-
-    // Handle "Distance from start [mm]" parameter - convert to integer
-    if (paramId === '70118ce5-77ad-47c5-8e25-30eac545ad92') { // Distance from start [mm]
-        return Math.round(Number(value)).toString();
-    }
-
-    // Handle other bracket positioning parameters that need to be integers
-    if (paramId === 'c08f3598-084e-4f59-9778-109c711a347e' || // Total Angle Length [mm]
-        paramId === '4258ae1b-6044-4c70-8af8-29b73a301257') { // C/C distance [mm]
-        return Math.round(Number(value)).toString();
-    }
-
-    // Handle bracket count explicitly as an integer
-    if (paramId === '4e4d2dec-32e1-4964-a7b2-4eed2553cd6e') { // Bracket Count [#]
-        return Math.round(Number(value)).toString();
-    }
-
-    // Handle slab thickness as an integer
-    if (paramId === '4cf90fe8-0036-4d3d-a384-d7bdf3e7b62e') { // Slab thickness [mm]
-        return Math.round(Number(value)).toString();
-    }
-
-    // Handle fixing position as an integer
-    if (paramId === '4f5b0fb9-0141-47b8-ae7e-987fd3acd563') { // Slab mounting offset [mm]
-        return Math.round(Number(value)).toString();
-    }
-
-    // Handle numeric Dim D value as an integer
-    if (paramId === 'd121a6c7-1fd7-4d80-945e-7a5257448eb5') { // If override, DIM D [mm] =
-        return Math.round(Number(value)).toString();
-    }
-
-    // Handle profile dimensions as integers
-    if (paramId === 'c230176f-ba6c-4a2c-b553-61681bf9161d' || // Profile Length [mm]
-        paramId === '70cf3ed7-721c-4772-a704-782373b4c034') { // Profile Height [mm]
-        return Math.round(Number(value)).toString();
-    }
-
-    // Handle boolean for "Back Notch Option"
-    if (paramId === '21d79fb1-95fd-4ba8-b4d5-7d8cca231fc3') { // Back Notch Option
-        return String(value).toLowerCase() === 'true' ? 'true' : 'false';
-    }
-
-    // Support Type [S/I]: "0" (Standard AMS), "1" (Inverted AMS)
-    if (paramId === '337cfa15-5d22-492d-af0b-4969d6ac4b3a') { // Support Type [S/I]
-        // Assuming app sends 'Standard'/'A' or 'Inverted'/'B'
-        const upperValue = String(value).toUpperCase();
-        if (upperValue === 'INVERTED' || upperValue === 'B') {
-             return "1"; // Inverted AMS
-        }
-        // Default to Standard AMS for 'Standard', 'A', or anything else
-        return "0"; 
-    }
-
-    // Angle Type [S/I]: "0" (Standard), "1" (Inverted)
-    if (paramId === 'a7810331-b00c-4bb1-b60e-5a399f318236') { // Angle Type [S/I]
-        const upperValue = String(value).toUpperCase();
-        if (upperValue === 'INVERTED' || upperValue === 'B') {
-             return "1"; // Inverted
-        }
-        // Default to Standard for 'Standard', 'A', or anything else
-        return "0"; 
-    }
-
-    // Bracket Material Grade [304/316]: "0" (304), "1" (316)
-    if (paramId === 'acede6ae-cc51-4747-9868-bc0c9f68fec1') { // Bracket Material Grade [304/316]
-         // Assuming app sends '304' or '316' as string or number
-        if (String(value) === '316') {
-            return "1"; // 316
-        }
-        // Default to 304 for '304' or anything else
-        return "0"; 
-    }
-
-    // Angle Material Grade [304/316]: "0" (304), "1" (316)
-    if (paramId === '9222bb3a-d90e-43d0-979d-27035d508f77') { // Angle Material Grade [304/316]
-         // Assuming app sends '304' or '316' as string or number
-        if (String(value) === '316') {
-            return "1"; // 316
-        }
-        // Default to 304 for '304' or anything else
-        return "0"; 
-    }
-
-    // Toe Plate Type [S/I]: "0" (Standard Toe Plate), "1" (Inverted Toe Plate)
-    if (paramId === '00a1860e-0b09-4fb6-b839-f20a21377263') { // Toe Plate Type [S/I]
-         // Assuming app sends 'Standard' or 'Inverted' (case-insensitive check)
-        if (String(value).toUpperCase() === 'INVERTED') {
-            return "1"; // Inverted Toe Plate
-        }
-         // Default to Standard for 'Standard' or anything else
-        return "0"; 
-    }
-
-    // For other parameters expecting simple numeric strings (like length, height)
-    if (paramName.includes('[mm]') || paramName.includes('[#]')) {
-        // This now only applies to params *not* handled above (thickness, diameter)
-        return String(value);
-    }
-    
-    // Default: convert to string
-    return String(value);
 };
 
 
-export const ShapeDiverCard: React.FC<ShapeDiverCardProps> = ({ 
-    title = "3D Model Viewer", 
-    className, 
-    initialParameters,
+export const ShapeDiverCard: React.FC<ShapeDiverCardProps> = ({
+    title = "3D Model Viewer",
+    className,
+    bracketJSON,
+    angleJSON,
+    runJSON,
     onOutputsChange
 }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -326,15 +135,56 @@ export const ShapeDiverCard: React.FC<ShapeDiverCardProps> = ({
         }
     }, [onOutputsChange]);
 
+    // ResizeObserver to handle canvas resizing
+    useEffect(() => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+
+        const resizeObserver = new ResizeObserver((entries) => {
+            for (const entry of entries) {
+                const { width, height } = entry.contentRect;
+
+                // Set canvas dimensions to match display size
+                const dpr = window.devicePixelRatio || 1;
+                canvas.width = width * dpr;
+                canvas.height = height * dpr;
+
+                // Scale canvas context to account for device pixel ratio
+                const ctx = canvas.getContext('2d');
+                if (ctx) {
+                    ctx.scale(dpr, dpr);
+                }
+
+                console.log(`Canvas resized: ${width}x${height} (display), ${canvas.width}x${canvas.height} (actual)`);
+            }
+        });
+
+        resizeObserver.observe(canvas);
+
+        return () => {
+            resizeObserver.disconnect();
+        };
+    }, []);
+
     // Initialize viewport and session
     useEffect(() => {
-        console.log("🔄 ShapeDiver useEffect triggered - initialParameters changed:", JSON.stringify(initialParameters, null, 2));
+        console.log("🔄 ShapeDiver useEffect triggered - JSON parameters:", {
+            hasBracketJSON: !!bracketJSON,
+            hasAngleJSON: !!angleJSON,
+            hasRunJSON: !!runJSON
+        });
         console.log("🔍 Canvas ref available:", !!canvasRef.current);
         let mounted = true;
 
         const initializeViewer = async () => {
             if (!canvasRef.current) {
                 console.log("Canvas ref not found, waiting...");
+                return;
+            }
+
+            // Check if we have the required JSON parameters
+            if (!bracketJSON || !angleJSON || !runJSON) {
+                console.log("⚠️ Missing JSON parameters - viewer not initialized");
                 return;
             }
 
@@ -349,62 +199,137 @@ export const ShapeDiverCard: React.FC<ShapeDiverCardProps> = ({
                 // Only proceed with session creation if we're still mounted
                 if (!mounted) return;
 
-                // Build parameters
-                const paramsForShapeDiver: Record<string, string> = {};
-                if (initialParameters) {
-                    console.log("Processing initialParameters:", initialParameters);
-                    for (const [appKey, value] of Object.entries(initialParameters)) {
-                        if (value === undefined || value === null) continue;
-
-                        const paramId = paramIdMapping[appKey];
-                        if (paramId) {
-                            const formattedValue = formatParameterValue(paramId, value);
-                            if (formattedValue !== "") {
-                                paramsForShapeDiver[paramId] = formattedValue;
-                                const paramName = paramIdToNameMapping[paramId] || paramId;
-                                console.log(`Mapping ${appKey} to ${paramName} (ID: ${paramId}): ${formattedValue}`);
-                                
-                                // Special handling for legacy material_grade - also set angle material grade
-                                if (appKey === 'material_grade') {
-                                    const angleMaterialGradeId = '9222bb3a-d90e-43d0-979d-27035d508f77';
-                                    paramsForShapeDiver[angleMaterialGradeId] = formattedValue;
-                                    console.log(`Legacy material_grade: Also setting Angle Material Grade (ID: ${angleMaterialGradeId}): ${formattedValue}`);
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // Create new session
-                console.log("🚀 Creating new ShapeDiver session");
+                console.log("🚀 Creating new ShapeDiver session with JSON-based model");
                 console.log("🔍 Session config:", {
                     id: `session_${viewportIdRef.current}`,
-                    ticket: '98b0b91b1716c4154483066dc79d4334a2c428a842db5d672e8c63a61ea46829bd8dd837fcc288fe59b215b5f3ec6d3892e28eb22a1c3cd55f2dc8ff6c7bf1fea7b80f2201596b199cc02392b55624e492691a65c6f26c5a51f3c9e0e3326ff12d6f99ca2e8770-eec1b75bfefa4d3ac7140fdf0290e3ee',
-                    modelViewUrl: 'https://sdr8euc1.eu-central-1.shapediver.com',
-                    parameterCount: Object.keys(paramsForShapeDiver).length
+                    embeddingTicket: '2f1fbcfa...(truncated)',
+                    modelViewUrl: 'https://sdr8euc1.eu-central-1.shapediver.com'
                 });
 
-                // Create session with embedding ticket and parameters
-                console.log("🔄 Creating ShapeDiver session with embedding ticket and parameters");
+                // Log JSON parameter sizes for debugging
+                console.log("📦 JSON parameter sizes:", {
+                    bracketJSON: `${(bracketJSON.length / 1024).toFixed(2)} KB`,
+                    angleJSON: `${(angleJSON.length / 1024).toFixed(2)} KB`,
+                    runJSON: `${(runJSON.length / 1024).toFixed(2)} KB`
+                });
+
+                // Parse and log the supportType being sent
+                try {
+                    const runData = JSON.parse(runJSON);
+                    console.log("🔍 Support Type being sent to ShapeDiver:", runData.runDetails?.substructure?.supportType?.value);
+                } catch (e) {
+                    console.error("Could not parse runJSON for debugging:", e);
+                }
+
+                // Create session with NEW embedding ticket for JSON-based model
+                console.log("📡 Attempting to create ShapeDiver session...");
                 const session = await createSession({
                     id: `session_${viewportIdRef.current}`,
-                    ticket: 'e56ab1b147eb8bbf3290ec249e94410980defce57561ac5c2eb708d93cb321ce6d9f333a651fc76b291a36e87090ef019617f59d82aa2ffebf4cda7ffea152180e0e9a43171513d7c73c62f8c2461092477646c797ec45236ce492b8f23acad6a58ae8c128a679-24cda070347f15e39bda6c6015b109d0',
+                    ticket: '2f1fbcfaf8354963a5eb0f22d06861cb000d6db3ffa63e1711f28961b44292c0d16c5ea5532d37748c10a9e99a467856c4b1010ef9a73c12679e29cf3d17e2c44dc43e34f82dfe3eaf40923d434a5215400d03c5bd0ba2fb94b9d2d3da5c7e67ed7ede82e67185-46ee113b3ab31d4db7cfa3c9098bdf66',
                     modelViewUrl: 'https://sdr8euc1.eu-central-1.shapediver.com',
-                    initialParameterValues: paramsForShapeDiver
+                    viewports: [viewportIdRef.current] // Assign the viewport to the session!
                 });
-                console.log("✅ ShapeDiver session created successfully!");
+                console.log("✅ ShapeDiver session created successfully");
+                console.log(`📺 Session assigned to viewport: ${viewportIdRef.current}`);
 
                 if (mounted) {
                     sessionRef.current = session;
-                    console.log("✅ ShapeDiver session created successfully");
-                    
+                    console.log("✅ ShapeDiver session stored in ref");
+
+                    // Log available parameters to find the correct parameter IDs/names
+                    console.log("📋 Available ShapeDiver parameters:");
+                    const parameters = session.parameters;
+                    Object.entries(parameters).forEach(([key, param]: [string, any]) => {
+                        console.log(`  - ID: ${param.id}`);
+                        console.log(`    Name: ${param.name}`);
+                        console.log(`    Display: ${param.displayname || 'N/A'}`);
+                        console.log(`    Type: ${param.type}`);
+                        console.log("    ---");
+                    });
+
+                    // Log available outputs
+                    console.log("📋 Available ShapeDiver outputs:");
+                    const outputs = session.outputs;
+                    Object.entries(outputs).forEach(([key, output]: [string, any]) => {
+                        console.log(`  - ID: ${output.id}`);
+                        console.log(`    Name: ${output.name}`);
+                        console.log(`    Display: ${output.displayname || 'N/A'}`);
+                        console.log(`    Type: ${output.type || 'N/A'}`);
+                        console.log("    ---");
+                    });
+
+                    // Set parameters using EXACT 1-to-1 mapping with ShapeDiver parameter IDs
+                    try {
+                        console.log("🎯 Setting JSON parameters using exact 1-to-1 mapping...");
+                        console.log("   Mapping:");
+                        console.log(`   - bracketJSON → ${SHAPEDIVER_PARAMS.BRACKET.name} (ID: ${SHAPEDIVER_PARAMS.BRACKET.id})`);
+                        console.log(`   - angleJSON   → ${SHAPEDIVER_PARAMS.ANGLE.name} (ID: ${SHAPEDIVER_PARAMS.ANGLE.id})`);
+                        console.log(`   - runJSON     → ${SHAPEDIVER_PARAMS.RUN.name} (ID: ${SHAPEDIVER_PARAMS.RUN.id})`);
+
+                        // 1. bracketJSON → input_bracketJSON
+                        const bracketParam = parameters[SHAPEDIVER_PARAMS.BRACKET.id];
+                        if (bracketParam) {
+                            bracketParam.value = bracketJSON;
+                            console.log(`  ✓ Mapped bracketJSON → ${SHAPEDIVER_PARAMS.BRACKET.name}`);
+                            console.log(`    Length: ${bracketJSON.length} chars`);
+                        } else {
+                            console.error(`  ✗ Could not find parameter ${SHAPEDIVER_PARAMS.BRACKET.name} with ID ${SHAPEDIVER_PARAMS.BRACKET.id}`);
+                        }
+
+                        // 2. angleJSON → input_angleJSON
+                        const angleParam = parameters[SHAPEDIVER_PARAMS.ANGLE.id];
+                        if (angleParam) {
+                            angleParam.value = angleJSON;
+                            console.log(`  ✓ Mapped angleJSON → ${SHAPEDIVER_PARAMS.ANGLE.name}`);
+                            console.log(`    Length: ${angleJSON.length} chars`);
+                        } else {
+                            console.error(`  ✗ Could not find parameter ${SHAPEDIVER_PARAMS.ANGLE.name} with ID ${SHAPEDIVER_PARAMS.ANGLE.id}`);
+                        }
+
+                        // 3. runJSON → input_runJSON
+                        const runParam = parameters[SHAPEDIVER_PARAMS.RUN.id];
+                        if (runParam) {
+                            runParam.value = runJSON;
+                            console.log(`  ✓ Mapped runJSON → ${SHAPEDIVER_PARAMS.RUN.name}`);
+                            console.log(`    Length: ${runJSON.length} chars`);
+
+                            // Extra logging for runJSON to debug support type issue
+                            try {
+                                const runData = JSON.parse(runJSON);
+                                console.log(`    ↳ supportType value: "${runData.runDetails?.substructure?.supportType?.value}"`);
+                            } catch (e) {
+                                console.error("    ↳ Could not parse runJSON:", e);
+                            }
+                        } else {
+                            console.error(`  ✗ Could not find parameter ${SHAPEDIVER_PARAMS.RUN.name} with ID ${SHAPEDIVER_PARAMS.RUN.id}`);
+                        }
+
+                        console.log("✅ All 3 JSON parameters mapped successfully (1-to-1)");
+
+                        // Trigger model computation
+                        console.log("🔄 Triggering ShapeDiver model computation with new parameters...");
+
+                        // The model should start computing automatically when parameters change
+                        // We can also explicitly trigger customization
+                        try {
+                            await session.customize();
+                            console.log("✅ Model customization triggered");
+                        } catch (customizeError) {
+                            console.warn("⚠️ Could not explicitly trigger customization:", customizeError);
+                            console.log("   (Model will compute automatically when parameters change)");
+                        }
+                    } catch (paramError) {
+                        console.error("❌ Error setting parameters:", paramError);
+                    }
+
                     // Extract outputs after session is ready
                     // Add a small delay to ensure the model has computed
                     setTimeout(async () => {
                         if (mounted && sessionRef.current) {
+                            console.log("📊 Extracting outputs from computed model...");
                             await extractOutputs(sessionRef.current);
                         }
-                    }, 1000);
+                    }, 3000); // Increased delay to 3 seconds to give model time to compute
                 } else {
                     // If we're no longer mounted, clean up the session
                     await session.close();
@@ -424,13 +349,13 @@ export const ShapeDiverCard: React.FC<ShapeDiverCardProps> = ({
             const sessionToClose = sessionRef.current;
             if (sessionToClose) {
                 console.log("🔴 Closing ShapeDiver session");
-                sessionToClose.close().catch(err => 
+                sessionToClose.close().catch(err =>
                     console.error("Error closing session:", err)
                 );
                 sessionRef.current = null;
             }
         };
-    }, [initialParameters]); // Removed extractOutputs to prevent frequent session recreation
+    }, [bracketJSON, angleJSON, runJSON, extractOutputs]);
 
     return (
         <Card className={`h-full ${className || ''}`}>

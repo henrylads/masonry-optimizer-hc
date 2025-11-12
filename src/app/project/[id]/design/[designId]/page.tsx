@@ -46,6 +46,7 @@ export default function DesignPage() {
   const [isResizing, setIsResizing] = useState(false)
   const [runLayoutResult, setRunLayoutResult] = useState<RunOptimizationResult | null>(null)
   const [shapeDiverOutputs, setShapeDiverOutputs] = useState<ShapeDiverOutputs | null>(null)
+  const [shapeDiverJSONs, setShapeDiverJSONs] = useState<{bracketJSON?: string, angleJSON?: string, runJSON?: string}>({})
   const [isEditingName, setIsEditingName] = useState(false)
   const [editedName, setEditedName] = useState('')
   const [isUpdatingName, setIsUpdatingName] = useState(false)
@@ -316,9 +317,27 @@ export default function DesignPage() {
         })
       })
 
-      // Generate ShapeDiver JSON files (non-blocking)
+      // Generate ShapeDiver JSON data locally for visualization
       try {
-        const jsonResponse = await fetch('/api/shapediver-json', {
+        // Import JSON generators
+        const { generateBracketJSON, generateAngleJSON, generateRunJSON } = await import('@/utils/json-generators')
+
+        // Generate the three JSON structures
+        const bracketJSON = generateBracketJSON(result, values)
+        const angleJSON = generateAngleJSON(result, runLayout)
+        const runJSON = generateRunJSON(values, result, runLength)
+
+        // Store as stringified JSON for ShapeDiver
+        setShapeDiverJSONs({
+          bracketJSON: JSON.stringify(bracketJSON),
+          angleJSON: JSON.stringify(angleJSON),
+          runJSON: JSON.stringify(runJSON)
+        })
+
+        console.log('✅ ShapeDiver JSON data generated for visualization')
+
+        // Also save JSON files to disk (non-blocking, don't wait for response)
+        fetch('/api/shapediver-json', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -327,16 +346,15 @@ export default function DesignPage() {
             designName: design?.name,
             projectName: project?.name
           })
-        })
+        }).then(async (jsonResponse) => {
+          if (jsonResponse.ok) {
+            const jsonData = await jsonResponse.json()
+            console.log('ShapeDiver JSON files saved to disk:', jsonData.files)
+          }
+        }).catch(err => console.warn('Failed to save JSON files:', err))
 
-        if (jsonResponse.ok) {
-          const jsonData = await jsonResponse.json()
-          console.log('ShapeDiver JSON files generated:', jsonData.files)
-        } else {
-          console.warn('Failed to generate ShapeDiver JSON files:', await jsonResponse.text())
-        }
       } catch (jsonError) {
-        console.error('Error generating ShapeDiver JSON files:', jsonError)
+        console.error('Error generating ShapeDiver JSON data:', jsonError)
         // Don't fail the optimization if JSON generation fails
       }
     } catch (error) {
@@ -621,6 +639,9 @@ export default function DesignPage() {
             isOptimizing={isOptimizing}
             progress={progress}
             onOutputsChange={setShapeDiverOutputs}
+            bracketJSON={shapeDiverJSONs.bracketJSON}
+            angleJSON={shapeDiverJSONs.angleJSON}
+            runJSON={shapeDiverJSONs.runJSON}
           />
         </div>
 
