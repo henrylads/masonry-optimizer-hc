@@ -45,6 +45,7 @@ interface BracketSpec {
   bracketToeNotchLength: ShapeDiverParameter<number>
   bracketToeNotchHeight: ShapeDiverParameter<number>
   bracketCutNotchAboveHeight: ShapeDiverParameter<number>
+  bracketFixingLevel: ShapeDiverParameter<number>
 }
 
 export interface BracketJSON {
@@ -135,15 +136,49 @@ function generateAngleSKU(
 }
 
 /**
- * Maps frame fixing type to support type label
+ * Maps frame fixing type and steel section type to support type label
+ * Returns: 'Concrete', 'I-beam', 'RHS', or 'SHS'
  */
-function mapFrameFixingToSupportType(frameFixing: string): string {
+function mapFrameFixingToSupportType(frameFixing: string, steelSectionType?: string): string {
   if (frameFixing.startsWith('concrete')) {
     return 'Concrete'
   } else if (frameFixing.startsWith('steel')) {
-    return 'Steel'
+    // Map steel section type to specific support type
+    switch (steelSectionType) {
+      case 'I-BEAM':
+        return 'I-beam'
+      case 'RHS':
+        return 'RHS'
+      case 'SHS':
+        return 'SHS'
+      default:
+        return 'I-beam' // default to I-beam if not specified
+    }
   }
   return 'Concrete' // default
+}
+
+/**
+ * Extracts steel section dimensions from the steel_section_size string
+ * Format examples: "203x102" for I-beam, "150x100" for RHS, "100x100" for SHS
+ * Returns { width, depth } where:
+ * - For I-beam "203x102": depth=203, width=102
+ * - For RHS "150x100": depth=150, width=100
+ * - For SHS "100x100": depth=100, width=100
+ */
+function extractSteelSectionDimensions(steelSectionSize?: string): { width: number; depth: number } {
+  if (!steelSectionSize) {
+    return { width: 102, depth: 203 } // default I-beam dimensions
+  }
+
+  const parts = steelSectionSize.split('x')
+  if (parts.length === 2) {
+    const depth = parseInt(parts[0]) || 203
+    const width = parseInt(parts[1]) || 102
+    return { width, depth }
+  }
+
+  return { width: 102, depth: 203 } // default
 }
 
 // ============================================================================
@@ -187,6 +222,10 @@ export function generateBracketJSON(
     Math.round(bracketHeight)
   )
 
+  // Calculate fixing level (fixing position from top of slab/steel section)
+  // Use optimized_fixing_position from calculated, or fixing_position from genetic
+  const fixingPosition = calculated.optimized_fixing_position ?? genetic.fixing_position ?? 0
+
   // Create bracket specification
   const bracketSpec: BracketSpec = {
     bracketIndex: createParameter('Index number of the bracket object', 0, ''),
@@ -204,6 +243,7 @@ export function generateBracketJSON(
     bracketToeNotchLength: createParameter('Length of toe notch', 22, 'mm'),
     bracketToeNotchHeight: createParameter('Height of toe notch', 60, 'mm'),
     bracketCutNotchAboveHeight: createParameter('Height of cut notch above', 12, 'mm'),
+    bracketFixingLevel: createParameter('Fixing level of the bracket', Math.round(fixingPosition), 'mm'),
   }
 
   return {
@@ -338,12 +378,41 @@ export function generateRunJSON(
   optimizationResult: OptimisationResult,
   runLength: number
 ): RunJSON {
-  // Map frame fixing type to support type
-  const supportType = mapFrameFixingToSupportType(formInputs.frame_fixing_type)
+  // Determine if this is a steel fixing type
+  const isSteelFixing = formInputs.frame_fixing_type?.startsWith('steel') ?? false
 
-  // Extract slab dimensions
-  const slabWidth = formInputs.slab_thickness ?? 225 // Width = slab thickness
-  const slabDepth = 225 // Default depth (not currently in form)
+  // Map frame fixing type to support type (now includes I-beam, RHS, SHS)
+  const supportType = mapFrameFixingToSupportType(
+    formInputs.frame_fixing_type ?? 'concrete-all',
+    formInputs.steel_section_type
+  )
+
+  // Extract support dimensions based on fixing type
+  let supportWidth: number
+  let supportDepth: number
+
+  if (isSteelFixing) {
+    // For steel fixings, extract dimensions from steel section configuration
+    if (formInputs.use_custom_steel_section && formInputs.custom_steel_height) {
+      // Custom steel section - use custom height as depth, default width
+      supportDepth = formInputs.custom_steel_height
+      supportWidth = 102 // Default width for custom sections
+    } else if (formInputs.steel_section_size) {
+      // Standard steel section - parse the size string (e.g., "203x102")
+      const dimensions = extractSteelSectionDimensions(formInputs.steel_section_size)
+      supportWidth = dimensions.width
+      supportDepth = dimensions.depth
+    } else {
+      // Fallback to default steel section dimensions
+      supportWidth = 102
+      supportDepth = 203
+    }
+  } else {
+    // For concrete fixings, use slab thickness
+    supportWidth = formInputs.slab_thickness ?? 225
+    supportDepth = 225 // Default depth for concrete
+  }
+
   const supportLevel = formInputs.support_level // Support level from bracket_drop (preserves sign)
 
   // Extract bracket projection
@@ -357,8 +426,8 @@ export function generateRunJSON(
         supportType: createParameter('Type of support', supportType, ''),
         supportDetails: {
           supportLength: createParameter('Length of support', Math.round(runLength), 'mm'),
-          supportWidth: createParameter('Width of support', Math.round(slabWidth), 'mm'),
-          supportDepth: createParameter('Depth of support', Math.round(slabDepth), 'mm'),
+          supportWidth: createParameter('Width of support', Math.round(supportWidth), 'mm'),
+          supportDepth: createParameter('Depth of support', Math.round(supportDepth), 'mm'),
           supportLevel: createParameter('Level of support', Math.round(supportLevel), 'mm')
         }
       },
