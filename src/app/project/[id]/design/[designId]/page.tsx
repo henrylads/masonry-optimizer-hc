@@ -244,6 +244,7 @@ export default function DesignPage() {
         support_level: values.support_level,
         slab_thickness: effectiveSlabThickness,
         characteristic_load: values.characteristic_load,
+        has_notch: values.has_notch,
         notch_height: values.notch_height,
         notch_depth: values.notch_depth,
         fixing_position: values.fixing_position,
