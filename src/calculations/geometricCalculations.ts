@@ -96,10 +96,12 @@ export const calculateGeometry = (
     );
     
     // Calculate vertical eccentricity
+    // Only apply notch height if has_notch is true
+    const effectiveNotchHeight = inputs.has_notch ? (inputs.notch_height ?? 0) : 0;
     const verticalEccentricity = calculateVerticalEccentricity(
         inputs.support_level,
         inputs.slab_thickness,
-        inputs.notch_height ?? 0
+        effectiveNotchHeight
     );
     
     // Calculate horizontal eccentricity

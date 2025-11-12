@@ -1,0 +1,38 @@
+{
+  "runDetails": {
+    "substructure": {
+      "supportType": {
+        "description": "Type of support",
+        "value": "Concrete",
+        "unit": ""
+      },
+      "supportDetails": {
+        "supportLength": {
+          "description": "Length of support",
+          "value": 1000,
+          "unit": "mm"
+        },
+        "supportWidth": {
+          "description": "Width of support",
+          "value": 225,
+          "unit": "mm"
+        },
+        "supportDepth": {
+          "description": "Depth of support",
+          "value": 225,
+          "unit": "mm"
+        },
+        "supportLevel": {
+          "description": "Level of support",
+          "value": -200,
+          "unit": "mm"
+        }
+      }
+    },
+    "projection": {
+      "description": "Projection distance",
+      "value": 90,
+      "unit": "mm"
+    }
+  }
+}

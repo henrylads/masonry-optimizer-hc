@@ -320,7 +320,7 @@ export function calculateDependentParameters(
     const final_drop_below_slab = roundToTwelveDecimals(drop_below_slab_calc);
     
     // Apply notch height reduction to rise to bolts if notch is present
-    if (inputs.notch_height > 0) {
+    if (inputs.has_notch && inputs.notch_height > 0) {
         // Calculate how much the bracket projects below the slab
         const projectionBelowSlab = Math.max(0, Math.abs(inputs.support_level) - inputs.slab_thickness);
         

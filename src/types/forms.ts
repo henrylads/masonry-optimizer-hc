@@ -6,6 +6,7 @@ export interface MasonryInputs {
   masonry_density?: number;
   masonry_thickness?: number;
   masonry_height?: number | undefined;
+  has_notch?: boolean;
   notch_height: number;
   notch_depth: number;
   showDetailedVerifications?: boolean;

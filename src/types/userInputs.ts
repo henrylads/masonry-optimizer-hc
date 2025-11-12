@@ -37,6 +37,12 @@ export interface UserInputs {
   characteristic_load?: number;
 
   /**
+   * Whether a notch is required on the bracket
+   * @default false
+   */
+  has_notch?: boolean;
+
+  /**
    * Height of notch required if bracket extends beyond bottom of slab.
    * This allows space for the bracket to avoid items in the cavity (in mm).
    * @default 0
