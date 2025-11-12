@@ -1,22 +1,47 @@
-import useSWR from 'swr'
-import { Project } from '@/types/project-types'
-import { Design } from '@/types/design-types'
+/**
+ * Hook for managing a single Project and its Designs
+ * Uses browser localStorage instead of API routes
+ */
 
-const fetcher = (url: string) => fetch(url).then(r => r.json())
+import { useState, useEffect, useCallback } from 'react'
+import { projectStorage, designStorage, type StoredProject, type StoredDesign } from '@/lib/storage'
+import { useProjects } from './use-projects'
+import { useDesigns } from './use-designs'
 
 export function useProject(projectId: string) {
-  const { data, error, mutate } = useSWR<{
-    project: Project & { designs: Design[] }
-  }>(
-    projectId ? `/api/projects/${projectId}` : null,
-    fetcher
-  )
+  const { getProject, deleteProject: deleteProjectFn } = useProjects()
+  const {
+    designs,
+    isLoading: designsLoading,
+    createDesign,
+    deleteDesign,
+    mutate: mutateDesigns
+  } = useDesigns(projectId)
+
+  const [project, setProject] = useState<StoredProject | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  // Load project on mount or when projectId changes
+  useEffect(() => {
+    const loadedProject = getProject(projectId)
+    setProject(loadedProject)
+    setLoading(false)
+  }, [projectId, getProject])
+
+  const mutate = useCallback(() => {
+    const loadedProject = getProject(projectId)
+    setProject(loadedProject)
+    mutateDesigns()
+  }, [projectId, getProject, mutateDesigns])
 
   return {
-    project: data?.project || null,
-    designs: data?.project?.designs || [],
-    isLoading: !error && !data,
-    isError: error,
-    mutate
+    project,
+    designs,
+    isLoading: loading || designsLoading,
+    isError: null,
+    mutate,
+    createDesign,
+    deleteDesign,
+    deleteProject: () => deleteProjectFn(projectId)
   }
 }

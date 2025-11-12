@@ -16,28 +16,25 @@ import { AppSidebar } from '@/components/app-sidebar'
 export default function DashboardPage() {
   const [modalOpen, setModalOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
-  const { projects, isLoading, mutate } = useProjects()
+  const { projects, isLoading, createProject, deleteProject } = useProjects()
   const router = useRouter()
 
   const handleCreateProject = async (data: CreateProjectInput) => {
-    const response = await fetch('/api/projects', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
+    const result = createProject({
+      name: data.name,
+      description: data.description,
+      stage: data.stage,
+      totalValue: data.totalValue?.toString(),
     })
 
-    if (response.ok) {
-      const { project } = await response.json()
-      mutate()
-      router.push(`/project/${project.id}`)
+    if (result.success && result.project) {
+      router.push(`/project/${result.project.id}`)
     }
   }
 
   const handleDeleteProject = async (id: string) => {
     if (!confirm('Are you sure you want to delete this project?')) return
-
-    await fetch(`/api/projects/${id}`, { method: 'DELETE' })
-    mutate()
+    deleteProject(id)
   }
 
   if (isLoading) {

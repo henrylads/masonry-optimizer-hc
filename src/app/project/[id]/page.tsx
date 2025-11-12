@@ -21,66 +21,29 @@ export default function ProjectPage() {
   const projectId = params.id as string
   const [activeTab, setActiveTab] = useState<'designs' | 'intelligence'>('designs')
   const [modalOpen, setModalOpen] = useState(false)
-  const { project, designs, isLoading, mutate } = useProject(projectId)
+  const { project, designs, isLoading, createDesign, deleteDesign: deleteDesignFn, deleteProject: deleteProjectFn } = useProject(projectId)
 
   const handleCreateDesign = async (data: CreateDesignInput) => {
-    try {
-      const response = await fetch(`/api/projects/${projectId}/designs`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      })
+    const result = createDesign({
+      name: data.name,
+      formParameters: data.formParameters || {},
+      calculationResults: data.calculationResults,
+    })
 
-      if (!response.ok) {
-        const error = await response.json()
-        alert(`Failed to create design: ${error.message || 'Unknown error'}`)
-        return
-      }
-
-      const { design } = await response.json()
-      mutate()
-    } catch (error) {
-      console.error('Error creating design:', error)
-      alert('An error occurred while creating the design. Please try again.')
+    if (!result.success) {
+      alert(`Failed to create design: ${result.error}`)
     }
   }
 
   const handleDeleteDesign = async (designId: string) => {
     if (!confirm('Are you sure you want to delete this design?')) return
-
-    try {
-      const response = await fetch(`/api/designs/${designId}`, { method: 'DELETE' })
-
-      if (!response.ok) {
-        const error = await response.json()
-        alert(`Failed to delete design: ${error.message || 'Unknown error'}`)
-        return
-      }
-
-      mutate()
-    } catch (error) {
-      console.error('Error deleting design:', error)
-      alert('An error occurred while deleting the design. Please try again.')
-    }
+    deleteDesignFn(designId)
   }
 
   const handleDeleteProject = async () => {
     if (!confirm('Are you sure you want to delete this project? This cannot be undone.')) return
-
-    try {
-      const response = await fetch(`/api/projects/${projectId}`, { method: 'DELETE' })
-
-      if (!response.ok) {
-        const error = await response.json()
-        alert(`Failed to delete project: ${error.message || 'Unknown error'}`)
-        return
-      }
-
-      router.push('/dashboard')
-    } catch (error) {
-      console.error('Error deleting project:', error)
-      alert('An error occurred while deleting the project. Please try again.')
-    }
+    deleteProjectFn()
+    router.push('/dashboard')
   }
 
   if (isLoading) {
