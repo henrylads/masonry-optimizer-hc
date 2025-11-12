@@ -60,36 +60,37 @@ export default function DesignPage() {
     onSaveError: () => setSaveStatus('error')
   })
 
-  // Load design and project data
+  // Load design and project data from localStorage
   useEffect(() => {
-    const loadData = async () => {
+    const loadData = () => {
       try {
-        // Fetch design
-        const designRes = await fetch(`/api/designs/${designId}`)
-        if (!designRes.ok) {
-          router.push('/dashboard')
-          return
-        }
-        const designData = await designRes.json()
-        setDesign(designData.design)
+        // Import storage functions
+        const { designStorage, projectStorage } = require('@/lib/storage')
 
-        // Fetch project
-        const projectRes = await fetch(`/api/projects/${projectId}`)
-        if (!projectRes.ok) {
+        // Load design
+        const loadedDesign = designStorage.findById(designId)
+        if (!loadedDesign) {
           router.push('/dashboard')
           return
         }
-        const projectData = await projectRes.json()
-        setProject(projectData.project)
+        setDesign(loadedDesign as any)
+
+        // Load project
+        const loadedProject = projectStorage.findById(projectId)
+        if (!loadedProject) {
+          router.push('/dashboard')
+          return
+        }
+        setProject(loadedProject as any)
 
         // Load form parameters
-        if (designData.design.formParameters) {
-          form.reset(designData.design.formParameters)
+        if (loadedDesign.formParameters) {
+          form.reset(loadedDesign.formParameters as any)
         }
 
         // Load last optimization result if exists
-        if (designData.design.calculationResults) {
-          setOptimizationResult(designData.design.calculationResults)
+        if (loadedDesign.calculationResults) {
+          setOptimizationResult(loadedDesign.calculationResults as any)
         }
 
         setIsLoading(false)

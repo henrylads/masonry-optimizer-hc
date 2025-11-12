@@ -30,7 +30,10 @@ export default function ProjectPage() {
       calculationResults: data.calculationResults,
     })
 
-    if (!result.success) {
+    if (result.success && result.design) {
+      // Navigate to the newly created design
+      router.push(`/project/${projectId}/design/${result.design.id}`)
+    } else {
       alert(`Failed to create design: ${result.error}`)
     }
   }

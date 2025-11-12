@@ -30,16 +30,17 @@ export function useDesignAutosave({
       clearTimeout(timeoutRef.current)
     }
 
-    timeoutRef.current = setTimeout(async () => {
+    timeoutRef.current = setTimeout(() => {
       try {
         onSaveStart?.()
-        await fetch(`/api/designs/${designId}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            formParameters: formValues,
-          }),
+        // Import storage functions
+        const { designStorage } = require('@/lib/storage')
+
+        // Update design in localStorage
+        designStorage.update(designId, {
+          formParameters: formValues,
         })
+
         console.log('Design auto-saved')
         onSaveSuccess?.()
       } catch (error) {
