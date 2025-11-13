@@ -346,15 +346,64 @@ export function segmentRun(
 }
 
 /**
+ * Make bracket positions symmetrical on a piece
+ * Recalculates bracket positions to have equal edge distances
+ *
+ * @param piece Angle piece with potentially asymmetric bracket positions
+ * @returns Angle piece with symmetrical bracket positions
+ */
+function makeSymmetrical(piece: AnglePiece): AnglePiece {
+  const { length, bracketCount, spacing } = piece;
+
+  if (bracketCount < 2) {
+    // Single bracket - center it
+    return {
+      ...piece,
+      positions: [length / 2],
+      startOffset: length / 2
+    };
+  }
+
+  // Calculate equal edge distances
+  // Total space available = length - (bracketCount * 0) = length
+  // Space to distribute = length - (spacing * (bracketCount - 1))
+  // Edge distance on each side = space / 2
+
+  const totalSpacing = spacing * (bracketCount - 1);
+  const remainingSpace = length - totalSpacing;
+  const edgeDistance = remainingSpace / 2;
+
+  // Create symmetrical positions
+  const positions: number[] = [];
+  for (let i = 0; i < bracketCount; i++) {
+    positions.push(edgeDistance + (i * spacing));
+  }
+
+  console.log(`  Made symmetrical: ${bracketCount} brackets on ${length}mm piece`);
+  console.log(`    Edge distances: ${edgeDistance.toFixed(1)}mm (was ${piece.startOffset.toFixed(1)}mm start, ${(length - piece.positions[piece.positions.length - 1]).toFixed(1)}mm end)`);
+  console.log(`    New positions: [${positions.map(p => p.toFixed(1)).join(', ')}]`);
+
+  return {
+    ...piece,
+    positions,
+    startOffset: edgeDistance
+  };
+}
+
+/**
  * Convert segment to angle piece with bracket positions
  *
  * @param segment Segment to convert
  * @param standardLengths Available standard lengths
+ * @param isFirstPiece Whether this is the first piece in the run
+ * @param isLastPiece Whether this is the last piece in the run
  * @returns Angle piece
  */
 export function segmentToAnglePiece(
   segment: Segment,
-  standardLengths: number[]
+  standardLengths: number[],
+  isFirstPiece: boolean = false,
+  isLastPiece: boolean = false
 ): AnglePiece {
   const { length, brackets, startPosition } = segment;
 
@@ -373,7 +422,8 @@ export function segmentToAnglePiece(
   // Start offset is position of first bracket from piece start
   const startOffset = relativeBracketPositions.length > 0 ? relativeBracketPositions[0] : 0;
 
-  return {
+  // Create initial piece
+  let piece: AnglePiece = {
     length,
     bracketCount: brackets.length,
     spacing,
@@ -381,6 +431,19 @@ export function segmentToAnglePiece(
     positions: relativeBracketPositions,
     isStandard
   };
+
+  // Check if edge piece needs symmetry correction
+  if ((isFirstPiece || isLastPiece) && brackets.length >= 2) {
+    const endOffset = length - relativeBracketPositions[relativeBracketPositions.length - 1];
+    const asymmetryThreshold = 10; // mm - consider asymmetric if edge distances differ by this amount or more
+
+    if (Math.abs(startOffset - endOffset) >= asymmetryThreshold) {
+      console.log(`  Detected asymmetry on ${isFirstPiece ? 'first' : 'last'} piece: start=${startOffset.toFixed(1)}mm, end=${endOffset.toFixed(1)}mm`);
+      piece = makeSymmetrical(piece);
+    }
+  }
+
+  return piece;
 }
 
 /**
@@ -433,8 +496,13 @@ export function optimizeContinuousRunLayout(
   // Step 4: Get standard lengths
   const standardLengths = STANDARD_LENGTH_TABLE[bracketCentres] || [];
 
-  // Step 5: Convert segments to angle pieces
-  const pieces = segments.map(seg => segmentToAnglePiece(seg, standardLengths));
+  // Step 5: Convert segments to angle pieces with edge piece detection
+  const pieces = segments.map((seg, index) => segmentToAnglePiece(
+    seg,
+    standardLengths,
+    index === 0,                    // isFirstPiece
+    index === segments.length - 1   // isLastPiece
+  ));
 
   // Calculate totals
   const totalBrackets = allBrackets.length;

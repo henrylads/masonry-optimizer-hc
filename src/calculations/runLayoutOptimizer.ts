@@ -262,6 +262,23 @@ export function calculateSymmetricalBracketPositions(
   console.log(`\n=== Calculating symmetrical positions for ${length}mm, ${bracketCount} brackets, ${bracketCentres}mm centres ===`);
   console.log(`Constraints: e_min=${e_min}mm, e_max=${e_max}mm`);
 
+  // PRE-CHECK: Verify this configuration is theoretically possible
+  // For symmetrical placement, minimum required length is:
+  // length_min = (bracketCount - 1) × bracketCentres + 2 × e_min
+  const requiredSpacing = (bracketCount - 1) * bracketCentres;
+  const requiredEdges = 2 * e_min;
+  const minRequiredLength = requiredSpacing + requiredEdges;
+
+  if (length < minRequiredLength) {
+    const deficit = minRequiredLength - length;
+    console.log(`⚠️  IMPOSSIBLE CONFIGURATION DETECTED:`);
+    console.log(`   Required minimum length: ${minRequiredLength.toFixed(1)}mm`);
+    console.log(`   Actual length: ${length.toFixed(1)}mm`);
+    console.log(`   Deficit: ${deficit.toFixed(1)}mm`);
+    console.log(`   Cannot fit ${bracketCount} brackets at ${bracketCentres}mm spacing with ${e_min}mm minimum edge distance`);
+    throw new Error(`Impossible configuration: ${length}mm piece cannot accommodate ${bracketCount} brackets at ${bracketCentres}mm spacing with ${e_min}mm minimum edges (need ${minRequiredLength.toFixed(1)}mm minimum)`);
+  }
+
   if (bracketCount % 2 === 1) {
     // ODD number of brackets: place middle bracket at center
     const middleIndex = Math.floor(bracketCount / 2);
@@ -530,8 +547,8 @@ export function createSegmentation(
       const isLast = i === pieceLengths.length - 1;
       const isMultiPiece = pieceLengths.length > 1;
 
-      // For single-piece runs OR last piece in multi-piece runs: use symmetrical placement
-      if (!isMultiPiece || (isLast && !isFirst)) {
+      // For single-piece runs OR first/last pieces in multi-piece runs: use symmetrical placement
+      if (!isMultiPiece || isFirst || isLast) {
         // Calculate optimal bracket count for symmetrical placement
         // Start with minimum needed, try increasing until we find a valid configuration
         let optimalBracketCount = Math.max(2, Math.ceil(length / bracketCentres));
@@ -541,7 +558,8 @@ export function createSegmentation(
         for (let tryCount = optimalBracketCount; tryCount >= 2; tryCount--) {
           try {
             validPiece = calculateSymmetricalBracketPositions(length, tryCount, bracketCentres, constraints);
-            console.log(`  Successfully placed ${tryCount} brackets symmetrically in ${!isMultiPiece ? 'single' : 'last'} piece (${length}mm)`);
+            const pieceType = !isMultiPiece ? 'single' : isFirst ? 'first' : 'last';
+            console.log(`  Successfully placed ${tryCount} brackets symmetrically in ${pieceType} piece (${length}mm)`);
             break;
           } catch (error) {
             // This bracket count doesn't work, try fewer
@@ -551,7 +569,8 @@ export function createSegmentation(
 
         if (!validPiece) {
           // Could not achieve symmetrical placement - fall back to standard non-symmetrical placement
-          console.log(`  ⚠️ Could not place brackets symmetrically in ${!isMultiPiece ? 'single' : 'last'} piece (${length}mm) - falling back to non-symmetrical placement`);
+          const pieceType = !isMultiPiece ? 'single' : isFirst ? 'first' : 'last';
+          console.log(`  ⚠️ Could not place brackets symmetrically in ${pieceType} piece (${length}mm) - falling back to non-symmetrical placement`);
           piece = calculateNonStandardPiece(length, bracketCentres, constraints);
         } else {
           piece = validPiece;
