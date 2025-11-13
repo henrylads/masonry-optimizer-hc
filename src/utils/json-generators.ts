@@ -242,6 +242,10 @@ export function generateBracketJSON(
   const fixingPosition = calculated.optimized_fixing_position ?? genetic.fixing_position ?? 0
   const bracketFixingLevel = -Math.round(fixingPosition) // Negative because it's below the top
 
+  // Determine toe plate type based on angle orientation
+  // When angle is inverted, the toe plate must also be inverted to match the angle geometry
+  const toePlateType = angleOrientation === 'Inverted' ? 'Inverted' : 'Standard'
+
   // Create bracket specification
   const bracketSpec: BracketSpec = {
     bracketIndex: createParameter('Index number of the bracket object', 0, ''),
@@ -252,7 +256,7 @@ export function generateBracketJSON(
     bracketLength: createParameter('Length of the bracket', Math.round(bracketLength), 'mm'),
     bracketHeight: createParameter('Height of the bracket', Math.round(bracketHeight), 'mm'),
     bracketFixingDiameter: createParameter('Diameter of fixing holes', boltDiameter, 'mm'),
-    bracketToePlateType: createParameter('Type of toe plate configuration', 'Standard', ''),
+    bracketToePlateType: createParameter('Type of toe plate configuration', toePlateType, ''),
     bracketBackNotchOption: createParameter('Whether back notch is present', hasNotch, ''),
     bracketBackNotchLength: createParameter('Length of back notch', Math.round(notchDepth), 'mm'),
     bracketBackNotchHeight: createParameter('Height of back notch', Math.round(notchHeight), 'mm'),
