@@ -46,6 +46,7 @@ interface BracketSpec {
   bracketToeNotchHeight: ShapeDiverParameter<number>
   bracketCutNotchAboveHeight: ShapeDiverParameter<number>
   bracketFixingLevel: ShapeDiverParameter<number>
+  bracketDimD: ShapeDiverParameter<number>
 }
 
 export interface BracketJSON {
@@ -246,6 +247,12 @@ export function generateBracketJSON(
   // When angle is inverted, the toe plate must also be inverted to match the angle geometry
   const toePlateType = angleOrientation === 'Inverted' ? 'Inverted' : 'Standard'
 
+  // Extract Dim D value for inverted brackets (distance from bracket bottom to fixing point)
+  // For standard brackets, use default value of 0 (not applicable)
+  const dimD = bracketType === 'Inverted'
+    ? (calculated.dim_d ?? genetic.dim_d ?? 130)
+    : 0
+
   // Create bracket specification
   const bracketSpec: BracketSpec = {
     bracketIndex: createParameter('Index number of the bracket object', 0, ''),
@@ -264,6 +271,7 @@ export function generateBracketJSON(
     bracketToeNotchHeight: createParameter('Height of toe notch', 60, 'mm'),
     bracketCutNotchAboveHeight: createParameter('Height of cut notch above', 12, 'mm'),
     bracketFixingLevel: createParameter('Fixing level below top of slab/steel', bracketFixingLevel, 'mm'),
+    bracketDimD: createParameter('Distance from bracket bottom to fixing point (Dim D)', Math.round(dimD), 'mm'),
   }
 
   return {
