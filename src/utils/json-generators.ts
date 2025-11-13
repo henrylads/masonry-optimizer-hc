@@ -204,11 +204,25 @@ export function generateBracketJSON(
   // Extract bracket dimensions (use calculated values where available, fallback to genetic)
   const bracketThickness = genetic.bracket_thickness
   const bracketLength = calculated.bracket_projection ?? genetic.bracket_projection ?? 0
-  const bracketHeight = calculated.bracket_height ?? genetic.bracket_height ?? 0
+  let bracketHeight = calculated.bracket_height ?? genetic.bracket_height ?? 0
   const boltDiameter = genetic.bolt_diameter
 
-  // Extract bracket type
+  // Extract bracket type and angle orientation
   const bracketType = genetic.bracket_type ?? calculated.bracket_type ?? 'Standard'
+  const angleOrientation = genetic.angle_orientation ?? calculated.angle_orientation ?? 'Standard'
+  const angleThickness = genetic.angle_thickness
+
+  // CRITICAL FIX for ShapeDiver visualization:
+  // Our backend calculations now subtract angle thickness for Standard bracket + Standard angle,
+  // but ShapeDiver's 3D model expects bracket height BEFORE angle thickness subtraction
+  // because it renders the bracket and angle separately.
+  // So we need to ADD the angle thickness back for ShapeDiver.
+  if (bracketType === 'Standard' && angleOrientation === 'Standard') {
+    bracketHeight = bracketHeight + angleThickness
+    console.log(`📐 ShapeDiver bracket height adjustment: Adding ${angleThickness}mm angle thickness back to bracket height for 3D rendering`)
+    console.log(`   Backend calculation: ${bracketHeight - angleThickness}mm (structural)`)
+    console.log(`   ShapeDiver rendering: ${bracketHeight}mm (includes space for angle)`)
+  }
 
   // Extract notch parameters from form inputs
   const hasNotch = formInputs.has_notch ?? false

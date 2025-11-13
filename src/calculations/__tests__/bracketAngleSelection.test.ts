@@ -112,6 +112,7 @@ describe('Bracket Height Calculation', () => {
     top_critical_edge_distance: 75,
     distance_from_top_to_fixing: 40,
     vertical_leg: 60,
+    angle_thickness: 5,
   };
 
   test('should calculate base height without adjustments for Standard bracket + Standard angle', () => {
@@ -120,9 +121,10 @@ describe('Bracket Height Calculation', () => {
       bracket_type: 'Standard',
       angle_orientation: 'Standard'
     });
-    
+
     // Base calculation: Math.abs(-100) - 75 + 40 = 65
-    expect(height).toBeCloseTo(65, 5);
+    // Minus angle thickness: 65 - 5 = 60
+    expect(height).toBeCloseTo(60, 5);
   });
 
   test('should add vertical leg for Standard bracket + Inverted angle', () => {
@@ -158,10 +160,33 @@ describe('Bracket Height Calculation', () => {
       bracket_type: 'Inverted',
       angle_orientation: 'Inverted'
     });
-    
+
     // Special case logic applies - ensures adequate rise to bolts
     // No vertical leg adjustment for Inverted angle orientation
     expect(height).toBeCloseTo(165, 5); // Base height from special case logic
+  });
+
+  test('should subtract varying angle thicknesses for Standard bracket + Standard angle', () => {
+    const testThicknesses = [
+      { thickness: 4, expectedReduction: 4 },
+      { thickness: 5, expectedReduction: 5 },
+      { thickness: 6, expectedReduction: 6 },
+      { thickness: 8, expectedReduction: 8 }
+    ];
+
+    testThicknesses.forEach(({ thickness, expectedReduction }) => {
+      const height = calculateBracketHeight({
+        ...baseParams,
+        angle_thickness: thickness,
+        bracket_type: 'Standard',
+        angle_orientation: 'Standard'
+      });
+
+      // Base calculation: Math.abs(-100) - 75 + 40 = 65
+      // Minus angle thickness: 65 - thickness
+      const expectedHeight = 65 - expectedReduction;
+      expect(height).toBeCloseTo(expectedHeight, 5);
+    });
   });
 });
 
@@ -409,6 +434,7 @@ describe('Fixing Position Optimization', () => {
     top_critical_edge_distance: 75,
     distance_from_top_to_fixing: 40,
     vertical_leg: 60,
+    angle_thickness: 5,
     bracket_type: 'Standard' as const,
     angle_orientation: 'Standard' as const
   };

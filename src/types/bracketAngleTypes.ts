@@ -22,6 +22,7 @@ export interface BracketHeightCalculationParams {
   top_critical_edge_distance: number;
   distance_from_top_to_fixing: number;
   vertical_leg: number;
+  angle_thickness: number;
   bracket_type: BracketType;
   angle_orientation: AngleOrientation;
   fixing_position?: number; // Optional fixing position (mm from top of slab) - defaults to 75mm

@@ -62,6 +62,7 @@ try {
             top_critical_edge: testInputs.top_critical_edge,
             distance_from_top_to_fixing: 40, // Y constant from bracket angle selection
             slab_thickness: testInputs.slab_thickness,
+            angle_thickness: testInputs.angle_thickness,
             fixing_position: testInputs.fixing_position,
             max_allowable_bracket_extension: testInputs.max_allowable_bracket_extension,
             enable_angle_extension: testInputs.enable_angle_extension,

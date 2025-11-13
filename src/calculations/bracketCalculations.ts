@@ -232,6 +232,7 @@ export interface StandardBracketInputs {
     top_critical_edge: number;       // Top critical edge distance (e.g., 75mm)
     distance_from_top_to_fixing: number; // Distance from bracket top to fixing (Y)
     slab_thickness: number;          // Slab thickness in mm
+    angle_thickness: number;         // Angle thickness in mm
     fixing_position?: number;        // Optional fixing position from top of slab
 
     // Angle extension parameters
@@ -261,15 +262,24 @@ export function calculateStandardBracketHeightWithExtension(inputs: StandardBrac
         support_level,
         top_critical_edge,
         distance_from_top_to_fixing,
+        angle_thickness,
         fixing_position,
-        slab_thickness
+        slab_thickness,
+        bracket_type,
+        angle_orientation
     } = inputs;
 
     // Use dynamic fixing position if provided, otherwise fall back to top_critical_edge
     const effectiveTopCriticalEdge = fixing_position || top_critical_edge;
 
     // Standard calculation: |support_level| - effective_top_critical_edge + Y
-    const original_bracket_height_raw = Math.abs(support_level) - effectiveTopCriticalEdge + distance_from_top_to_fixing;
+    let original_bracket_height_raw = Math.abs(support_level) - effectiveTopCriticalEdge + distance_from_top_to_fixing;
+
+    // For Standard bracket + Standard angle, subtract angle thickness
+    // The support level is at the TOP of the angle, but bracket connects at BOTTOM
+    if (bracket_type === 'Standard' && angle_orientation === 'Standard') {
+        original_bracket_height_raw -= angle_thickness;
+    }
 
     // Calculate angle extension if enabled
     let angle_extension_result: AngleExtensionResult | undefined;

@@ -103,6 +103,7 @@ export function evaluateBruteForceDesign(
                 top_critical_edge: 75, // Default, will be replaced with channel-specific values if available
                 distance_from_top_to_fixing: 40, // Y constant from bracket angle selection
                 slab_thickness: design.calculated.slab_thickness,
+                angle_thickness: design.genetic.angle_thickness,
                 fixing_position: design.genetic.fixing_position,
                 // Angle extension parameters
                 max_allowable_bracket_extension: designInputs.max_allowable_bracket_extension,
@@ -128,7 +129,13 @@ export function evaluateBruteForceDesign(
         const MIN_BRACKET_HEIGHT = 150; // STANDARD_BRACKET_MIN_HEIGHT constant
 
         // Calculate what the bracket height would be naturally (before minimum enforcement)
-        const naturalBracketHeight = Math.abs(design.calculated.support_level) - design.genetic.fixing_position + Y;
+        let naturalBracketHeight = Math.abs(design.calculated.support_level) - design.genetic.fixing_position + Y;
+
+        // For Standard bracket + Standard angle, subtract angle thickness
+        // The support level is at the TOP of the angle, but bracket connects at BOTTOM
+        if (design.genetic.angle_orientation === 'Standard') {
+            naturalBracketHeight -= design.genetic.angle_thickness;
+        }
 
         // If the natural height is below the minimum, this fixing position doesn't work geometrically
         // We allow a very small tolerance (0.1mm) for floating point rounding only

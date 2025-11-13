@@ -281,6 +281,7 @@ export function calculateBracketHeight(params: BracketHeightCalculationParams): 
     top_critical_edge_distance,
     distance_from_top_to_fixing,
     vertical_leg,
+    angle_thickness,
     bracket_type,
     angle_orientation
   } = params;
@@ -316,22 +317,24 @@ export function calculateBracketHeight(params: BracketHeightCalculationParams): 
   
   // Standard calculation for all other cases
   const baseHeight = Math.abs(support_level) - top_critical_edge_distance + distance_from_top_to_fixing;
-  
+
   // Apply adjustments based on bracket type and angle orientation combination
   let adjustment = 0;
-  
-  if (
+
+  if (bracket_type === 'Standard' && angle_orientation === 'Standard') {
+    // For Standard bracket + Standard angle, subtract angle thickness
+    // The support level is at the TOP of the angle, but bracket connects at BOTTOM
+    adjustment = -angle_thickness;
+  } else if (
     (bracket_type === 'Standard' && angle_orientation === 'Inverted') ||
     (bracket_type === 'Inverted' && angle_orientation === 'Standard')
   ) {
     adjustment = vertical_leg;
   }
-  // No adjustment needed for:
-  // - Standard bracket + Standard angle
-  // - Inverted bracket + Inverted angle
-  
+  // No adjustment for Inverted bracket + Inverted angle
+
   const finalHeight = baseHeight + adjustment;
-  
+
   return roundToTwelveDecimals(finalHeight);
 }
 
