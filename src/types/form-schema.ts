@@ -54,16 +54,6 @@ export const formSchema = z.object({
   notch_depth: z.coerce
     .number()
     .default(0),
-  is_angle_length_limited: z.boolean().default(false),
-  fixed_angle_length: z.coerce
-    .number()
-    .min(200, { message: "Fixed angle length must be at least 200mm" })
-    .max(1490, { message: "Fixed angle length must be at most 1490mm" })
-    .optional()
-    .refine((val) => val === undefined || val % 5 === 0, {
-      message: "Fixed angle length must be in 5mm increments",
-    }),
-  fixing_type: z.enum(['all', 'post-fix', 'channel-fix']).default('all'),
   channel_product: z.enum(['all', 'CPRO38', 'CPRO50', 'CPRO52']).optional().default('all'),
   postfix_product: z.enum(['all', 'R-HPTIII-70', 'R-HPTIII-90']).optional().default('all'),
   use_custom_fixing_position: z.boolean().default(false),

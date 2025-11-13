@@ -25,7 +25,6 @@ import { Label } from '@/components/ui/label'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { cn } from '@/lib/utils'
 import { FormDataType } from '@/types/form-schema'
-import { getSectionSizes } from '@/data/steelSections'
 
 interface AdvancedOptionsProps {
   form: UseFormReturn<FormDataType>
@@ -35,9 +34,7 @@ interface AdvancedOptionsProps {
 export function AdvancedOptions({ form, frameFixingType }: AdvancedOptionsProps) {
   const [geometryExpanded, setGeometryExpanded] = useState(false)
   const [fixingExpanded, setFixingExpanded] = useState(false)
-  const [notchExpanded, setNotchExpanded] = useState(false)
-  const [angleExpanded, setAngleExpanded] = useState(false)
-  const [steelExpanded, setSteelExpanded] = useState(false)
+  const [bracketExpanded, setBracketExpanded] = useState(false)
 
   const isConcreteType = frameFixingType?.startsWith('concrete')
   const isSteelType = frameFixingType?.startsWith('steel')
@@ -320,97 +317,6 @@ export function AdvancedOptions({ form, frameFixingType }: AdvancedOptionsProps)
           <div className="p-4 space-y-4">
               <FormField
                 control={form.control}
-                name="fixing_type"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Fixing Type</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select fixing type" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="all">All Fixing Types</SelectItem>
-                        <SelectItem value="post-fix">Post-Fix Only</SelectItem>
-                        <SelectItem value="channel-fix">Channel-Fix Only</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormDescription>
-                      Algorithm will test selected fixing types
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              {/* Show channel product for cast-in and all concrete options */}
-              {(frameFixingType === 'concrete-cast-in' || frameFixingType === 'concrete-all') && (
-                <FormField
-                  control={form.control}
-                  name="channel_product"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Channel Fix Type</FormLabel>
-                      <FormControl>
-                        <Select
-                          value={field.value}
-                          onValueChange={field.onChange}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select channel type" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="all">All Channels</SelectItem>
-                            <SelectItem value="CPRO38">CPRO38</SelectItem>
-                            <SelectItem value="CPRO50">CPRO50</SelectItem>
-                            <SelectItem value="CPRO52">CPRO52</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </FormControl>
-                      <FormDescription>
-                        Select specific channel product or test all
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              )}
-
-              {/* Show postfix product for post-fix and all concrete options */}
-              {(frameFixingType === 'concrete-post-fix' || frameFixingType === 'concrete-all') && (
-                <FormField
-                  control={form.control}
-                  name="postfix_product"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Post Fix Type</FormLabel>
-                      <FormControl>
-                        <Select
-                          value={field.value}
-                          onValueChange={field.onChange}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select post type" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="all">All Post-Fix</SelectItem>
-                            <SelectItem value="R-HPTIII-70">R-HPTIII-70</SelectItem>
-                            <SelectItem value="R-HPTIII-90">R-HPTIII-90</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </FormControl>
-                      <FormDescription>
-                        Select specific post-fix product or test all
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              )}
-
-              <FormField
-                control={form.control}
                 name="use_custom_fixing_position"
                 render={({ field }) => (
                   <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
@@ -532,19 +438,20 @@ export function AdvancedOptions({ form, frameFixingType }: AdvancedOptionsProps)
         )}
       </div>
 
-      {/* Group 3: Notch Configuration */}
+      {/* Group 3: Bracket Configuration */}
       <div className="border rounded-lg overflow-hidden">
         <button
-          onClick={() => setNotchExpanded(!notchExpanded)}
+          onClick={() => setBracketExpanded(!bracketExpanded)}
           className="w-full px-4 py-3 flex items-center justify-between bg-muted/30 hover:bg-muted/50 transition-colors"
         >
-          <span className="font-semibold">Notch Configuration</span>
-          <ChevronRight className={`h-4 w-4 transition-transform ${notchExpanded ? 'rotate-90' : ''}`} />
+          <span className="font-semibold">Bracket Configuration</span>
+          <ChevronRight className={`h-4 w-4 transition-transform ${bracketExpanded ? 'rotate-90' : ''}`} />
         </button>
-        {notchExpanded && (
-          <div className="p-4 space-y-4">
-              <div>
-                <Label className="text-base font-medium mb-4 block">Do you require a notch?</Label>
+        {bracketExpanded && (
+          <div className="p-4 space-y-6">
+              {/* Notch Configuration Section */}
+              <div className="space-y-4">
+                <Label className="text-base font-medium mb-4 block">Bracket Notch</Label>
                 <ToggleGroup
                   type="single"
                   value={form.watch("has_notch") ? "yes" : "no"}
@@ -578,163 +485,53 @@ export function AdvancedOptions({ form, frameFixingType }: AdvancedOptionsProps)
                     No
                   </ToggleGroupItem>
                 </ToggleGroup>
-              </div>
 
-              {form.watch('has_notch') && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="notch_height"
-                    render={({ field }) => (
-                      <FormItem>
-                        <div className="rounded-lg border p-4 h-full flex flex-col justify-between">
-                          <div>
-                            <div className="flex justify-between items-center mb-2">
-                              <FormLabel>Notch Height (mm)</FormLabel>
-                              <span className="text-sm tabular-nums">
-                                {field.value} mm
-                              </span>
-                            </div>
-                            <FormDescription className="mb-3">
-                              How high does the notch extend from the bottom of the bracket?
-                            </FormDescription>
-                          </div>
+                {form.watch('has_notch') && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="notch_height"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Notch Height (mm)</FormLabel>
                           <FormControl>
-                            <Slider
-                              min={10}
-                              max={200}
-                              step={5}
-                              value={[field.value]}
-                              onValueChange={(values) => field.onChange(values[0])}
+                            <Input
+                              type="number"
+                              placeholder="e.g., 50"
+                              value={field.value ?? ''}
+                              onChange={(e) => field.onChange(Number(e.target.value) || 0)}
                             />
                           </FormControl>
                           <FormMessage />
-                        </div>
-                      </FormItem>
-                    )}
-                  />
+                        </FormItem>
+                      )}
+                    />
 
-                  <FormField
-                    control={form.control}
-                    name="notch_depth"
-                    render={({ field }) => (
-                      <FormItem>
-                        <div className="rounded-lg border p-4 h-full flex flex-col justify-between">
-                          <div>
-                            <div className="flex justify-between items-center mb-2">
-                              <FormLabel>Notch Depth (mm)</FormLabel>
-                              <span className="text-sm tabular-nums">
-                                {field.value} mm
-                              </span>
-                            </div>
-                            <FormDescription className="mb-3">
-                              How deep does the notch cut into the bracket?
-                            </FormDescription>
-                          </div>
+                    <FormField
+                      control={form.control}
+                      name="notch_depth"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Notch Depth (mm)</FormLabel>
                           <FormControl>
-                            <Slider
-                              min={10}
-                              max={200}
-                              step={5}
-                              value={[field.value]}
-                              onValueChange={(values) => field.onChange(values[0])}
+                            <Input
+                              type="number"
+                              placeholder="e.g., 50"
+                              value={field.value ?? ''}
+                              onChange={(e) => field.onChange(Number(e.target.value) || 0)}
                             />
                           </FormControl>
                           <FormMessage />
-                        </div>
-                      </FormItem>
-                    )}
-                  />
-                </div>
-              )}
-          </div>
-        )}
-      </div>
-
-      {/* Group 4: Angle Configuration */}
-      <div className="border rounded-lg overflow-hidden">
-        <button
-          onClick={() => setAngleExpanded(!angleExpanded)}
-          className="w-full px-4 py-3 flex items-center justify-between bg-muted/30 hover:bg-muted/50 transition-colors"
-        >
-          <span className="font-semibold">Angle Configuration</span>
-          <ChevronRight className={`h-4 w-4 transition-transform ${angleExpanded ? 'rotate-90' : ''}`} />
-        </button>
-        {angleExpanded && (
-          <div className="p-4 space-y-4">
-              <div>
-                <Label className="text-base font-medium mb-4 block">Is there a limit to the angle length?</Label>
-                <ToggleGroup
-                  type="single"
-                  value={form.watch("is_angle_length_limited") ? "yes" : "no"}
-                  onValueChange={(value) => {
-                    if (value) {
-                      form.setValue("is_angle_length_limited", value === "yes")
-                    }
-                  }}
-                  className="justify-start gap-2 mb-4"
-                  variant="outline"
-                  size="default"
-                >
-                  <ToggleGroupItem
-                    value="yes"
-                    aria-label="Yes"
-                    className={cn(
-                      "min-w-[80px]",
-                      form.watch("is_angle_length_limited") && "bg-[rgb(194,242,14)] text-black hover:brightness-95"
-                    )}
-                  >
-                    Yes
-                  </ToggleGroupItem>
-                  <ToggleGroupItem
-                    value="no"
-                    aria-label="No"
-                    className={cn(
-                      "min-w-[80px]",
-                      !form.watch("is_angle_length_limited") && "bg-[rgb(194,242,14)] text-black hover:brightness-95"
-                    )}
-                  >
-                    No
-                  </ToggleGroupItem>
-                </ToggleGroup>
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                )}
               </div>
 
-              {form.watch("is_angle_length_limited") && (
-                <FormField
-                  control={form.control}
-                  name="fixed_angle_length"
-                  render={({ field }) => (
-                    <FormItem>
-                      <div className="rounded-lg border p-4 h-full flex flex-col justify-between">
-                        <div>
-                          <div className="flex justify-between items-center mb-2">
-                            <FormLabel>Fixed Angle Length (mm)</FormLabel>
-                            <span className="text-sm tabular-nums">
-                              {field.value ?? 750} mm
-                            </span>
-                          </div>
-                          <FormDescription className="mb-3">
-                            Maximum angle length in 5mm increments (200-1490mm)
-                          </FormDescription>
-                        </div>
-                        <FormControl>
-                          <Slider
-                            min={200}
-                            max={1490}
-                            step={5}
-                            value={[field.value ?? 750]}
-                            onValueChange={(values) => field.onChange(values[0])}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </div>
-                    </FormItem>
-                  )}
-                />
-              )}
-
-              <div className="mt-6">
-                <Label className="text-base font-medium mb-4 block">Angle Extension for Exclusion Zones</Label>
+              {/* Bracket Extension Section */}
+              <div className="space-y-4 pt-4 border-t">
+                <Label className="text-base font-medium mb-4 block">Bracket Extension for Exclusion Zones</Label>
                 <p className="text-sm text-muted-foreground mb-4">
                   Enable this feature when brackets cannot extend fully due to SFS or other building elements.
                   The system will limit bracket extension and compensate by extending the angle height instead.
@@ -779,137 +576,19 @@ export function AdvancedOptions({ form, frameFixingType }: AdvancedOptionsProps)
                     Disable
                   </ToggleGroupItem>
                 </ToggleGroup>
-              </div>
 
-              {form.watch("enable_angle_extension") && (
-                <FormField
-                  control={form.control}
-                  name="max_allowable_bracket_extension"
-                  render={({ field }) => (
-                    <FormItem>
-                      <div className="rounded-lg border p-4 h-full flex flex-col justify-between">
-                        <div>
-                          <div className="flex justify-between items-center mb-2">
-                            <FormLabel>Max Bracket Position (mm)</FormLabel>
-                            <span className="text-sm tabular-nums">
-                              {field.value ?? -200} mm
-                            </span>
-                          </div>
-                          <FormDescription className="mb-3">
-                            Maximum allowable bracket position in 5mm increments.
-                            0 is at top of slab (often negative). When exceeded, the angle will be extended to compensate.
-                          </FormDescription>
-                        </div>
-                        <FormControl>
-                          <Slider
-                            min={-1000}
-                            max={500}
-                            step={5}
-                            value={[field.value ?? -200]}
-                            onValueChange={(values) => field.onChange(values[0])}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </div>
-                    </FormItem>
-                  )}
-                />
-              )}
-          </div>
-        )}
-      </div>
-
-      {/* Group 5: Steel Section Configuration (conditional on steel types) */}
-      {isSteelType && (
-        <div className="border rounded-lg overflow-hidden">
-          <button
-            onClick={() => setSteelExpanded(!steelExpanded)}
-            className="w-full px-4 py-3 flex items-center justify-between bg-muted/30 hover:bg-muted/50 transition-colors"
-          >
-            <span className="font-semibold">Steel Section Configuration</span>
-            <ChevronRight className={`h-4 w-4 transition-transform ${steelExpanded ? 'rotate-90' : ''}`} />
-          </button>
-          {steelExpanded && (
-            <div className="p-4 space-y-4">
-                <FormField
-                  control={form.control}
-                  name="use_custom_steel_section"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-                      <div className="space-y-0.5">
-                        <FormLabel>Custom Steel Section</FormLabel>
-                        <FormDescription className="text-xs">
-                          Use custom height instead of standard sections
-                        </FormDescription>
-                      </div>
-                      <FormControl>
-                        <Switch
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-
-                {!form.watch('use_custom_steel_section') ? (
+                {form.watch("enable_angle_extension") && (
                   <FormField
                     control={form.control}
-                    name="steel_section_size"
-                    render={({ field }) => {
-                      const frameType = form.watch('frame_fixing_type')
-                      let availableSizes: string[] = []
-                      let sectionLabel = 'Standard Size'
-
-                      if (frameType === 'steel-ibeam') {
-                        availableSizes = getSectionSizes('I-BEAM')
-                        sectionLabel = 'I-Beam Size'
-                      } else if (frameType === 'steel-rhs') {
-                        availableSizes = getSectionSizes('RHS')
-                        sectionLabel = 'RHS Size'
-                      } else if (frameType === 'steel-shs') {
-                        availableSizes = getSectionSizes('SHS')
-                        sectionLabel = 'SHS Size'
-                      }
-
-                      return (
-                        <FormItem>
-                          <FormLabel>{sectionLabel}</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder={`Select ${sectionLabel.toLowerCase()}`} />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {availableSizes.map((size) => (
-                                <SelectItem key={size} value={size}>
-                                  {size}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormDescription className="text-xs">
-                            Select from standard section sizes
-                          </FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )
-                    }}
-                  />
-                ) : (
-                  <FormField
-                    control={form.control}
-                    name="custom_steel_height"
+                    name="max_allowable_bracket_extension"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Custom Height (mm)</FormLabel>
+                        <FormLabel>Max Bracket Position (mm)</FormLabel>
                         <FormControl>
                           <Input
                             type="number"
-                            step="1"
-                            placeholder="e.g. 150"
-                            value={field.value}
+                            placeholder="e.g., -200"
+                            value={field.value ?? ''}
                             onChange={(e) => field.onChange(Number(e.target.value) || 0)}
                           />
                         </FormControl>
@@ -918,65 +597,11 @@ export function AdvancedOptions({ form, frameFixingType }: AdvancedOptionsProps)
                     )}
                   />
                 )}
+              </div>
+          </div>
+        )}
+      </div>
 
-                <FormField
-                  control={form.control}
-                  name="steel_bolt_size"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Bolt Size Options</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select bolt sizes" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="all">All Bolt Sizes (M10/M12/M16)</SelectItem>
-                          <SelectItem value="M10">M10 Only</SelectItem>
-                          <SelectItem value="M12">M12 Only</SelectItem>
-                          <SelectItem value="M16">M16 Only</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormDescription className="text-xs">
-                        Algorithm will test selected bolt sizes
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                {frameFixingType === 'steel-ibeam' && (
-                  <FormField
-                    control={form.control}
-                    name="steel_fixing_method"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Fixing Method (I-Beam)</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select fixing method" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="SET_SCREW">Set Screws Only</SelectItem>
-                            <SelectItem value="BLIND_BOLT">Blind Bolts Only</SelectItem>
-                            <SelectItem value="both">Test Both (Optimize)</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormDescription className="text-xs">
-                          I-Beam can use set screws or blind bolts. RHS/SHS must use blind bolts.
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                )}
-            </div>
-          )}
-        </div>
-      )}
     </div>
   )
 }
