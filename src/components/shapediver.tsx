@@ -9,9 +9,9 @@ type ParameterValue = string | number | boolean;
 
 // Define the structure of ShapeDiver output data
 export interface ShapeDiverOutputs {
-  totalSystemWeight?: number;
-  totalSystemEmbodiedCarbon?: number;
-  totalSystemPerimeterLength?: number;
+  systemWeightTotal?: number;
+  systemWeightPerMeter?: number;
+  systemEmbodiedCarbonTotal?: number;
 }
 
 // Define types for ShapeDiver content objects to avoid 'any'
@@ -99,42 +99,42 @@ export const ShapeDiverCard: React.FC<ShapeDiverCardProps> = ({
             
             // Try to get outputs by their expected names using the correct API
             try {
-                const weightOutputs = session.getOutputByName('totalSystemWeight') as ShapeDiverOutput[];
+                const weightOutputs = session.getOutputByName('systemWeightTotal') as ShapeDiverOutput[];
                 if (weightOutputs && weightOutputs.length > 0 && weightOutputs[0].content && weightOutputs[0].content.length > 0) {
                     const contentValue = (weightOutputs[0].content[0] as ShapeDiverContentItem)?.value || (weightOutputs[0].content[0] as ShapeDiverContentItem)?.data;
                     if (contentValue !== undefined) {
-                        newOutputs.totalSystemWeight = parseFloat(String(contentValue));
-                        console.log("Total System Weight:", newOutputs.totalSystemWeight);
+                        newOutputs.systemWeightTotal = parseFloat(String(contentValue));
+                        console.log("System Weight Total:", newOutputs.systemWeightTotal);
                     }
                 }
             } catch (e) {
-                console.log("Could not get totalSystemWeight output:", e);
+                console.log("Could not get systemWeightTotal output:", e);
             }
-            
+
             try {
-                const carbonOutputs = session.getOutputByName('totalSystemEmbodiedCarbon') as ShapeDiverOutput[];
+                const weightPerMeterOutputs = session.getOutputByName('systemWeightPerMeter') as ShapeDiverOutput[];
+                if (weightPerMeterOutputs && weightPerMeterOutputs.length > 0 && weightPerMeterOutputs[0].content && weightPerMeterOutputs[0].content.length > 0) {
+                    const contentValue = (weightPerMeterOutputs[0].content[0] as ShapeDiverContentItem)?.value || (weightPerMeterOutputs[0].content[0] as ShapeDiverContentItem)?.data;
+                    if (contentValue !== undefined) {
+                        newOutputs.systemWeightPerMeter = parseFloat(String(contentValue));
+                        console.log("System Weight Per Meter:", newOutputs.systemWeightPerMeter);
+                    }
+                }
+            } catch (e) {
+                console.log("Could not get systemWeightPerMeter output:", e);
+            }
+
+            try {
+                const carbonOutputs = session.getOutputByName('systemEmbodiedCarbonTotal') as ShapeDiverOutput[];
                 if (carbonOutputs && carbonOutputs.length > 0 && carbonOutputs[0].content && carbonOutputs[0].content.length > 0) {
                     const contentValue = (carbonOutputs[0].content[0] as ShapeDiverContentItem)?.value || (carbonOutputs[0].content[0] as ShapeDiverContentItem)?.data;
                     if (contentValue !== undefined) {
-                        newOutputs.totalSystemEmbodiedCarbon = parseFloat(String(contentValue));
-                        console.log("Total System Embodied Carbon:", newOutputs.totalSystemEmbodiedCarbon);
+                        newOutputs.systemEmbodiedCarbonTotal = parseFloat(String(contentValue));
+                        console.log("System Embodied Carbon Total:", newOutputs.systemEmbodiedCarbonTotal);
                     }
                 }
             } catch (e) {
-                console.log("Could not get totalSystemEmbodiedCarbon output:", e);
-            }
-            
-            try {
-                const perimeterOutputs = session.getOutputByName('totalSystemPerimeterLength') as ShapeDiverOutput[];
-                if (perimeterOutputs && perimeterOutputs.length > 0 && perimeterOutputs[0].content && perimeterOutputs[0].content.length > 0) {
-                    const contentValue = (perimeterOutputs[0].content[0] as ShapeDiverContentItem)?.value || (perimeterOutputs[0].content[0] as ShapeDiverContentItem)?.data;
-                    if (contentValue !== undefined) {
-                        newOutputs.totalSystemPerimeterLength = parseFloat(String(contentValue));
-                        console.log("Total System Perimeter Length:", newOutputs.totalSystemPerimeterLength);
-                    }
-                }
-            } catch (e) {
-                console.log("Could not get totalSystemPerimeterLength output:", e);
+                console.log("Could not get systemEmbodiedCarbonTotal output:", e);
             }
             
             console.log("Extracted outputs:", newOutputs);
@@ -306,7 +306,7 @@ export const ShapeDiverCard: React.FC<ShapeDiverCardProps> = ({
                 console.log("📡 Attempting to create ShapeDiver session...");
                 const session = await createSession({
                     id: `session_${viewportIdRef.current}`,
-                    ticket: '7481a9b9dc55d484c27c1163712df69c28c32da74496f095223d401431cef6048c55de2ab7688de7e7a396cbec41d6bd7c2029a96e77d9d6059691b4554f70445527fc1413322f6ebb01293442d95525d65ab7259a50a19f42e748e71afeda1f9e698067c3a920-3bc71ca75edb5e2d6893a9523fa341ca',
+                    ticket: '063d739ff9a33860a82b64d3e189eb920f7a1e979710ac35485843ae4fbbac64efb2c752b47050bf740d27686c9d5b6f99a228f96408c74c9ac404e29fb3b45e122f741b6ec4f29133ee1369e0b56350ce02719e6704c05293c12f5cdc85bc80a5ac3ae4bccdf9-93b59544e301e884693c271cd6603eb1',
                     modelViewUrl: 'https://sdr8euc1.eu-central-1.shapediver.com',
                     viewports: [viewportIdRef.current] // Assign the viewport to the session!
                 });

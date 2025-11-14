@@ -238,31 +238,26 @@ export class CalculationPDFGenerator {
 
     const outputs: { label: string; value: string; unit?: string }[] = [];
 
-    if (this.shapeDiverOutputs?.totalSystemWeight !== undefined) {
+    if (this.shapeDiverOutputs?.systemWeightTotal !== undefined) {
       outputs.push({
         label: 'Total System Weight',
-        value: this.shapeDiverOutputs.totalSystemWeight.toFixed(2),
+        value: this.shapeDiverOutputs.systemWeightTotal.toFixed(2),
         unit: 'kg'
       });
     }
 
-    if (this.shapeDiverOutputs?.totalSystemWeight !== undefined && this.data.finalDesign.performance) {
-      // Calculate weight per meter from total weight and bracket centres
-      const bracketCentres = parseFloat(this.data.finalDesign.genetic.find(p => p.label === 'Bracket Centres')?.value || '0');
-      if (bracketCentres > 0) {
-        const weightPerMeter = (this.shapeDiverOutputs.totalSystemWeight / bracketCentres) * 1000;
-        outputs.push({
-          label: 'Total Weight per Meter',
-          value: weightPerMeter.toFixed(2),
-          unit: 'kg/m'
-        });
-      }
+    if (this.shapeDiverOutputs?.systemWeightPerMeter !== undefined) {
+      outputs.push({
+        label: 'System Weight per Meter',
+        value: this.shapeDiverOutputs.systemWeightPerMeter.toFixed(2),
+        unit: 'kg/m'
+      });
     }
 
-    if (this.shapeDiverOutputs?.totalSystemEmbodiedCarbon !== undefined) {
+    if (this.shapeDiverOutputs?.systemEmbodiedCarbonTotal !== undefined) {
       outputs.push({
-        label: 'Embodied Carbon',
-        value: this.shapeDiverOutputs.totalSystemEmbodiedCarbon.toFixed(2),
+        label: 'Total Embodied Carbon',
+        value: this.shapeDiverOutputs.systemEmbodiedCarbonTotal.toFixed(2),
         unit: 'kg CO2e'
       });
     }

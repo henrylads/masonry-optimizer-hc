@@ -18,7 +18,6 @@ export function ResultsTab({ result, shapeDiverOutputs }: ResultsTabProps) {
   const allChecksPassed = result.calculated.detailed_verification_results?.passes ??
                           result.calculated.all_checks_pass ??
                           false
-  const totalWeight = result.calculated.weights?.totalWeight
 
   return (
     <div className="space-y-4">
@@ -36,18 +35,6 @@ export function ResultsTab({ result, shapeDiverOutputs }: ResultsTabProps) {
 
         {summaryExpanded && (
           <div className="p-4 space-y-3">
-            {totalWeight !== undefined && (
-              <div className="flex items-center gap-3">
-                <Weight className="h-5 w-5 text-muted-foreground" />
-                <div>
-                  <p className="text-sm text-muted-foreground">Total Weight</p>
-                  <p className="text-2xl font-bold">
-                    {totalWeight.toFixed(2)} kg/m
-                  </p>
-                </div>
-              </div>
-            )}
-
             <div className="flex items-center gap-3">
               <Ruler className="h-5 w-5 text-muted-foreground" />
               <div>
@@ -71,25 +58,37 @@ export function ResultsTab({ result, shapeDiverOutputs }: ResultsTabProps) {
             )}
 
             {/* ShapeDiver Outputs */}
-            {shapeDiverOutputs?.totalSystemWeight !== undefined && (
+            {shapeDiverOutputs?.systemWeightTotal !== undefined && (
               <div className="flex items-center gap-3">
                 <Weight className="h-5 w-5 text-muted-foreground" />
                 <div>
                   <p className="text-sm text-muted-foreground">Total System Weight</p>
                   <p className="text-2xl font-bold">
-                    {shapeDiverOutputs.totalSystemWeight.toFixed(2)} kg
+                    {shapeDiverOutputs.systemWeightTotal.toFixed(2)} kg
                   </p>
                 </div>
               </div>
             )}
 
-            {shapeDiverOutputs?.totalSystemEmbodiedCarbon !== undefined && (
+            {shapeDiverOutputs?.systemWeightPerMeter !== undefined && (
+              <div className="flex items-center gap-3">
+                <Weight className="h-5 w-5 text-muted-foreground" />
+                <div>
+                  <p className="text-sm text-muted-foreground">System Weight Per Meter</p>
+                  <p className="text-2xl font-bold">
+                    {shapeDiverOutputs.systemWeightPerMeter.toFixed(2)} kg/m
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {shapeDiverOutputs?.systemEmbodiedCarbonTotal !== undefined && (
               <div className="flex items-center gap-3">
                 <Leaf className="h-5 w-5 text-muted-foreground" />
                 <div>
-                  <p className="text-sm text-muted-foreground">Embodied Carbon</p>
+                  <p className="text-sm text-muted-foreground">Total Embodied Carbon</p>
                   <p className="text-2xl font-bold">
-                    {shapeDiverOutputs.totalSystemEmbodiedCarbon.toFixed(2)} kgCO2e
+                    {shapeDiverOutputs.systemEmbodiedCarbonTotal.toFixed(2)} kgCO2e
                   </p>
                 </div>
               </div>
