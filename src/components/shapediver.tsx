@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { createSession, createViewport, ISessionApi, viewports, ORTHOGRAPHIC_CAMERA_DIRECTION } from '@shapediver/viewer';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Box, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, MoveHorizontal, Eye } from 'lucide-react';
+import { Box, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, MoveHorizontal, Eye, FileDown, Loader2 } from 'lucide-react';
 
 // Define types for parameter values
 type ParameterValue = string | number | boolean;
@@ -85,6 +85,9 @@ export const ShapeDiverCard: React.FC<ShapeDiverCardProps> = ({
 
     // State to track current camera view
     const [currentCamera, setCurrentCamera] = useState<string>('perspective');
+
+    // State to track which format is currently downloading
+    const [downloadingFormat, setDownloadingFormat] = useState<string | null>(null);
 
     // State to store output values - removed unused 'outputs' variable
     const [, setOutputs] = useState<ShapeDiverOutputs>({});
@@ -199,6 +202,176 @@ export const ShapeDiverCard: React.FC<ShapeDiverCardProps> = ({
             console.warn(`Camera ID not found for ${cameraView} view`);
         }
     }, []);
+
+    // Download handler function
+    const handleDownload = useCallback(async (formatName: string, exportName: string) => {
+        const session = sessionRef.current;
+        if (!session) {
+            console.warn('Session not available for download');
+            return;
+        }
+
+        setDownloadingFormat(formatName);
+        try {
+            console.log(`📥 Requesting ${formatName} export...`);
+
+            // Get all exports to see what's available
+            const allExports = session.exports;
+            console.log(`📋 All available exports:`, Object.keys(allExports).map(key => {
+                const exp = allExports[key];
+                return {
+                    id: exp.id,
+                    name: exp.name,
+                    version: exp.version,
+                    hasContent: !!(exp.content && exp.content.length > 0)
+                };
+            }));
+
+            // Get the specific export by name
+            const exports = session.getExportByName(exportName);
+            if (!exports || exports.length === 0) {
+                throw new Error(`Export "${exportName}" not found. Available exports: ${Object.values(allExports).map((e: any) => e.name).join(', ')}`);
+            }
+
+            const exportDef = exports[0];
+            console.log(`📦 Export definition:`, {
+                id: exportDef.id,
+                name: exportDef.name,
+                version: exportDef.version,
+                hasContent: !!(exportDef.content),
+                contentLength: exportDef.content?.length,
+                fullExport: exportDef
+            });
+
+            // Check if export already has content available (cached from previous request)
+            if (exportDef.content && exportDef.content.length > 0 && exportDef.content[0].href) {
+                console.log(`✅ Export already has cached content, using direct download URL`);
+                const downloadUrl = exportDef.content[0].href;
+                window.open(downloadUrl, '_blank');
+                return;
+            }
+
+            // Method 1: Try to trigger download directly using the export object's download method
+            console.log(`🔄 Attempting Method 1: Direct export download`);
+            try {
+                // Check if the export has a download method
+                if (typeof (exportDef as any).download === 'function') {
+                    console.log(`Calling exportDef.download()...`);
+                    await (exportDef as any).download();
+                    console.log(`✅ Export download triggered successfully`);
+                    return;
+                }
+                console.log(`No download() method found on export object`);
+            } catch (downloadError: any) {
+                console.warn(`Method 1 (direct download) failed:`, downloadError);
+            }
+
+            // Method 2: Try using updateAsync to trigger computation, then access href
+            console.log(`🔄 Attempting Method 2: updateAsync + href access`);
+            try {
+                // Check if export has updateAsync method
+                if (typeof (exportDef as any).updateAsync === 'function') {
+                    console.log(`Calling exportDef.updateAsync()...`);
+                    await (exportDef as any).updateAsync();
+                    console.log(`Update completed, checking for href...`);
+
+                    // Re-fetch the export
+                    const refreshedExports = session.getExportByName(exportName);
+                    if (refreshedExports && refreshedExports.length > 0) {
+                        const refreshedExport = refreshedExports[0];
+                        console.log(`Refreshed export after updateAsync:`, refreshedExport);
+
+                        if (refreshedExport.content && refreshedExport.content.length > 0 && refreshedExport.content[0].href) {
+                            const downloadUrl = refreshedExport.content[0].href;
+                            console.log(`✅ Found download URL: ${downloadUrl}`);
+                            window.open(downloadUrl, '_blank');
+                            return;
+                        }
+                    }
+                }
+                console.log(`No updateAsync() method found or no href after update`);
+            } catch (updateError: any) {
+                console.warn(`Method 2 (updateAsync) failed:`, updateError);
+            }
+
+            // Method 3: Check if the export has an href property directly
+            console.log(`🔄 Attempting Method 3: Direct href property access`);
+            try {
+                // Check various possible locations for href
+                const possibleHrefs = [
+                    (exportDef as any).href,
+                    (exportDef as any).url,
+                    (exportDef as any).link,
+                    (exportDef as any).downloadUrl
+                ];
+
+                console.log(`Checking for href in export object:`, {
+                    hasHref: !!(exportDef as any).href,
+                    hasUrl: !!(exportDef as any).url,
+                    hasLink: !!(exportDef as any).link,
+                    hasDownloadUrl: !!(exportDef as any).downloadUrl,
+                    exportKeys: Object.keys(exportDef)
+                });
+
+                for (const href of possibleHrefs) {
+                    if (href && typeof href === 'string') {
+                        console.log(`✅ Found href: ${href}`);
+                        window.open(href, '_blank');
+                        return;
+                    }
+                }
+            } catch (hrefError: any) {
+                console.warn(`Method 3 (direct href) failed:`, hrefError);
+            }
+
+            // Method 4: Try calling request() method on the export
+            console.log(`🔄 Attempting Method 4: export.request() method`);
+            try {
+                if (typeof (exportDef as any).request === 'function') {
+                    console.log(`Calling exportDef.request()...`);
+                    const result = await (exportDef as any).request();
+                    console.log(`Request result:`, result);
+
+                    // Check result for download URL
+                    if (result && typeof result === 'object') {
+                        if (result.href) {
+                            console.log(`✅ Found href in result: ${result.href}`);
+                            window.open(result.href, '_blank');
+                            return;
+                        }
+                        if (result.content && result.content.length > 0 && result.content[0].href) {
+                            const downloadUrl = result.content[0].href;
+                            console.log(`✅ Found href in result.content: ${downloadUrl}`);
+                            window.open(downloadUrl, '_blank');
+                            return;
+                        }
+                    }
+                }
+                console.log(`No request() method found or no valid result`);
+            } catch (requestError: any) {
+                console.warn(`Method 4 (request) failed:`, requestError);
+            }
+
+            // If all methods failed, throw error
+            throw new Error(`All 4 download methods failed. The export may not support programmatic downloads, or may require different authentication/permissions.`);
+        } catch (error) {
+            console.error(`❌ Error downloading ${formatName}:`, error);
+            // Log full error details
+            if (error instanceof Error) {
+                console.error(`  Error name: ${error.name}`);
+                console.error(`  Error message: ${error.message}`);
+                console.error(`  Error stack:`, error.stack);
+            }
+            alert(`Failed to download ${formatName} model. Please try again.\n\nError: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        } finally {
+            setDownloadingFormat(null);
+        }
+    }, []);
+
+    // Specific download handlers
+    const handleDownloadDWG = useCallback(() => handleDownload('DWG/DXF', 'Download 3D dwg/dxf'), [handleDownload]);
+    const handleDownloadSTP = useCallback(() => handleDownload('STP', 'Download 3D stp'), [handleDownload]);
+    const handleDownload3DM = useCallback(() => handleDownload('3DM', 'Download 3D 3dm'), [handleDownload]);
 
     // ResizeObserver to handle viewport resizing
     // We need to observe the container div, not the canvas (ShapeDiver manages canvas size)
@@ -353,6 +526,16 @@ export const ShapeDiverCard: React.FC<ShapeDiverCardProps> = ({
                         console.log(`    Name: ${output.name}`);
                         console.log(`    Display: ${output.displayname || 'N/A'}`);
                         console.log(`    Type: ${output.type || 'N/A'}`);
+                        console.log("    ---");
+                    });
+
+                    // Log available exports
+                    console.log("📦 Available ShapeDiver exports:");
+                    const exports = session.exports;
+                    Object.entries(exports).forEach(([key, exportItem]: [string, any]) => {
+                        console.log(`  - ID: ${exportItem.id}`);
+                        console.log(`    Name: ${exportItem.name}`);
+                        console.log(`    Display: ${exportItem.displayname || 'N/A'}`);
                         console.log("    ---");
                     });
 
@@ -588,6 +771,64 @@ export const ShapeDiverCard: React.FC<ShapeDiverCardProps> = ({
                 title="Bottom View"
             >
                 <ArrowDown className="h-4 w-4" />
+            </Button>
+
+            {/* Download section separator */}
+            <div className="w-px h-6 bg-border" />
+
+            {/* Download Buttons */}
+            <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleDownloadDWG}
+                disabled={!sessionRef.current || downloadingFormat !== null}
+                className="h-9 px-3 rounded-full"
+                title="Download DWG/DXF"
+            >
+                {downloadingFormat === 'DWG/DXF' ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                    <>
+                        <FileDown className="h-4 w-4 mr-1" />
+                        <span className="text-xs">DWG</span>
+                    </>
+                )}
+            </Button>
+
+            <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleDownloadSTP}
+                disabled={!sessionRef.current || downloadingFormat !== null}
+                className="h-9 px-3 rounded-full"
+                title="Download STEP"
+            >
+                {downloadingFormat === 'STP' ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                    <>
+                        <FileDown className="h-4 w-4 mr-1" />
+                        <span className="text-xs">STP</span>
+                    </>
+                )}
+            </Button>
+
+            <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleDownload3DM}
+                disabled={!sessionRef.current || downloadingFormat !== null}
+                className="h-9 px-3 rounded-full"
+                title="Download Rhino 3DM"
+            >
+                {downloadingFormat === '3DM' ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                    <>
+                        <FileDown className="h-4 w-4 mr-1" />
+                        <span className="text-xs">3DM</span>
+                    </>
+                )}
             </Button>
         </div>
     );
