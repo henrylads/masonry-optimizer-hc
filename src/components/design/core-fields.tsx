@@ -20,6 +20,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Calculator } from 'lucide-react'
 import { FormDataType } from '@/types/form-schema'
+import { getSteelSectionTypeFromFrameType } from '@/utils/steelSectionHelpers'
 
 interface CoreFieldsProps {
   form: UseFormReturn<FormDataType>
@@ -28,9 +29,11 @@ interface CoreFieldsProps {
 
 export function CoreFields({ form, onOpenDensityCalculator }: CoreFieldsProps) {
   const frameFixingType = form.watch('frame_fixing_type')
-  const steelSectionType = form.watch('steel_section_type')
   const isConcreteType = frameFixingType?.startsWith('concrete')
   const isSteelType = frameFixingType?.startsWith('steel')
+
+  // Derive steel section type from frame_fixing_type
+  const steelSectionType = getSteelSectionTypeFromFrameType(frameFixingType)
 
   // Import steel section sizes dynamically based on type
   const getSectionSizesForType = (type: string | undefined): string[] => {
@@ -217,42 +220,8 @@ export function CoreFields({ form, onOpenDensityCalculator }: CoreFieldsProps) {
         {/* Steel Configuration Fields (conditional on steel types) */}
         {isSteelType && (
           <>
-            {/* Steel Section Type */}
-            <FormField
-              control={form.control}
-              name="steel_section_type"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Steel Section Type *</FormLabel>
-                  <Select
-                    onValueChange={(value) => {
-                      field.onChange(value)
-                      // Reset section size when type changes
-                      form.setValue('steel_section_size', undefined)
-                    }}
-                    value={field.value}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select section type" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="I-BEAM">I-Beam</SelectItem>
-                      <SelectItem value="RHS">RHS (Rectangular Hollow Section)</SelectItem>
-                      <SelectItem value="SHS">SHS (Square Hollow Section)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormDescription>
-                    Type of steel section
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            {/* Steel Section Size */}
-            {steelSectionType && (
+            {/* Steel Section Size - steel section type is derived from frame_fixing_type */}
+            {(
               <FormField
                 control={form.control}
                 name="steel_section_size"

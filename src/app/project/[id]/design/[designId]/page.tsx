@@ -23,6 +23,7 @@ import type { Project } from '@/types/project-types'
 import type { RunOptimizationResult } from '@/types/runLayout'
 import type { ShapeDiverOutputs } from '@/components/shapediver'
 import type { z } from 'zod'
+import { getSteelSectionTypeFromFrameType } from '@/utils/steelSectionHelpers'
 
 export default function DesignPage() {
   const params = useParams()
@@ -178,8 +179,9 @@ export default function DesignPage() {
         }
 
         // Build steel_section object for the algorithm
+        const derivedSectionType = getSteelSectionTypeFromFrameType(values.frame_fixing_type);
         steelSection = {
-          sectionType: values.steel_section_type as 'I-BEAM' | 'RHS' | 'SHS',
+          sectionType: derivedSectionType as 'I-BEAM' | 'RHS' | 'SHS',
           size: values.use_custom_steel_section ? null : (values.steel_section_size as any),
           customHeight: values.use_custom_steel_section ? values.custom_steel_height : undefined,
           effectiveHeight: effectiveSlabThickness

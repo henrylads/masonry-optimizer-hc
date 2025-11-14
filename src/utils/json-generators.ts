@@ -12,6 +12,7 @@
 
 import { OptimisationResult } from '@/types/optimization-types'
 import { FormDataType } from '@/types/form-schema'
+import { getSteelSectionTypeFromFrameType } from './steelSectionHelpers'
 
 // ============================================================================
 // Type Definitions for ShapeDiver JSON Structure
@@ -46,7 +47,7 @@ interface BracketSpec {
   bracketToeNotchHeight: ShapeDiverParameter<number>
   bracketCutNotchAboveHeight: ShapeDiverParameter<number>
   bracketFixingLevel: ShapeDiverParameter<number>
-  bracketDimD: ShapeDiverParameter<number>
+  bracketDimD?: ShapeDiverParameter<number> // Optional: only for inverted brackets
 }
 
 export interface BracketJSON {
@@ -247,12 +248,6 @@ export function generateBracketJSON(
   // When angle is inverted, the toe plate must also be inverted to match the angle geometry
   const toePlateType = angleOrientation === 'Inverted' ? 'Inverted' : 'Standard'
 
-  // Extract Dim D value for inverted brackets (distance from bracket bottom to fixing point)
-  // For standard brackets, use default value of 0 (not applicable)
-  const dimD = bracketType === 'Inverted'
-    ? (calculated.dim_d ?? genetic.dim_d ?? 130)
-    : 0
-
   // Create bracket specification
   const bracketSpec: BracketSpec = {
     bracketIndex: createParameter('Index number of the bracket object', 0, ''),
@@ -271,7 +266,13 @@ export function generateBracketJSON(
     bracketToeNotchHeight: createParameter('Height of toe notch', 60, 'mm'),
     bracketCutNotchAboveHeight: createParameter('Height of cut notch above', 12, 'mm'),
     bracketFixingLevel: createParameter('Fixing level below top of slab/steel', bracketFixingLevel, 'mm'),
-    bracketDimD: createParameter('Distance from bracket bottom to fixing point (Dim D)', Math.round(dimD), 'mm'),
+  }
+
+  // Add Dim D only for inverted brackets (distance from bracket bottom to fixing point)
+  // For standard brackets, this parameter is not applicable and should not be included
+  if (bracketType === 'Inverted') {
+    const dimD = calculated.dim_d ?? genetic.dim_d ?? 130
+    bracketSpec.bracketDimD = createParameter('Distance from bracket bottom to fixing point (Dim D)', Math.round(dimD), 'mm')
   }
 
   return {
@@ -409,10 +410,13 @@ export function generateRunJSON(
   // Determine if this is a steel fixing type
   const isSteelFixing = formInputs.frame_fixing_type?.startsWith('steel') ?? false
 
+  // Derive steel section type from frame fixing type
+  const derivedSteelSectionType = getSteelSectionTypeFromFrameType(formInputs.frame_fixing_type)
+
   // Map frame fixing type to support type (now includes I-beam, RHS, SHS)
   const supportType = mapFrameFixingToSupportType(
     formInputs.frame_fixing_type ?? 'concrete-all',
-    formInputs.steel_section_type
+    derivedSteelSectionType
   )
 
   // Extract support dimensions based on fixing type

@@ -229,6 +229,24 @@ export function ResultsTab({ result, shapeDiverOutputs }: ResultsTabProps) {
               <span className="text-muted-foreground">Bracket Thickness:</span>
               <span className="font-medium">{result.genetic.bracket_thickness}mm</span>
 
+              {(result.genetic.bracket_height || result.calculated.bracket_height) && (
+                <>
+                  <span className="text-muted-foreground">Bracket Height:</span>
+                  <span className="font-medium">
+                    {(result.genetic.bracket_height || result.calculated.bracket_height)?.toFixed(1)}mm
+                  </span>
+                </>
+              )}
+
+              {(result.calculated.facade_thickness || result.calculated.masonry_thickness) && (
+                <>
+                  <span className="text-muted-foreground">Facade Thickness:</span>
+                  <span className="font-medium">
+                    {(result.calculated.facade_thickness || result.calculated.masonry_thickness)}mm
+                  </span>
+                </>
+              )}
+
               {result.genetic.channel_type && (
                 <>
                   <span className="text-muted-foreground">Channel:</span>
@@ -252,6 +270,11 @@ export function ResultsTab({ result, shapeDiverOutputs }: ResultsTabProps) {
                   <span className="font-medium">{result.genetic.fixing_position.toFixed(1)}mm</span>
                 </>
               )}
+
+              <span className="text-muted-foreground">Load Position:</span>
+              <span className="font-medium">
+                {((result.calculated.load_position ?? (1/3)) * 100).toFixed(0)}% from edge
+              </span>
             </div>
           </div>
         )}

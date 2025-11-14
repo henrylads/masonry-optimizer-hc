@@ -115,6 +115,8 @@ export type OptimisationResult = {
     characteristic_load?: number // kN/m
     slab_thickness?: number // mm
     dim_d?: number // Distance from bracket bottom to fixing for inverted brackets (130-450mm)
+    load_position?: number // Load position as fraction (0-1) from slab edge
+    facade_thickness?: number // mm - Facade/masonry thickness
     v_ed?: number
     m_ed?: number
     n_ed?: number

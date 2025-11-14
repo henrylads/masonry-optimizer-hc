@@ -166,15 +166,6 @@ export const formSchema = z.object({
   message: "Steel section specification is required for steel fixing types",
   path: ["steel_section_size"]
 }).refine((data) => {
-  // Validate steel section type required for steel types
-  if (data.frame_fixing_type?.startsWith('steel')) {
-    return data.steel_section_type !== undefined;
-  }
-  return true;
-}, {
-  message: "Steel section type is required for steel fixing types",
-  path: ["steel_section_type"]
-}).refine((data) => {
   // Validate steel bolt size required for steel types
   if (data.frame_fixing_type?.startsWith('steel')) {
     return data.steel_bolt_size !== undefined;
