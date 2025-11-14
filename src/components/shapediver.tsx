@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { createSession, createViewport, ISessionApi, viewports } from '@shapediver/viewer';
+import { createSession, createViewport, ISessionApi, viewports, ORTHOGRAPHIC_CAMERA_DIRECTION } from '@shapediver/viewer';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Box, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, MoveHorizontal, Eye } from 'lucide-react';
 
 // Define types for parameter values
 type ParameterValue = string | number | boolean;
@@ -71,7 +73,19 @@ export const ShapeDiverCard: React.FC<ShapeDiverCardProps> = ({
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const sessionRef = useRef<ISessionApi | null>(null);
     const viewportIdRef = useRef<string>(`myViewport_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
-    
+
+    // Camera refs to store camera IDs
+    const perspectiveCameraIdRef = useRef<string | null>(null);
+    const topCameraIdRef = useRef<string | null>(null);
+    const bottomCameraIdRef = useRef<string | null>(null);
+    const frontCameraIdRef = useRef<string | null>(null);
+    const backCameraIdRef = useRef<string | null>(null);
+    const leftCameraIdRef = useRef<string | null>(null);
+    const rightCameraIdRef = useRef<string | null>(null);
+
+    // State to track current camera view
+    const [currentCamera, setCurrentCamera] = useState<string>('perspective');
+
     // State to store output values - removed unused 'outputs' variable
     const [, setOutputs] = useState<ShapeDiverOutputs>({});
 
@@ -135,6 +149,57 @@ export const ShapeDiverCard: React.FC<ShapeDiverCardProps> = ({
         }
     }, [onOutputsChange]);
 
+    // Camera switching function
+    const handleCameraChange = useCallback((cameraView: string) => {
+        const viewport = viewports[viewportIdRef.current];
+        if (!viewport) {
+            console.warn('Viewport not available for camera change');
+            return;
+        }
+
+        let cameraId: string | null = null;
+
+        switch (cameraView) {
+            case 'perspective':
+                cameraId = perspectiveCameraIdRef.current;
+                break;
+            case 'top':
+                cameraId = topCameraIdRef.current;
+                break;
+            case 'bottom':
+                cameraId = bottomCameraIdRef.current;
+                break;
+            case 'front':
+                cameraId = frontCameraIdRef.current;
+                break;
+            case 'back':
+                cameraId = backCameraIdRef.current;
+                break;
+            case 'left':
+                cameraId = leftCameraIdRef.current;
+                break;
+            case 'right':
+                cameraId = rightCameraIdRef.current;
+                break;
+            default:
+                console.warn(`Unknown camera view: ${cameraView}`);
+                return;
+        }
+
+        if (cameraId) {
+            try {
+                viewport.assignCamera(cameraId);
+                viewport.update();
+                setCurrentCamera(cameraView);
+                console.log(`📷 Switched to ${cameraView} camera`);
+            } catch (error) {
+                console.error(`Error switching to ${cameraView} camera:`, error);
+            }
+        } else {
+            console.warn(`Camera ID not found for ${cameraView} view`);
+        }
+    }, []);
+
     // ResizeObserver to handle viewport resizing
     // We need to observe the container div, not the canvas (ShapeDiver manages canvas size)
     const containerRef = useRef<HTMLDivElement>(null);
@@ -195,11 +260,22 @@ export const ShapeDiverCard: React.FC<ShapeDiverCardProps> = ({
             try {
                 // Create viewport
                 console.log("Creating viewport with ID:", viewportIdRef.current);
-                await createViewport({
+                const viewport = await createViewport({
                     id: viewportIdRef.current,
-                    canvas: canvasRef.current
+                    canvas: canvasRef.current,
+                    automaticResizing: true
                 });
                 console.log("✅ Viewport created");
+
+                // Get the default perspective camera
+                if (viewport.camera) {
+                    perspectiveCameraIdRef.current = viewport.camera.id;
+                    console.log("📷 Default perspective camera ID:", perspectiveCameraIdRef.current);
+                }
+
+                // Note: We'll create orthographic cameras AFTER the session is created
+                // because cameras need to be assigned to a viewer, which is set up during session creation
+                console.log("📷 Camera presets will be created after session initialization");
 
                 // Only proceed with session creation if we're still mounted
                 if (!mounted) return;
@@ -344,6 +420,53 @@ export const ShapeDiverCard: React.FC<ShapeDiverCardProps> = ({
                         console.error("❌ Error setting parameters:", paramError);
                     }
 
+                    // Create orthographic camera presets after session is ready
+                    console.log("📷 Creating orthographic camera presets...");
+                    const viewportForCameras = viewports[viewportIdRef.current];
+                    if (viewportForCameras) {
+                        try {
+                            // Top view
+                            const topCamera = await viewportForCameras.createOrthographicCamera();
+                            topCamera.direction = ORTHOGRAPHIC_CAMERA_DIRECTION.TOP;
+                            topCameraIdRef.current = topCamera.id;
+                            console.log("  ✓ Top camera created:", topCamera.id);
+
+                            // Bottom view
+                            const bottomCamera = await viewportForCameras.createOrthographicCamera();
+                            bottomCamera.direction = ORTHOGRAPHIC_CAMERA_DIRECTION.BOTTOM;
+                            bottomCameraIdRef.current = bottomCamera.id;
+                            console.log("  ✓ Bottom camera created:", bottomCamera.id);
+
+                            // Front view
+                            const frontCamera = await viewportForCameras.createOrthographicCamera();
+                            frontCamera.direction = ORTHOGRAPHIC_CAMERA_DIRECTION.FRONT;
+                            frontCameraIdRef.current = frontCamera.id;
+                            console.log("  ✓ Front camera created:", frontCamera.id);
+
+                            // Back view
+                            const backCamera = await viewportForCameras.createOrthographicCamera();
+                            backCamera.direction = ORTHOGRAPHIC_CAMERA_DIRECTION.BACK;
+                            backCameraIdRef.current = backCamera.id;
+                            console.log("  ✓ Back camera created:", backCamera.id);
+
+                            // Left view
+                            const leftCamera = await viewportForCameras.createOrthographicCamera();
+                            leftCamera.direction = ORTHOGRAPHIC_CAMERA_DIRECTION.LEFT;
+                            leftCameraIdRef.current = leftCamera.id;
+                            console.log("  ✓ Left camera created:", leftCamera.id);
+
+                            // Right view
+                            const rightCamera = await viewportForCameras.createOrthographicCamera();
+                            rightCamera.direction = ORTHOGRAPHIC_CAMERA_DIRECTION.RIGHT;
+                            rightCameraIdRef.current = rightCamera.id;
+                            console.log("  ✓ Right camera created:", rightCamera.id);
+
+                            console.log("✅ All camera presets created successfully");
+                        } catch (cameraError) {
+                            console.error("❌ Error creating camera presets:", cameraError);
+                        }
+                    }
+
                     // Extract outputs after session is ready
                     // Add a small delay to ensure the model has computed
                     setTimeout(async () => {
@@ -390,10 +513,90 @@ export const ShapeDiverCard: React.FC<ShapeDiverCardProps> = ({
         };
     }, [bracketJSON, angleJSON, runJSON, extractOutputs]);
 
+    // Camera control buttons component - centered at bottom like a toolbar
+    const CameraControls = () => (
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 flex items-center gap-2 bg-background/95 backdrop-blur-sm px-3 py-2 rounded-full shadow-lg border">
+            {/* Perspective View */}
+            <Button
+                variant={currentCamera === 'perspective' ? 'default' : 'ghost'}
+                size="icon"
+                onClick={() => handleCameraChange('perspective')}
+                className="h-9 w-9 rounded-full"
+                title="Perspective View (3D)"
+            >
+                <Eye className="h-4 w-4" />
+            </Button>
+
+            <div className="w-px h-6 bg-border" />
+
+            {/* Orthographic Views */}
+            <Button
+                variant={currentCamera === 'top' ? 'default' : 'ghost'}
+                size="icon"
+                onClick={() => handleCameraChange('top')}
+                className="h-9 w-9 rounded-full"
+                title="Top View"
+            >
+                <ArrowUp className="h-4 w-4" />
+            </Button>
+
+            <Button
+                variant={currentCamera === 'front' ? 'default' : 'ghost'}
+                size="icon"
+                onClick={() => handleCameraChange('front')}
+                className="h-9 w-9 rounded-full"
+                title="Front View"
+            >
+                <Box className="h-4 w-4" />
+            </Button>
+
+            <Button
+                variant={currentCamera === 'right' ? 'default' : 'ghost'}
+                size="icon"
+                onClick={() => handleCameraChange('right')}
+                className="h-9 w-9 rounded-full"
+                title="Right View"
+            >
+                <ArrowRight className="h-4 w-4" />
+            </Button>
+
+            <Button
+                variant={currentCamera === 'back' ? 'default' : 'ghost'}
+                size="icon"
+                onClick={() => handleCameraChange('back')}
+                className="h-9 w-9 rounded-full"
+                title="Back View"
+            >
+                <Box className="h-4 w-4 rotate-180" />
+            </Button>
+
+            <Button
+                variant={currentCamera === 'left' ? 'default' : 'ghost'}
+                size="icon"
+                onClick={() => handleCameraChange('left')}
+                className="h-9 w-9 rounded-full"
+                title="Left View"
+            >
+                <ArrowLeft className="h-4 w-4" />
+            </Button>
+
+            <Button
+                variant={currentCamera === 'bottom' ? 'default' : 'ghost'}
+                size="icon"
+                onClick={() => handleCameraChange('bottom')}
+                className="h-9 w-9 rounded-full"
+                title="Bottom View"
+            >
+                <ArrowDown className="h-4 w-4" />
+            </Button>
+        </div>
+    );
+
     // If no title, render canvas directly without Card wrapper to avoid padding issues
     if (!title) {
         return (
             <div ref={containerRef} className="absolute inset-0 overflow-hidden">
+                <CameraControls />
                 <canvas
                     ref={canvasRef}
                     style={{
@@ -411,7 +614,8 @@ export const ShapeDiverCard: React.FC<ShapeDiverCardProps> = ({
             <CardHeader className="px-6 py-4">
                 <CardTitle className="text-xl font-semibold text-cfs-dark">{title}</CardTitle>
             </CardHeader>
-            <CardContent className="h-[calc(100%-4rem)] w-full flex items-center justify-center p-0">
+            <CardContent className="h-[calc(100%-4rem)] w-full flex items-center justify-center p-0 relative">
+                <CameraControls />
                 <canvas
                     ref={canvasRef}
                     style={{
