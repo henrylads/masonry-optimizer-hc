@@ -318,8 +318,8 @@ export const ShapeDiverCard: React.FC<ShapeDiverCardProps> = ({
                     console.log("✅ ShapeDiver session stored in ref");
 
                     // Log viewport state for debugging
-                    const viewport = viewports[viewportIdRef.current];
-                    if (viewport) {
+                    const viewportForLogging = viewports[viewportIdRef.current];
+                    if (viewportForLogging) {
                         console.log("✅ Viewport assigned to session");
 
                         // Log canvas dimensions for debugging

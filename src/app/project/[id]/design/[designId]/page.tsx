@@ -474,101 +474,72 @@ export default function DesignPage() {
 
   return (
     <div className="h-screen flex flex-col overflow-hidden">
-      <AuthHeader
-        leftContent={
-          <div className="flex items-center gap-3">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => router.push(`/project/${projectId}`)}
-              className="gap-1"
+      <div className="relative">
+        <AuthHeader
+          rightActions={
+            optimizationResult && (
+              <PDFDownloadButton
+                optimizationResult={optimizationResult}
+                designInputs={form.getValues()}
+                projectName={project.name}
+                designName={design.name}
+                variant="outline"
+                size="sm"
+                shapeDiverOutputs={shapeDiverOutputs ?? undefined}
+                className="bg-black text-white hover:bg-black/90 border-black"
+              />
+            )
+          }
+        />
+
+        {/* Centered breadcrumb overlay */}
+        <div className="absolute top-0 left-0 right-0 h-16 flex items-center justify-center pointer-events-none z-10">
+          <div className="flex items-center gap-2 text-sm pointer-events-auto">
+            <button
+              onClick={() => router.push('/dashboard')}
+              className="text-muted-foreground hover:text-foreground transition-colors"
             >
-              <ChevronLeft className="h-4 w-4" />
-              Back
-            </Button>
+              Projects
+            </button>
+            <span className="text-muted-foreground">/</span>
+            <button
+              onClick={() => router.push(`/project/${projectId}`)}
+              className="text-muted-foreground hover:text-foreground transition-colors"
+            >
+              {project.name}
+            </button>
+            <span className="text-muted-foreground">/</span>
 
-            <div className="flex items-center gap-2 text-sm">
-              <button
-                onClick={() => router.push('/dashboard')}
-                className="text-muted-foreground hover:text-foreground transition-colors"
-              >
-                Projects
-              </button>
-              <span className="text-muted-foreground">/</span>
-              <button
-                onClick={() => router.push(`/project/${projectId}`)}
-                className="text-muted-foreground hover:text-foreground transition-colors"
-              >
-                {project.name}
-              </button>
-              <span className="text-muted-foreground">/</span>
-
-              {isEditingName ? (
-                <Input
-                  value={editedName}
-                  onChange={(e) => setEditedName(e.target.value)}
-                  onBlur={handleSaveDesignName}
-                  onKeyDown={handleNameKeyDown}
-                  disabled={isUpdatingName}
-                  className="h-7 w-48"
-                  autoFocus
-                />
-              ) : (
-                <div className="flex items-center gap-1">
-                  <span className="font-semibold">{design.name}</span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setEditedName(design.name)
-                      setIsEditingName(true)
-                    }}
-                    className="h-6 w-6 p-0"
-                  >
-                    <Pencil className="h-3 w-3" />
-                  </Button>
-                </div>
-              )}
-            </div>
-
-            {/* Save status indicator */}
-            <div className="flex items-center gap-2 text-sm ml-4">
-              {saveStatus === 'saved' && (
-                <>
-                  <div className="h-2 w-2 rounded-full bg-green-500" />
-                  <span className="text-muted-foreground">Saved</span>
-                </>
-              )}
-              {saveStatus === 'saving' && (
-                <>
-                  <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
-                  <span className="text-muted-foreground">Saving...</span>
-                </>
-              )}
-              {saveStatus === 'error' && (
-                <>
-                  <div className="h-2 w-2 rounded-full bg-red-500" />
-                  <span className="text-red-500">Save failed</span>
-                </>
-              )}
-            </div>
+            {isEditingName ? (
+              <Input
+                value={editedName}
+                onChange={(e) => setEditedName(e.target.value)}
+                onBlur={handleSaveDesignName}
+                onKeyDown={handleNameKeyDown}
+                disabled={isUpdatingName}
+                className="h-7 w-48"
+                autoFocus
+              />
+            ) : (
+              <div className="flex items-center gap-1">
+                <span className="font-semibold">{design.name}</span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setEditedName(design.name)
+                    setIsEditingName(true)
+                  }}
+                  className="h-6 w-6 p-0"
+                >
+                  <Pencil className="h-3 w-3" />
+                </Button>
+              </div>
+            )}
           </div>
-        }
-        rightActions={
-          optimizationResult && (
-            <PDFDownloadButton
-              optimizationResult={optimizationResult}
-              designInputs={form.getValues()}
-              projectName={project.name}
-              designName={design.name}
-              variant="outline"
-              size="sm"
-              shapeDiverOutputs={shapeDiverOutputs ?? undefined}
-              className="bg-black text-white hover:bg-black/90 border-black"
-            />
-          )
-        }
-      />
+        </div>
+
+      </div>
 
       <div className="flex-1 grid min-h-0 overflow-hidden transition-[grid-template-columns] duration-300" style={{ gridTemplateColumns: leftPanelOpen ? `${leftPanelWidth}px 1fr auto` : '48px 1fr auto' }}>
         <div className="relative h-full">
