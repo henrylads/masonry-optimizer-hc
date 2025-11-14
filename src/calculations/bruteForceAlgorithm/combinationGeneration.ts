@@ -84,11 +84,13 @@ function getValidBracketThicknesses(
     return POSSIBLE_BRACKET_THICKNESS; // Both 3mm and 4mm allowed
 }
 
-// Dim D values for inverted brackets (135-450mm range in 5mm increments, aligned with ShapeDiver)
-// Generate array from 135 to 450 in 5mm steps: [135, 140, 145, 150, ..., 445, 450]
+// Dim D values for inverted brackets
+// Extended range to support thin steel sections (RHS/SHS) starting from 30mm
+// Range: 30-450mm in 5mm increments, aligned with ShapeDiver
+// Generate array from 30 to 450 in 5mm steps: [30, 35, 40, ..., 445, 450]
 const POSSIBLE_DIM_D_VALUES: number[] = Array.from(
-    { length: Math.floor((450 - 135) / 5) + 1 },
-    (_, i) => 135 + i * 5
+    { length: Math.floor((450 - 30) / 5) + 1 },
+    (_, i) => 30 + i * 5
 ); // mm
 
 // Vertical leg depends on angle thickness
