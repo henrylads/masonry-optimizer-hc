@@ -38,7 +38,7 @@ export function DesignViewerPanel({
   // No need to build individual parameters anymore
 
   return (
-    <div className="relative w-full h-full bg-[#e5e7eb]">
+    <div className="absolute inset-0 bg-[#e5e7eb]">
       {/* Empty State */}
       {!optimizationResult && !isOptimizing && (
         <div className="absolute inset-0 flex flex-col items-center justify-center">
@@ -72,7 +72,6 @@ export function DesignViewerPanel({
             angleJSON={angleJSON}
             runJSON={runJSON}
             title=""
-            className="border-0 shadow-none"
             onOutputsChange={onOutputsChange}
           />
         </div>

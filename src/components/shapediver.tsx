@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { createSession, createViewport, ISessionApi } from '@shapediver/viewer';
+import { createSession, createViewport, ISessionApi, viewports } from '@shapediver/viewer';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 // Define types for parameter values
@@ -135,31 +135,35 @@ export const ShapeDiverCard: React.FC<ShapeDiverCardProps> = ({
         }
     }, [onOutputsChange]);
 
-    // ResizeObserver to handle canvas resizing
+    // ResizeObserver to handle viewport resizing
+    // We need to observe the container div, not the canvas (ShapeDiver manages canvas size)
+    const containerRef = useRef<HTMLDivElement>(null);
+
     useEffect(() => {
-        const canvas = canvasRef.current;
-        if (!canvas) return;
+        const container = containerRef.current;
+        if (!container) return;
 
         const resizeObserver = new ResizeObserver((entries) => {
             for (const entry of entries) {
                 const { width, height } = entry.contentRect;
 
-                // Set canvas dimensions to match display size
-                const dpr = window.devicePixelRatio || 1;
-                canvas.width = width * dpr;
-                canvas.height = height * dpr;
+                console.log(`📏 Container resized to ${width}x${height}`);
 
-                // Scale canvas context to account for device pixel ratio
-                const ctx = canvas.getContext('2d');
-                if (ctx) {
-                    ctx.scale(dpr, dpr);
+                // Tell ShapeDiver viewport to resize
+                // ShapeDiver manages canvas dimensions internally
+                const viewport = viewports[viewportIdRef.current];
+                if (viewport && width > 0 && height > 0) {
+                    try {
+                        viewport.resize(width, height);
+                        console.log(`✅ Viewport resized to ${width}x${height}`);
+                    } catch (error) {
+                        console.log(`⚠️ Could not resize viewport:`, error);
+                    }
                 }
-
-                console.log(`Canvas resized: ${width}x${height} (display), ${canvas.width}x${canvas.height} (actual)`);
             }
         });
 
-        resizeObserver.observe(canvas);
+        resizeObserver.observe(container);
 
         return () => {
             resizeObserver.disconnect();
@@ -195,6 +199,7 @@ export const ShapeDiverCard: React.FC<ShapeDiverCardProps> = ({
                     id: viewportIdRef.current,
                     canvas: canvasRef.current
                 });
+                console.log("✅ Viewport created");
 
                 // Only proceed with session creation if we're still mounted
                 if (!mounted) return;
@@ -225,7 +230,7 @@ export const ShapeDiverCard: React.FC<ShapeDiverCardProps> = ({
                 console.log("📡 Attempting to create ShapeDiver session...");
                 const session = await createSession({
                     id: `session_${viewportIdRef.current}`,
-                    ticket: '2f1fbcfaf8354963a5eb0f22d06861cb000d6db3ffa63e1711f28961b44292c0d16c5ea5532d37748c10a9e99a467856c4b1010ef9a73c12679e29cf3d17e2c44dc43e34f82dfe3eaf40923d434a5215400d03c5bd0ba2fb94b9d2d3da5c7e67ed7ede82e67185-46ee113b3ab31d4db7cfa3c9098bdf66',
+                    ticket: '7481a9b9dc55d484c27c1163712df69c28c32da74496f095223d401431cef6048c55de2ab7688de7e7a396cbec41d6bd7c2029a96e77d9d6059691b4554f70445527fc1413322f6ebb01293442d95525d65ab7259a50a19f42e748e71afeda1f9e698067c3a920-3bc71ca75edb5e2d6893a9523fa341ca',
                     modelViewUrl: 'https://sdr8euc1.eu-central-1.shapediver.com',
                     viewports: [viewportIdRef.current] // Assign the viewport to the session!
                 });
@@ -235,6 +240,23 @@ export const ShapeDiverCard: React.FC<ShapeDiverCardProps> = ({
                 if (mounted) {
                     sessionRef.current = session;
                     console.log("✅ ShapeDiver session stored in ref");
+
+                    // Log viewport state for debugging
+                    const viewport = viewports[viewportIdRef.current];
+                    if (viewport) {
+                        console.log("✅ Viewport assigned to session");
+
+                        // Log canvas dimensions for debugging
+                        const canvas = canvasRef.current;
+                        if (canvas) {
+                            const width = canvas.clientWidth;
+                            const height = canvas.clientHeight;
+                            console.log(`📐 Canvas dimensions at session creation: ${width}x${height}`);
+                            if (width === 0 || height === 0) {
+                                console.warn(`⚠️ Canvas has zero dimensions - viewport may not render correctly`);
+                            }
+                        }
+                    }
 
                     // Log available parameters to find the correct parameter IDs/names
                     console.log("📋 Available ShapeDiver parameters:");
@@ -328,6 +350,17 @@ export const ShapeDiverCard: React.FC<ShapeDiverCardProps> = ({
                         if (mounted && sessionRef.current) {
                             console.log("📊 Extracting outputs from computed model...");
                             await extractOutputs(sessionRef.current);
+
+                            // Log camera state after model has loaded
+                            const viewport = viewports[viewportIdRef.current];
+                            if (viewport && viewport.camera) {
+                                const camera = viewport.camera;
+                                console.log("📷 Camera settings AFTER model loaded:");
+                                console.log(`  Position: [${camera.position[0]}, ${camera.position[1]}, ${camera.position[2]}]`);
+                                console.log(`  Target: [${camera.target[0]}, ${camera.target[1]}, ${camera.target[2]}]`);
+                                console.log(`  FOV: ${camera.fov}`);
+                                console.log(`  ZoomToFactor: ${camera.zoomToFactor}`);
+                            }
                         }
                     }, 3000); // Increased delay to 3 seconds to give model time to compute
                 } else {
@@ -357,19 +390,34 @@ export const ShapeDiverCard: React.FC<ShapeDiverCardProps> = ({
         };
     }, [bracketJSON, angleJSON, runJSON, extractOutputs]);
 
+    // If no title, render canvas directly without Card wrapper to avoid padding issues
+    if (!title) {
+        return (
+            <div ref={containerRef} className="absolute inset-0 overflow-hidden">
+                <canvas
+                    ref={canvasRef}
+                    style={{
+                        display: 'block',
+                        backgroundColor: 'transparent'
+                    }}
+                />
+            </div>
+        );
+    }
+
+    // With title, use Card but remove all padding/gaps
     return (
-        <Card className={`h-full ${className || ''}`}>
-            {title && (
-                <CardHeader>
-                    <CardTitle className="text-xl font-semibold text-cfs-dark">{title}</CardTitle>
-                </CardHeader>
-            )}
-            <CardContent className={title ? "h-[calc(100%-4rem)] flex items-center justify-center" : "h-full flex items-center justify-center p-0"}>
+        <Card className={`h-full w-full p-0 gap-0 shadow-none border-0 ${className || ''}`}>
+            <CardHeader className="px-6 py-4">
+                <CardTitle className="text-xl font-semibold text-cfs-dark">{title}</CardTitle>
+            </CardHeader>
+            <CardContent className="h-[calc(100%-4rem)] w-full flex items-center justify-center p-0">
                 <canvas
                     ref={canvasRef}
                     style={{
                         width: '100%',
                         height: '100%',
+                        display: 'block',
                         backgroundColor: 'transparent'
                     }}
                 />
