@@ -274,7 +274,30 @@ export function evaluateBruteForceDesign(
 
         // For steel fixings, calculate tension directly from moment
         // Using simplified approach: N_ed = M_ed / rise_to_bolts (converted to same units)
-        const appliedTension = (M_ed * 1000) / design.calculated.rise_to_bolts; // kN
+        // IMPORTANT: Use WORST-CASE rise_to_bolts (bottom of slot) for conservative tension calculation
+        // Smaller lever arm = higher tension demand for same moment
+        console.log(`🔧 Steel fixing tension calculation:`);
+        console.log(`   Shear (V_ed): ${appliedShear.toFixed(3)} kN`);
+        console.log(`   Lever arm (L): ${L.toFixed(2)} mm`);
+        console.log(`   Moment (M_ed): ${M_ed.toFixed(3)} kNm`);
+        console.log(`   Rise to bolts (worst-case): ${design.calculated.rise_to_bolts.toFixed(2)} mm`);
+        console.log(`   Rise to bolts (display): ${design.calculated.rise_to_bolts_display?.toFixed(2) ?? 'N/A'} mm`);
+
+        // Use absolute value if negative (should be caught by edge distance check anyway)
+        // Negative values indicate invalid geometry - design will fail edge distance verification
+        const riseToBoltsForCalculation = Math.max(Math.abs(design.calculated.rise_to_bolts), 1); // Minimum 1mm to avoid division by zero
+
+        if (design.calculated.rise_to_bolts <= 0) {
+            console.warn(`   ⚠️  Worst-case rise to bolts is ${design.calculated.rise_to_bolts.toFixed(2)}mm (negative/zero)`);
+            console.warn(`   Using absolute value for tension calculation - design will FAIL edge distance check`);
+            console.warn(`   This indicates fixing position should have been filtered out during combination generation`);
+        } else if (design.calculated.rise_to_bolts < 5) {
+            console.warn(`   ⚠️  Worst-case rise to bolts is very small (${design.calculated.rise_to_bolts.toFixed(2)}mm)`);
+            console.warn(`   This will result in very high tension demand - check edge distance requirements`);
+        }
+
+        const appliedTension = (M_ed * 1000) / riseToBoltsForCalculation; // kN
+        console.log(`   Calculated tension (N_ed): ${appliedTension.toFixed(3)} kN (using worst-case lever arm)`);
 
         // Verify steel fixing capacity
         const steelFixingResults = verifySteelFixing(

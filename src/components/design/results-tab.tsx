@@ -111,11 +111,18 @@ export function ResultsTab({ result, shapeDiverOutputs }: ResultsTabProps) {
                     </>
                   )}
 
-                  {result.calculated.detailed_verification_results?.combinedResults?.N_ed !== undefined && (
+                  {(result.calculated.n_ed !== undefined ||
+                    result.calculated.detailed_verification_results?.combinedResults?.N_ed !== undefined ||
+                    result.calculated.detailed_verification_results?.fixingResults?.tensileForce !== undefined) && (
                     <>
                       <span className="text-muted-foreground">Tension (N_ed):</span>
                       <span className="font-medium">
-                        {result.calculated.detailed_verification_results.combinedResults.N_ed.toFixed(3)} kN
+                        {(
+                          result.calculated.n_ed ??
+                          result.calculated.detailed_verification_results?.combinedResults?.N_ed ??
+                          result.calculated.detailed_verification_results?.fixingResults?.tensileForce ??
+                          0
+                        ).toFixed(3)} kN
                       </span>
                     </>
                   )}
