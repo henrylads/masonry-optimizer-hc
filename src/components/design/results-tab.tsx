@@ -142,6 +142,14 @@ export function ResultsTab({ result, shapeDiverOutputs }: ResultsTabProps) {
               {/* Verification Check Utilizations */}
               {result.calculated.detailed_verification_results && (
                 <div className="space-y-1 text-xs">
+                  {result.calculated.detailed_verification_results.edgeDistanceResults && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground">Edge Distance:</span>
+                      <span className={`font-medium ${result.calculated.detailed_verification_results.edgeDistanceResults.passes ? 'text-green-600' : 'text-red-600'}`}>
+                        {(result.calculated.detailed_verification_results.edgeDistanceResults.utilization * 100).toFixed(1)}%
+                      </span>
+                    </div>
+                  )}
                   {result.calculated.detailed_verification_results.momentResults?.utilisation !== undefined && (
                     <div className="flex justify-between items-center">
                       <span className="text-muted-foreground">Moment:</span>
@@ -263,10 +271,15 @@ export function ResultsTab({ result, shapeDiverOutputs }: ResultsTabProps) {
                 </>
               )}
 
-              {result.genetic.fixing_position !== undefined && (
+              {(result.calculated.optimized_fixing_position !== undefined || result.genetic.fixing_position !== undefined) && (
                 <>
                   <span className="text-muted-foreground">Fixing Position:</span>
-                  <span className="font-medium">{result.genetic.fixing_position.toFixed(1)}mm</span>
+                  <span className="font-medium">
+                    {(result.calculated.optimized_fixing_position ?? result.genetic.fixing_position)?.toFixed(1)}mm
+                    {result.calculated.optimized_fixing_position && result.calculated.optimized_fixing_position !== result.genetic.fixing_position && (
+                      <span className="text-xs text-muted-foreground ml-1">(optimized from {result.genetic.fixing_position?.toFixed(1)}mm)</span>
+                    )}
+                  </span>
                 </>
               )}
 
@@ -323,6 +336,13 @@ export function ResultsTab({ result, shapeDiverOutputs }: ResultsTabProps) {
               passed={result.calculated.detailed_verification_results.fixingResults?.passes ?? false}
               utilization={result.calculated.detailed_verification_results.fixingResults?.utilization}
             />
+            {result.calculated.detailed_verification_results.edgeDistanceResults && (
+              <VerificationCheck
+                name="Edge Distance Check"
+                passed={result.calculated.detailed_verification_results.edgeDistanceResults.passes}
+                utilization={result.calculated.detailed_verification_results.edgeDistanceResults.utilization * 100}
+              />
+            )}
           </div>
         )}
       </div>

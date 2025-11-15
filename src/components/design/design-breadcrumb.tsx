@@ -58,63 +58,51 @@ export function DesignBreadcrumb({
   }
 
   return (
-    <div className="h-12 border-b bg-white px-4 flex items-center justify-between sticky top-0 z-10">
-      {/* Left: Back button and breadcrumb */}
-      <div className="flex items-center gap-3">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => router.push(`/project/${projectId}`)}
-          className="gap-1"
+    <div className="h-12 border-b bg-white px-4 flex items-center justify-center sticky top-0 z-10 relative">
+      {/* Centered breadcrumb */}
+      <div className="flex items-center gap-2 text-sm">
+        <button
+          onClick={() => router.push('/dashboard')}
+          className="text-muted-foreground hover:text-foreground transition-colors"
         >
-          <ChevronLeft className="h-4 w-4" />
-          Back
-        </Button>
+          Projects
+        </button>
+        <span className="text-muted-foreground">/</span>
+        <button
+          onClick={() => router.push(`/project/${projectId}`)}
+          className="text-muted-foreground hover:text-foreground transition-colors"
+        >
+          {projectName}
+        </button>
+        <span className="text-muted-foreground">/</span>
 
-        <div className="flex items-center gap-2 text-sm">
-          <button
-            onClick={() => router.push('/dashboard')}
-            className="text-muted-foreground hover:text-foreground transition-colors"
-          >
-            Projects
-          </button>
-          <span className="text-muted-foreground">/</span>
-          <button
-            onClick={() => router.push(`/project/${projectId}`)}
-            className="text-muted-foreground hover:text-foreground transition-colors"
-          >
-            {projectName}
-          </button>
-          <span className="text-muted-foreground">/</span>
-
-          {isEditing ? (
-            <Input
-              value={editedName}
-              onChange={(e) => setEditedName(e.target.value)}
-              onBlur={handleSave}
-              onKeyDown={handleKeyDown}
-              disabled={isUpdating}
-              className="h-7 w-48"
-              autoFocus
-            />
-          ) : (
-            <div className="flex items-center gap-1">
-              <span className="font-semibold">{designName}</span>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setIsEditing(true)}
-                className="h-6 w-6 p-0"
-              >
-                <Pencil className="h-3 w-3" />
-              </Button>
-            </div>
-          )}
-        </div>
+        {isEditing ? (
+          <Input
+            value={editedName}
+            onChange={(e) => setEditedName(e.target.value)}
+            onBlur={handleSave}
+            onKeyDown={handleKeyDown}
+            disabled={isUpdating}
+            className="h-7 w-48"
+            autoFocus
+          />
+        ) : (
+          <div className="flex items-center gap-1">
+            <span className="font-semibold">{designName}</span>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsEditing(true)}
+              className="h-6 w-6 p-0"
+            >
+              <Pencil className="h-3 w-3" />
+            </Button>
+          </div>
+        )}
       </div>
 
-      {/* Right: Save status */}
-      <div className="flex items-center gap-2 text-sm">
+      {/* Absolute positioned save status on the right */}
+      <div className="absolute right-4 flex items-center gap-2 text-sm">
         {saveStatus === 'saved' && (
           <>
             <div className="h-2 w-2 rounded-full bg-green-500" />

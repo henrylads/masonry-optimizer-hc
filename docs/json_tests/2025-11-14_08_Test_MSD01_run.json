@@ -1,0 +1,38 @@
+{
+  "runDetails": {
+    "substructure": {
+      "supportType": {
+        "description": "Type of support",
+        "value": "I-beam",
+        "unit": ""
+      },
+      "supportDetails": {
+        "supportLength": {
+          "description": "Length of support",
+          "value": 1000,
+          "unit": "mm"
+        },
+        "supportWidth": {
+          "description": "Width of support",
+          "value": 146,
+          "unit": "mm"
+        },
+        "supportDepth": {
+          "description": "Depth of support",
+          "value": 254,
+          "unit": "mm"
+        },
+        "supportLevel": {
+          "description": "Level of support",
+          "value": -250,
+          "unit": "mm"
+        }
+      }
+    },
+    "projection": {
+      "description": "Projection distance",
+      "value": 190,
+      "unit": "mm"
+    }
+  }
+}

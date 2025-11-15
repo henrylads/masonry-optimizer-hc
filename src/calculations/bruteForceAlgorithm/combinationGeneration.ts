@@ -231,27 +231,57 @@ const filterFixingPositionsForExclusionZone = (positions: number[], inputs: Desi
  * Range: (edge_distance/2) to (steel_height - edge_distance/2) in 5mm increments
  *
  * @param steelHeight - Height of steel section in mm
+ * @param boltSize - Bolt size to filter positions for (optional, defaults to M16 for maximum safety)
  * @returns Array of valid fixing positions for steel in mm from top
  */
-const generateSteelFixingPositions = (steelHeight: number): number[] => {
-    // Use M16 edge distance (largest) to ensure all positions work for all bolt sizes
-    const totalEdgeDistance = STEEL_EDGE_DISTANCES['M16']; // 21.6mm total
-    const edgeDistancePerSide = totalEdgeDistance / 2; // 10.8mm per side
+const generateSteelFixingPositions = (steelHeight: number, boltSize?: SteelBoltSize): number[] => {
+    // SLOT_TOLERANCE constant (15mm) from bracketCalculations.ts - slot tolerance for worst-case positioning
+    const SLOT_TOLERANCE = 15;
 
+    // Use specified bolt size or M16 (largest) for conservative positions
+    const edgeDistance = boltSize ? STEEL_EDGE_DISTANCES[boltSize] : STEEL_EDGE_DISTANCES['M16'];
+
+    // For STANDARD brackets: split edge distance between top and bottom
+    const edgeDistancePerSide = edgeDistance / 2;
+
+    // For INVERTED brackets: rise to bolts = steelHeight - fixing_position - SLOT_TOLERANCE
+    // Required: rise_to_bolts >= edgeDistance
+    // Therefore: steelHeight - fixing_position - SLOT_TOLERANCE >= edgeDistance
+    // Which means: fixing_position <= steelHeight - edgeDistance - SLOT_TOLERANCE
+    const maxPositionForInverted = steelHeight - edgeDistance - SLOT_TOLERANCE;
+
+    // Minimum position (top edge constraint)
     const minPosition = Math.ceil(edgeDistancePerSide / 5) * 5; // Round up to nearest 5mm
-    const maxPosition = steelHeight - edgeDistancePerSide;
+
+    // Maximum position is the most restrictive of:
+    // 1. Standard bracket bottom edge: steelHeight - edgeDistancePerSide
+    // 2. Inverted bracket rise to bolts: steelHeight - edgeDistance - SLOT_TOLERANCE
+    const maxPosition = Math.min(
+        steelHeight - edgeDistancePerSide,
+        maxPositionForInverted
+    );
 
     const positions: number[] = [];
     for (let pos = minPosition; pos <= maxPosition; pos += 5) {
         positions.push(pos);
     }
 
-    // Ensure at least one position
+    // Check if no valid positions
     if (positions.length === 0) {
-        positions.push(minPosition);
+        console.warn(`⚠️  No valid fixing positions for steel section!`);
+        console.warn(`   Steel height: ${steelHeight}mm`);
+        console.warn(`   Bolt size: ${boltSize || 'M16 (default)'}`);
+        console.warn(`   Edge distance: ${edgeDistance}mm`);
+        console.warn(`   Min position (top edge): ${minPosition}mm`);
+        console.warn(`   Max position (inverted constraint): ${maxPositionForInverted}mm`);
+        console.warn(`   This steel section is too thin to meet edge distance requirements.`);
+
+        // Return empty array to trigger proper error handling
+        return [];
     }
 
-    console.log(`🔩 Steel fixing positions: ${positions.length} positions from ${positions[0]}mm to ${positions[positions.length - 1]}mm (edge distance per side: ${edgeDistancePerSide}mm, total: ${totalEdgeDistance}mm, steel height: ${steelHeight}mm)`);
+    console.log(`🔩 Steel fixing positions for ${boltSize || 'M16'}: ${positions.length} positions from ${positions[0]}mm to ${positions[positions.length - 1]}mm`);
+    console.log(`   (edge distance: ${edgeDistance}mm, steel height: ${steelHeight}mm, slot tolerance: ${SLOT_TOLERANCE}mm)`);
 
     return positions;
 };
@@ -398,9 +428,6 @@ export function generateAllCombinations(inputs: DesignInputs): GeneticParameters
             console.log(`  Unknown section type - defaulting to blind bolts`);
         }
 
-        // Generate fixing positions for STEEL (using steel-specific edge distances)
-        const fixingPositions = generateSteelFixingPositions(inputs.steel_section.effectiveHeight);
-
         // Track combinations per bolt size and fixing method for diagnostics
         const combinationsPerBoltSize = new Map<string, number>();
         boltSizesToTest.forEach(size => {
@@ -412,6 +439,16 @@ export function generateAllCombinations(inputs: DesignInputs): GeneticParameters
         // Generate combinations for steel fixings (no channel iteration needed)
         for (const bracketAngleCombo of validBracketAngleCombinations) {
             for (const steelBoltSize of boltSizesToTest) {
+                // Generate fixing positions SPECIFIC to this bolt size (edge distance varies by bolt size)
+                const fixingPositions = generateSteelFixingPositions(inputs.steel_section.effectiveHeight, steelBoltSize);
+
+                // Check if no valid positions for this bolt size
+                if (fixingPositions.length === 0) {
+                    console.warn(`⚠️  No valid fixing positions for ${steelBoltSize} - skipping this bolt size`);
+                    console.warn(`   Steel section ${inputs.steel_section.sectionType} (${inputs.steel_section.effectiveHeight}mm) is too thin to meet edge distance requirements for ${steelBoltSize}`);
+                    continue; // Skip this bolt size
+                }
+
                 for (const fixingMethod of fixingMethodsToTest) {
                     for (const fixingPosition of fixingPositions) {
                         // Load constraint for bracket centres

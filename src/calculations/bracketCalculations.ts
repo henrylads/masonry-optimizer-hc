@@ -45,6 +45,7 @@ export interface InvertedBracketResults {
     height_below_ssl: number;       // Height below SSL in mm
     extension_below_slab: number;   // Extension needed below slab in mm
     dim_d: number;                  // Distance from bracket bottom to fixing point (130-450mm)
+    optimized_fixing_position?: number;  // Adjusted fixing position when bracket extended to minimum height (mm from top of slab)
     angle_extension?: AngleExtensionResult;  // Angle extension calculation result (if applied)
 }
 
@@ -161,21 +162,42 @@ export function calculateInvertedBracketHeight(inputs: InvertedBracketInputs): I
     const min_bracket_height_absolute = BRACKET_ANGLE_CONSTANTS.INVERTED_BRACKET_MIN_HEIGHT; // 170mm
     const required_min_height = Math.max(min_bracket_height_from_clearance, min_bracket_height_absolute);
 
-    // If current bracket height is less than minimum, extend it
+    // If current bracket height is less than minimum, extend it DOWNWARD (increase depth below SSL)
+    let adjusted_bracket_bottom_from_ssl = bracket_bottom_from_ssl;
+    let optimized_fixing_position_result: number | undefined;
+
     if (final_bracket_height < required_min_height) {
         const extension_needed = required_min_height - final_bracket_height;
         final_bracket_height = required_min_height;
+
+        // Bracket top is FIXED by angle position (cannot move)
+        // Extend DOWNWARD: new bottom = bracket top - required height
+        adjusted_bracket_bottom_from_ssl = bracket_top_position_from_ssl - final_bracket_height;
+
+        // CRITICAL: Recalculate fixing position to align bracket correctly
+        // Dim D stays at its current value (maximum for this bracket height)
+        // fixing_position = |bracket_bottom + dim_d|
+        // Since adjusted_bracket_bottom_from_ssl is negative (below SSL):
+        // optimized_fixing_position = |adjusted_bracket_bottom_from_ssl + final_dim_d|
+        optimized_fixing_position_result = Math.abs(adjusted_bracket_bottom_from_ssl + final_dim_d);
+
         console.log(`⚠️  Inverted bracket extended from ${final_bracket_height - extension_needed}mm to ${final_bracket_height}mm to meet minimum requirements`);
+        console.log(`   Bracket bottom moved from ${bracket_bottom_from_ssl}mm to ${adjusted_bracket_bottom_from_ssl}mm`);
+        console.log(`   Fixing position adjusted from ${effectiveFixingPosition}mm to ${optimized_fixing_position_result}mm`);
+        console.log(`   (Moving bracket down ${extension_needed}mm to align with angle at ${support_level}mm)`);
     }
 
-    // Recalculate height below SSL based on actual bracket geometry
-    const height_below_ssl_raw = Math.abs(bracket_bottom_from_ssl);
+    // Recalculate height below SSL based on ACTUAL final bracket geometry (after minimum enforcement)
+    const height_below_ssl_raw = Math.abs(adjusted_bracket_bottom_from_ssl);
 
     // STEP 5: Calculate Final Dimensions
     const extension_below_slab = Math.max(0, final_bracket_height - slab_thickness);
 
-    // Rise to bolts = Dim D - worst case adjustment (bottom-of-slot position)
-    const rise_to_bolts_raw = final_dim_d - SLOT_TOLERANCE;
+    // Rise to bolts = Distance from fixing point to bottom of slab/beam
+    // For inverted brackets, this is: slab_thickness - fixing_position
+    // Use optimized fixing position if available (when bracket extended for minimum height)
+    const effective_fixing_position = optimized_fixing_position_result ?? effectiveFixingPosition;
+    const rise_to_bolts_raw = slab_thickness - effective_fixing_position - SLOT_TOLERANCE;
 
     // Display value (middle-of-slot position for user display)
     const rise_to_bolts_display_raw = rise_to_bolts_raw + SLOT_TOLERANCE;
@@ -220,6 +242,7 @@ export function calculateInvertedBracketHeight(inputs: InvertedBracketInputs): I
         height_below_ssl: roundToTwelveDecimals(height_below_ssl_raw),
         extension_below_slab: roundToTwelveDecimals(adjusted_extension_below_slab),
         dim_d: roundToTwelveDecimals(final_dim_d),
+        optimized_fixing_position: optimized_fixing_position_result ? roundToTwelveDecimals(optimized_fixing_position_result) : undefined,
         angle_extension: angle_extension_result
     };
 }

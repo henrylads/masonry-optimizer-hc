@@ -178,7 +178,8 @@ export function calculateDependentParameters(
     let rise_to_bolts_display_calc: number;
     let drop_below_slab_calc: number;
     let dim_d_calc: number | undefined;
-    
+    let optimized_fixing_position_from_bracket: number | undefined;
+
     if (genetic.bracket_type === 'Inverted') {
         // Use the proper inverted bracket calculation from documentation
         console.log(`  Using Inverted Bracket Calculation Method`);
@@ -203,11 +204,17 @@ export function calculateDependentParameters(
         rise_to_bolts_display_calc = invertedResults.rise_to_bolts_display;
         drop_below_slab_calc = invertedResults.drop_below_slab;
         dim_d_calc = invertedResults.dim_d;
-        
+
+        // Capture optimized fixing position if bracket was adjusted for minimum height
+        optimized_fixing_position_from_bracket = invertedResults.optimized_fixing_position;
+
         console.log(`  Inverted Bracket Results:`);
         console.log(`    Height Above SSL: ${invertedResults.height_above_ssl}mm`);
         console.log(`    Height Below SSL: ${invertedResults.height_below_ssl}mm`);
         console.log(`    Extension Below Slab: ${invertedResults.extension_below_slab}mm`);
+        if (optimized_fixing_position_from_bracket) {
+            console.log(`    Optimized Fixing Position: ${optimized_fixing_position_from_bracket}mm (adjusted for minimum height)`);
+        }
         
     } else {
         // Use standard bracket calculation
@@ -391,7 +398,7 @@ export function calculateDependentParameters(
         fixing_check: false,
         combined_tension_shear_check: false,
         bsl_above_slab_bottom: bsl_above_slab_bottom,
-        optimized_fixing_position: genetic.fixing_position,
+        optimized_fixing_position: optimized_fixing_position_from_bracket ?? genetic.fixing_position,
         facade_thickness: inputs.facade_thickness,
         load_position: inputs.load_position,
         front_offset: inputs.front_offset,

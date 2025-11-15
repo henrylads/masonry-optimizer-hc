@@ -1,0 +1,91 @@
+{
+  "bracketCount": {
+    "description": "Total number of bracket objects",
+    "value": 1,
+    "unit": ""
+  },
+  "brackets": [
+    {
+      "bracketIndex": {
+        "description": "Index number of the bracket object",
+        "value": 0,
+        "unit": ""
+      },
+      "bracketSKU": {
+        "description": "Stock Keeping Unit identifier",
+        "value": "AMS-S-4-90-219",
+        "unit": ""
+      },
+      "bracketType": {
+        "description": "Type of bracket configuration",
+        "value": "Standard",
+        "unit": ""
+      },
+      "bracketMaterial": {
+        "description": "Stainless steel grade",
+        "value": "304",
+        "unit": ""
+      },
+      "bracketThickness": {
+        "description": "Thickness of the bracket",
+        "value": 4,
+        "unit": "mm"
+      },
+      "bracketLength": {
+        "description": "Length of the bracket",
+        "value": 90,
+        "unit": "mm"
+      },
+      "bracketHeight": {
+        "description": "Height of the bracket",
+        "value": 219,
+        "unit": "mm"
+      },
+      "bracketFixingDiameter": {
+        "description": "Diameter of fixing holes",
+        "value": 16,
+        "unit": "mm"
+      },
+      "bracketToePlateType": {
+        "description": "Type of toe plate configuration",
+        "value": "Standard",
+        "unit": ""
+      },
+      "bracketBackNotchOption": {
+        "description": "Whether back notch is present",
+        "value": false,
+        "unit": ""
+      },
+      "bracketBackNotchLength": {
+        "description": "Length of back notch",
+        "value": 0,
+        "unit": "mm"
+      },
+      "bracketBackNotchHeight": {
+        "description": "Height of back notch",
+        "value": 0,
+        "unit": "mm"
+      },
+      "bracketToeNotchLength": {
+        "description": "Length of toe notch",
+        "value": 22,
+        "unit": "mm"
+      },
+      "bracketToeNotchHeight": {
+        "description": "Height of toe notch",
+        "value": 60,
+        "unit": "mm"
+      },
+      "bracketCutNotchAboveHeight": {
+        "description": "Height of cut notch above",
+        "value": 12,
+        "unit": "mm"
+      },
+      "bracketFixingLevel": {
+        "description": "Fixing level below top of slab/steel",
+        "value": -75,
+        "unit": "mm"
+      }
+    }
+  ]
+}

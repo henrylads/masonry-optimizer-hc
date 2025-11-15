@@ -18,6 +18,7 @@ import type { DesignInputs } from '@/types/designInputs';
 import { verifySteelFixing } from '../verificationChecks/fixingCheck';
 import { getSteelFixingCapacity } from '@/data/steelFixingCapacities';
 import type { SteelBoltSize } from '@/types/steelFixingTypes';
+import { verifyEdgeDistance } from '../verificationChecks/edgeDistanceCheck';
 
 export interface BruteForceEvaluationResult {
     isValid: boolean;
@@ -94,6 +95,11 @@ export function evaluateBruteForceDesign(
         // Update design with inverted bracket specific calculations
         design.calculated.rise_to_bolts = invertedResults.rise_to_bolts;
         design.calculated.drop_below_slab = invertedResults.drop_below_slab;
+
+        // CRITICAL: Update optimized fixing position if bracket was adjusted for minimum height
+        if (invertedResults.optimized_fixing_position) {
+            design.calculated.optimized_fixing_position = invertedResults.optimized_fixing_position;
+        }
 
     } else {
         // Use enhanced standard bracket calculation with extension support
@@ -277,6 +283,13 @@ export function evaluateBruteForceDesign(
             steelCapacity
         );
 
+        // Verify edge distance for steel fixings
+        const edgeDistanceResults = verifyEdgeDistance(
+            design.calculated.rise_to_bolts,
+            design.genetic.steel_bolt_size as SteelBoltSize,
+            design.genetic.bracket_type || 'Standard'
+        );
+
         // Call verifyAll but with steel fixing flag
         // This will run all other checks (moment, shear, deflection, etc.) but skip concrete fixing checks
         verificationResults = verifyAll(
@@ -324,10 +337,13 @@ export function evaluateBruteForceDesign(
             passes: steelFixingResults.passes
         };
 
+        // Add edge distance results
+        verificationResults.edgeDistanceResults = edgeDistanceResults;
+
         // Update combined results to include steel fixing check
         verificationResults.combinedResults.passes = steelFixingResults.passes;
 
-        // Recalculate overall passes based on ALL checks (including steel fixing)
+        // Recalculate overall passes based on ALL checks (including steel fixing AND edge distance)
         verificationResults.passes =
             verificationResults.momentResults.passes &&
             verificationResults.shearResults.passes &&
@@ -338,9 +354,11 @@ export function evaluateBruteForceDesign(
             verificationResults.totalDeflectionResults.passes &&
             verificationResults.packerResults.passes &&
             verificationResults.combinedResults.passes &&
-            steelFixingResults.passes;
+            steelFixingResults.passes &&
+            edgeDistanceResults.passes;
 
         console.log(`  Steel fixing check: ${steelFixingResults.passes ? 'PASS' : 'FAIL'} (utilization: ${(steelFixingResults.combinedUtilization * 100).toFixed(1)}%)`);
+        console.log(`  Edge distance check: ${edgeDistanceResults.passes ? 'PASS' : 'FAIL'} (utilization: ${(edgeDistanceResults.utilization * 100).toFixed(1)}%)`);
 
     } else {
         // CONCRETE FIXING VERIFICATION PATH (original logic)

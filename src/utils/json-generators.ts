@@ -239,10 +239,17 @@ export function generateBracketJSON(
   )
 
   // Calculate fixing level (fixing position from top of slab/steel section)
-  // Use optimized_fixing_position from calculated, or fixing_position from genetic
-  // The fixing position is stored as a positive value (distance from top), but ShapeDiver expects negative
+  // Use optimized_fixing_position from calculated if available (for brackets adjusted to minimum height)
+  // Otherwise use optimized_fixing_position or fixing_position from genetic
   const fixingPosition = calculated.optimized_fixing_position ?? genetic.fixing_position ?? 0
   const bracketFixingLevel = -Math.round(fixingPosition) // Negative because it's below the top
+
+  if (calculated.optimized_fixing_position && calculated.optimized_fixing_position !== (genetic.fixing_position ?? 0)) {
+    console.log(`📐 ShapeDiver fixing position adjusted for minimum bracket height`)
+    console.log(`   Original fixing position: ${genetic.fixing_position ?? 0}mm`)
+    console.log(`   Optimized fixing position: ${calculated.optimized_fixing_position}mm`)
+    console.log(`   This moves bracket down to align with angle`)
+  }
 
   // Determine toe plate type based on angle orientation
   // When angle is inverted, the toe plate must also be inverted to match the angle geometry

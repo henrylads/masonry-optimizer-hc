@@ -162,3 +162,10 @@ Key engineering considerations:
 ## Test Organization Guidelines
 
 - If running tests for engineering scenarios store them in the `/test-scenarios` directory with a unique name starting with the date time ie 20250704103426-name-of-test.ts so that it is easy to see the most recent ones
+
+
+
+
+## Shapdiver Viwer API info:
+
+https://github.com/shapediver/ViewerExamples/tree/development/examples

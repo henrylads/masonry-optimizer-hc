@@ -9,6 +9,7 @@ export * from './droppingBelowSlab';
 export * from './totalDeflection';
 export * from './angleChecks/shearReductionDueToPackers';
 export * from './angleChecks/bracketDesign';
+export * from './edgeDistanceCheck';
 
 import { verifyMomentResistanceULS, type MomentResistanceULSResults } from './angleChecks/momentResistanceULS';
 import { verifyShearResistanceULS, type ShearResistanceULSResults } from './angleChecks/shearResistanceULS';
@@ -20,6 +21,7 @@ import { verifyDroppingBelowSlab, type DroppingBelowSlabResults } from './droppi
 import { verifyTotalDeflection, type TotalDeflectionResults } from './totalDeflection';
 import { verifyShearReductionDueToPackers, type ShearReductionDueToPackersResults } from './angleChecks/shearReductionDueToPackers';
 import { verifyBracketDesign, type BracketDesignResults } from './angleChecks/bracketDesign';
+import { verifyEdgeDistance, type EdgeDistanceResults } from './edgeDistanceCheck';
 
 import { AngleCalculationResults } from '../angleCalculations';
 import { MathematicalModelResults } from './mathematicalModelCalculations';
@@ -80,6 +82,8 @@ export interface VerificationResults {
     packerResults: ShearReductionDueToPackersResults;
     /** Results from bracket design checks */
     bracketDesignResults: BracketDesignResults;
+    /** Results from edge distance check (steel fixings only) */
+    edgeDistanceResults?: EdgeDistanceResults;
     /** Whether all checks pass */
     passes: boolean;
 
