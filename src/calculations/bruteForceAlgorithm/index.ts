@@ -97,6 +97,7 @@ export interface CalculatedParameters {
   effective_vertical_leg?: number; // Effective vertical leg accounting for extension
   fixing_position_auto_adjusted?: boolean; // Flag indicating fixing position was auto-adjusted for exclusion zone
   original_fixing_position?: number; // Original fixing position before auto-adjustment
+  bracket_cut_notch_above_height?: number; // Height of cut notch above toe notch for standard brackets dropping below slab
 }
 
 export interface Design {
@@ -179,6 +180,7 @@ export function calculateDependentParameters(
     let drop_below_slab_calc: number;
     let dim_d_calc: number | undefined;
     let optimized_fixing_position_from_bracket: number | undefined;
+    let bracket_cut_notch_above_height_calc: number = 12; // Default value, overridden for standard brackets dropping below slab
 
     if (genetic.bracket_type === 'Inverted') {
         // Use the proper inverted bracket calculation from documentation
@@ -252,8 +254,30 @@ export function calculateDependentParameters(
         console.log(`    Available space in slab from fixing: ${availableSpaceInSlab}mm`);
         console.log(`    Bracket space needed below fixing: ${bracketSpaceNeededBelowFixing}mm`);
         console.log(`    Extension below slab: ${extensionBelowSlab}mm`);
+
+        // Calculate bracket cut notch above height when bracket drops below slab
+        // This ensures maximum bracket thickness where bracket projects below slab
+        if (drop_below_slab_calc > 0) {
+            const BRACKET_TOE_NOTCH_HEIGHT = 60; // Standard toe notch height (mm)
+            const Y_TOLERANCE = 39.5; // Y dimension tolerance constant (mm)
+
+            // Formula: bracket_height - (slab_thickness - fixing_position + Y_TOLERANCE) - BRACKET_TOE_NOTCH_HEIGHT
+            // Simplified: bracket_height + fixing_position - slab_thickness - Y_TOLERANCE - BRACKET_TOE_NOTCH_HEIGHT
+            // Minimum value: 12mm (to ensure adequate bracket thickness)
+            const calculatedValue = bracket_height_calc + (genetic.fixing_position || 75) - inputs.slab_thickness - Y_TOLERANCE - BRACKET_TOE_NOTCH_HEIGHT;
+            bracket_cut_notch_above_height_calc = Math.max(calculatedValue, 12);
+
+            console.log(`  Bracket Cut Notch Above Height Calculation:`);
+            console.log(`    Bracket height: ${bracket_height_calc}mm`);
+            console.log(`    Fixing position: ${genetic.fixing_position || 75}mm`);
+            console.log(`    Slab thickness: ${inputs.slab_thickness}mm`);
+            console.log(`    Y tolerance: ${Y_TOLERANCE}mm`);
+            console.log(`    Toe notch height: ${BRACKET_TOE_NOTCH_HEIGHT}mm`);
+            console.log(`    Calculated value: ${calculatedValue.toFixed(2)}mm`);
+            console.log(`    Final cut notch above height (min 12mm): ${bracket_cut_notch_above_height_calc}mm`);
+        }
     }
-    
+
     // Apply angle orientation adjustments if needed
     if (
         (genetic.bracket_type === 'Standard' && genetic.angle_orientation === 'Inverted') ||
@@ -403,7 +427,8 @@ export function calculateDependentParameters(
         load_position: inputs.load_position,
         front_offset: inputs.front_offset,
         isolation_shim_thickness: inputs.isolation_shim_thickness,
-        material_type: inputs.material_type
+        material_type: inputs.material_type,
+        bracket_cut_notch_above_height: bracket_cut_notch_above_height_calc
     };
 }
 

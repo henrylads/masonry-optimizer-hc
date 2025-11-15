@@ -271,7 +271,7 @@ export function generateBracketJSON(
     bracketBackNotchHeight: createParameter('Height of back notch', Math.round(notchHeight), 'mm'),
     bracketToeNotchLength: createParameter('Length of toe notch', 22, 'mm'),
     bracketToeNotchHeight: createParameter('Height of toe notch', 60, 'mm'),
-    bracketCutNotchAboveHeight: createParameter('Height of cut notch above', 12, 'mm'),
+    bracketCutNotchAboveHeight: createParameter('Height of cut notch above', Math.round(calculated.bracket_cut_notch_above_height ?? 12), 'mm'),
     bracketFixingLevel: createParameter('Fixing level below top of slab/steel', bracketFixingLevel, 'mm'),
   }
 
